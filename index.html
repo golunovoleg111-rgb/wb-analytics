@@ -7,9 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
     </script>
     <style>
-        /* ============================================================
-           RESET & BASE
-           ============================================================ */
         * {
             margin: 0;
             padding: 0;
@@ -39,9 +36,7 @@
             min-height: 100vh;
         }
 
-        /* ============================================================
-           SIDEBAR
-           ============================================================ */
+        /* ===== SIDEBAR ===== */
         .sidebar {
             width: 260px;
             min-height: 100vh;
@@ -92,6 +87,15 @@
             list-style: none;
             padding: 12px 12px;
             flex: 1;
+        }
+
+        .menu-group-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: rgba(255, 255, 255, 0.25);
+            padding: 12px 14px 6px;
+            font-weight: 600;
         }
 
         .menu-item {
@@ -181,9 +185,7 @@
             transform: none !important;
         }
 
-        /* ============================================================
-           MAIN CONTENT
-           ============================================================ */
+        /* ===== MAIN CONTENT ===== */
         .main-content {
             flex: 1;
             padding: 24px 32px 40px;
@@ -191,9 +193,6 @@
             max-height: 100vh;
         }
 
-        /* ============================================================
-           PAGES
-           ============================================================ */
         .page {
             display: none;
             animation: fadeIn 0.3s ease;
@@ -213,9 +212,6 @@
             }
         }
 
-        /* ============================================================
-           PAGE HEADER
-           ============================================================ */
         .page-header {
             display: flex;
             justify-content: space-between;
@@ -262,9 +258,7 @@
             color: #B71C1C;
         }
 
-        /* ============================================================
-           KPI GRID
-           ============================================================ */
+        /* ===== KPI GRID ===== */
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -317,9 +311,7 @@
             margin-top: 2px;
         }
 
-        /* ============================================================
-           CHART
-           ============================================================ */
+        /* ===== CHART ===== */
         .chart-container {
             background: var(--bg-card);
             border-radius: var(--radius);
@@ -373,9 +365,7 @@
             height: 280px;
         }
 
-        /* ============================================================
-           SUMMARY GRID
-           ============================================================ */
+        /* ===== SUMMARY GRID ===== */
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -410,9 +400,7 @@
             margin-top: 2px;
         }
 
-        /* ============================================================
-           РЕКЛАМНЫЙ ОТДЕЛ
-           ============================================================ */
+        /* ===== ADV BLOCKS ===== */
         .adv-block {
             background: var(--bg-card);
             border-radius: var(--radius);
@@ -516,6 +504,7 @@
             padding: 24px !important;
         }
 
+        /* ===== СТАТУСЫ ===== */
         .status-badge-small {
             display: inline-block;
             padding: 2px 10px;
@@ -547,10 +536,38 @@
             background: #F3E5F5;
             color: #6A1B9A;
         }
+        .status-badge-small.priority {
+            background: #FFF8E1;
+            color: #E65100;
+        }
 
-        /* ============================================================
-           ЗАГЛУШКИ
-           ============================================================ */
+        /* ===== QUICK LINKS ===== */
+        .quick-links {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .quick-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        .quick-link:hover {
+            background: var(--primary);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* ===== COMING SOON ===== */
         .coming-soon {
             display: flex;
             flex-direction: column;
@@ -582,9 +599,7 @@
             margin-top: 8px;
         }
 
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 1200px) {
             .kpi-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -603,7 +618,8 @@
             .sidebar .menu-label,
             .sidebar .menu-badge,
             .sidebar .version,
-            .sidebar .refresh-btn {
+            .sidebar .refresh-btn,
+            .sidebar .menu-group-label {
                 display: none;
             }
             .sidebar .menu-item {
@@ -674,9 +690,7 @@
 </head>
 <body>
 
-    <!-- ============================================================
-    БОКОВОЕ МЕНЮ
-    ============================================================ -->
+    <!-- ===== SIDEBAR ===== -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <span class="logo-icon">📊</span>
@@ -684,6 +698,8 @@
         </div>
 
         <ul class="sidebar-menu">
+            <!-- ГРУППА: ОСНОВНОЕ -->
+            <li class="menu-group-label">Основное</li>
             <li class="menu-item active" data-page="dashboard">
                 <span class="menu-icon">🏠</span>
                 <span class="menu-label">Главная</span>
@@ -692,7 +708,11 @@
                 <span class="menu-icon">📢</span>
                 <span class="menu-label">Рекламный отдел</span>
             </li>
+
             <li class="menu-divider"></li>
+
+            <!-- ГРУППА: СКЛАД И ПОСТАВКИ -->
+            <li class="menu-group-label">Склад и поставки</li>
             <li class="menu-item disabled" data-page="storage">
                 <span class="menu-icon">📦</span>
                 <span class="menu-label">Мой склад</span>
@@ -708,6 +728,11 @@
                 <span class="menu-label">Планирование заказа</span>
                 <span class="menu-badge">В разработке</span>
             </li>
+
+            <li class="menu-divider"></li>
+
+            <!-- ГРУППА: АНАЛИТИКА -->
+            <li class="menu-group-label">Аналитика</li>
             <li class="menu-item disabled" data-page="cards">
                 <span class="menu-icon">🃏</span>
                 <span class="menu-label">Мои карточки</span>
@@ -723,7 +748,11 @@
                 <span class="menu-label">Мои отчеты</span>
                 <span class="menu-badge">В разработке</span>
             </li>
+
             <li class="menu-divider"></li>
+
+            <!-- ГРУППА: СИСТЕМА -->
+            <li class="menu-group-label">Система</li>
             <li class="menu-item disabled" data-page="settings">
                 <span class="menu-icon">⚙️</span>
                 <span class="menu-label">Настройки</span>
@@ -742,12 +771,12 @@
         </div>
     </nav>
 
-    <!-- ============================================================
-    ОСНОВНОЙ КОНТЕНТ
-    ============================================================ -->
+    <!-- ===== MAIN CONTENT ===== -->
     <main class="main-content">
 
-        <!-- ==================== ГЛАВНАЯ СТРАНИЦА ==================== -->
+        <!-- ============================================================
+        ГЛАВНАЯ СТРАНИЦА
+        ============================================================ -->
         <section id="page-dashboard" class="page active">
             <div class="page-header">
                 <h1>🏠 Центр управления</h1>
@@ -757,6 +786,13 @@
                 </div>
             </div>
 
+            <!-- Быстрые ссылки -->
+            <div class="quick-links">
+                <a href="https://www.wildberries.ru/" target="_blank" class="quick-link">🛍️ Wildberries</a>
+                <a href="https://seller.wildberries.ru/" target="_blank" class="quick-link">📦 WB Seller</a>
+            </div>
+
+            <!-- KPI -->
             <div class="kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-icon">📦</div>
@@ -788,6 +824,7 @@
                 </div>
             </div>
 
+            <!-- График -->
             <div class="chart-container">
                 <div class="chart-header">
                     <h2>📈 Продажи</h2>
@@ -804,6 +841,7 @@
                 </div>
             </div>
 
+            <!-- Сводка -->
             <div class="summary-grid">
                 <div class="summary-card">
                     <span class="summary-icon">🏪</span>
@@ -829,7 +867,9 @@
             </div>
         </section>
 
-        <!-- ==================== РЕКЛАМНЫЙ ОТДЕЛ ==================== -->
+        <!-- ============================================================
+        РЕКЛАМНЫЙ ОТДЕЛ
+        ============================================================ -->
         <section id="page-advertising" class="page">
             <div class="page-header">
                 <h1>📢 Рекламный отдел</h1>
@@ -838,6 +878,7 @@
                 </div>
             </div>
 
+            <!-- БЛОК 1: Рекомендовано к запуску -->
             <div class="adv-block recommended-block">
                 <div class="adv-block-header">
                     <h2>🎯 Рекомендовано к запуску</h2>
@@ -855,21 +896,33 @@
                     <div class="table-wrapper">
                         <table class="adv-table" id="recommendedTable">
                             <thead>
-                                <tr><th>Артикул</th><th>Заказы</th><th>Статус</th><th>Скоринг</th><th>Бюджет</th><th>AI-совет</th></tr>
+                                <tr>
+                                    <th style="width:30px;">✅</th>
+                                    <th>Артикул</th>
+                                    <th>Заказы</th>
+                                    <th>Статус</th>
+                                    <th>Скоринг</th>
+                                    <th>Бюджет</th>
+                                    <th>AI-совет</th>
+                                </tr>
                             </thead>
                             <tbody id="recommendedBody">
-                                <tr><td colspan="6" class="loading-text">Загрузка данных...</td></tr>
+                                <tr><td colspan="7" class="loading-text">Загрузка данных...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <div class="adv-block think-block">
+            <!-- БЛОК 2: На подумать -->
+            <div class="adv-block think-block" id="thinkBlock">
                 <div class="adv-block-header">
                     <h2>⚠️ На подумать</h2>
+                    <label style="font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="checkbox" id="hideThinkCheck" /> Скрыть
+                    </label>
                 </div>
-                <div class="adv-block-content">
+                <div class="adv-block-content" id="thinkContent">
                     <div class="ai-summary" id="thinkAI">
                         <span class="ai-icon">🤖</span>
                         <span class="ai-text">Загрузка...</span>
@@ -887,12 +940,23 @@
                 </div>
             </div>
 
-            <div class="adv-block all-products-block">
+            <!-- БЛОК 3: Все товары -->
+            <div class="adv-block all-products-block" id="allProductsBlock">
                 <div class="adv-block-header">
                     <h2>📋 Все товары</h2>
-                    <span class="adv-count" id="allProductsCount">0 шт</span>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span class="adv-count" id="allProductsCount">0 шт</span>
+                        <label style="font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="checkbox" id="hideAllCheck" /> Скрыть
+                        </label>
+                    </div>
                 </div>
-                <div class="adv-block-content">
+                <div class="adv-block-content" id="allProductsContent">
+                    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <input type="text" id="searchInput" placeholder="🔍 Поиск по артикулу..." style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;flex:1;min-width:200px;outline:none;" />
+                        <button id="searchBtn" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">Найти</button>
+                        <button id="clearSearchBtn" style="padding:8px 16px;background:#f0f2f5;color:var(--text-secondary);border:none;border-radius:8px;cursor:pointer;font-size:13px;">Сбросить</button>
+                    </div>
                     <div class="table-wrapper">
                         <table class="adv-table" id="allProductsTable">
                             <thead>
@@ -907,7 +971,9 @@
             </div>
         </section>
 
-        <!-- ==================== ЗАГЛУШКИ ==================== -->
+        <!-- ============================================================
+        ЗАГЛУШКИ
+        ============================================================ -->
         <section id="page-storage" class="page">
             <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Мой склад</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится управление складом</span></div>
         </section>
@@ -942,7 +1008,7 @@
         // ============================================================
         // 1. КОНФИГУРАЦИЯ
         // ============================================================
-        const CONFIG = {
+        var CONFIG = {
             oldSheetId: '1Xjma5SBvsiety6uPfzIvpPfmVEVXe-9oPRnA_cOpH5g',
             newSheetId: '1x7cJgDKFkn3cRdhZjqgYEEhmpCmEczYEQ1wrFu2nyiQ',
             apiKey: 'AIzaSyCtoCvEYfV1pksSodjhJHcAf4PdNpZee-g',
@@ -958,9 +1024,10 @@
         // ============================================================
         // 2. ГЛОБАЛЬНЫЕ ДАННЫЕ
         // ============================================================
-        let appData = { orders: [], advertising: [], storage: [], nomenclature: [] };
-        let chartInstance = null;
-        let currentPeriod = 'yesterday';
+        var appData = { orders: [], advertising: [], storage: [], nomenclature: [] };
+        var chartInstance = null;
+        var currentPeriod = 'yesterday';
+        var allProductsCache = [];
 
         // ============================================================
         // 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -1013,16 +1080,39 @@
                 d.getFullYear();
         }
 
+        // ===== ПАРСИНГ БЮДЖЕТА: "4.300 ₽" → 4300 =====
+        function parseBudget(value) {
+            if (value === undefined || value === null) return 0;
+            if (typeof value === 'number') return Math.round(value);
+            var str = String(value).replace(/\s/g, '').replace(/[^0-9.]/g, '');
+            // Убираем точку, если она разделитель тысяч
+            if (str.indexOf('.') > -1) {
+                var parts = str.split('.');
+                if (parts.length === 2 && parts[1].length === 3) {
+                    str = parts[0] + parts[1];
+                }
+            }
+            var num = parseInt(str) || 0;
+            return num;
+        }
+
+        // ===== СТАТУС (коротко) =====
         function getStatusClass(status) {
             if (!status) return '';
             var s = status.toLowerCase();
             if (s.includes('критичный') || s.includes('критическая')) return 'critical';
-            if (s.includes('высокое')) return 'high';
+            if (s.includes('высокое') || s.includes('приоритет')) return 'priority';
             if (s.includes('умеренное')) return 'moderate';
             if (s.includes('стабильно') || s.includes('норма')) return 'stable';
             if (s.includes('сезон') || s.includes('аномалия')) return 'season';
             if (s.includes('новинка')) return 'new';
             return '';
+        }
+
+        function getStatusShort(status) {
+            if (!status) return '—';
+            var parts = status.split(' ');
+            return parts[0] || status;
         }
 
         // ============================================================
@@ -1145,7 +1235,7 @@
                             score: parseInt(row[10]) || 0,
                             level: String(row[11] || '').trim(),
                             type: String(row[12] || '').trim(),
-                            budget: parseInt(row[13]) || 0,
+                            budget: row[13] || '0',
                             forecast: String(row[14] || '').trim(),
                             why: String(row[15] || '').trim(),
                             aiAdvice: String(row[16] || '').trim()
@@ -1163,12 +1253,14 @@
         // 5. ГЛАВНАЯ СТРАНИЦА
         // ============================================================
         function updateDashboard() {
+            // Товары
             var uniqueBases = new Set();
             appData.nomenclature.forEach(function(item) {
                 if (item.baseArticle) uniqueBases.add(item.baseArticle);
             });
             document.getElementById('kpiArticles').textContent = formatNumber(uniqueBases.size);
 
+            // Заказы вчера
             var yesterdayStr = getYesterdayStr();
             var yesterdayOrders = 0;
             var yesterdayDelivered = 0;
@@ -1186,12 +1278,14 @@
             var conversion = yesterdayOrders > 0 ? Math.round((yesterdayDelivered / yesterdayOrders) * 100) : 0;
             document.getElementById('kpiConversion').textContent = conversion + '%';
 
+            // Остаток
             var totalStock = 0;
             appData.storage.forEach(function(item) {
                 totalStock += item.available || 0;
             });
             document.getElementById('summaryStock').textContent = formatNumber(totalStock);
 
+            // Средний скоринг
             var scores = [];
             appData.advertising.forEach(function(item) {
                 if (item.score > 0) scores.push(item.score);
@@ -1231,11 +1325,8 @@
             }
 
             var data = getChartData(period);
-            var labels = data.labels;
-            var currentData = data.currentData;
-            var previousData = data.previousData;
 
-            if (labels.length === 0) {
+            if (data.labels.length === 0) {
                 chartInstance = new Chart(canvas.getContext('2d'), {
                     type: 'line',
                     data: {
@@ -1257,10 +1348,10 @@
             chartInstance = new Chart(canvas.getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: data.labels,
                     datasets: [{
                         label: 'Текущий период',
-                        data: currentData,
+                        data: data.currentData,
                         borderColor: '#1976D2',
                         backgroundColor: 'rgba(25, 118, 210, 0.08)',
                         borderWidth: 2,
@@ -1270,7 +1361,7 @@
                         pointBackgroundColor: '#1976D2'
                     }, {
                         label: 'Предыдущий период',
-                        data: previousData,
+                        data: data.previousData,
                         borderColor: '#90CAF9',
                         backgroundColor: 'rgba(144, 202, 249, 0.05)',
                         borderWidth: 2,
@@ -1432,161 +1523,226 @@
             updateTime();
         }
 
+        // ===== БЛОК 1: Рекомендовано к запуску =====
         function renderRecommended() {
-    var tbody = document.getElementById('recommendedBody');
-    var candidates = [];
-    for (var i = 0; i < appData.advertising.length; i++) {
-        var item = appData.advertising[i];
-        if ((item.score || 0) >= 40) {
-            candidates.push(item);
+            var tbody = document.getElementById('recommendedBody');
+
+            // Собираем кандидатов с скорингом >= 40
+            var candidates = [];
+            var seenArticles = {};
+
+            for (var i = 0; i < appData.advertising.length; i++) {
+                var item = appData.advertising[i];
+                var score = parseInt(item.score) || 0;
+
+                if (score >= 40 && item.article && item.article.trim() !== '') {
+                    var key = item.article.trim();
+                    if (!seenArticles[key]) {
+                        seenArticles[key] = true;
+                        candidates.push(item);
+                    }
+                }
+            }
+
+            // Сортируем по скорингу (убывание)
+            candidates.sort(function(a, b) {
+                return (parseInt(b.score) || 0) - (parseInt(a.score) || 0);
+            });
+
+            // Берём топ-6
+            candidates = candidates.slice(0, CONFIG.maxCampaigns);
+
+            // Считаем общий бюджет
+            var totalBudget = 0;
+            for (var i = 0; i < candidates.length; i++) {
+                totalBudget += parseBudget(candidates[i].budget);
+            }
+
+            // Обновляем мета-информацию
+            document.getElementById('recCampaigns').textContent = candidates.length;
+            document.getElementById('recBudget').textContent = formatNumber(totalBudget) + ' ₽';
+            document.getElementById('recDate').textContent = formatDate(new Date());
+
+            // AI-совет
+            var aiText = candidates.length === 0 ? 'Нет товаров для рекомендации.' :
+                '🎯 Выбрано ' + candidates.length + ' кампаний. Общий бюджет: ' + formatNumber(totalBudget) + ' ₽.';
+            document.getElementById('recAI').innerHTML =
+                '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+
+            if (candidates.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading-text">Нет товаров для рекомендации</td></tr>';
+                return;
+            }
+
+            // Рендерим таблицу
+            var html = '';
+            for (var i = 0; i < candidates.length; i++) {
+                var item = candidates[i];
+                var budgetNum = parseBudget(item.budget);
+                var statusShort = getStatusShort(item.status);
+                var statusClass = getStatusClass(item.status);
+
+                html += '<tr>' +
+                    '<td><input type="checkbox" checked class="campaign-check" data-index="' + i + '" /></td>' +
+                    '<td><strong>' + item.article + '</strong></td>' +
+                    '<td>' + (item.orders || '—') + '</td>' +
+                    '<td><span class="status-badge-small ' + statusClass + '">' + statusShort + '</span></td>' +
+                    '<td><strong>' + item.score + '</strong></td>' +
+                    '<td><input type="number" class="budget-input" value="' + budgetNum + '" data-index="' + i +
+                    '" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:13px;" /> ₽</td>' +
+                    '<td>' + (item.aiAdvice || '—') + '</td>' +
+                    '</tr>';
+            }
+            tbody.innerHTML = html;
+
+            // ===== ИНТЕРАКТИВ: изменение бюджета =====
+            var budgetInputs = document.querySelectorAll('.budget-input');
+            for (var i = 0; i < budgetInputs.length; i++) {
+                budgetInputs[i].addEventListener('input', function() {
+                    recalcBudget();
+                });
+            }
+
+            // ===== ИНТЕРАКТИВ: чекбоксы =====
+            var checkboxes = document.querySelectorAll('.campaign-check');
+            for (var i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].addEventListener('change', function() {
+                    recalcBudget();
+                });
+            }
         }
-    }
-    candidates.sort(function(a, b) {
-        return (b.score || 0) - (a.score || 0);
-    });
-    candidates = candidates.slice(0, CONFIG.maxCampaigns);
 
-    // ===== БЮДЖЕТ: берём из данных, а не из таблицы =====
-    document.getElementById('recCampaigns').textContent = candidates.length;
-    var totalBudget = 0;
-    for (var i = 0; i < candidates.length; i++) {
-        // Парсим бюджет из строки (убираем "₽" и пробелы)
-        var budgetStr = String(candidates[i].budget || '0');
-        var budgetNum = parseInt(budgetStr.replace(/[^0-9]/g, '')) || 0;
-        totalBudget += budgetNum;
-    }
-    document.getElementById('recBudget').textContent = formatNumber(totalBudget) + ' ₽';
-    document.getElementById('recDate').textContent = formatDate(new Date());
+        // Пересчёт бюджета
+        function recalcBudget() {
+            var inputs = document.querySelectorAll('.budget-input');
+            var checkboxes = document.querySelectorAll('.campaign-check');
+            var total = 0;
+            var activeCount = 0;
 
-    // ===== AI-совет: показываем полный текст =====
-    var aiText = candidates.length === 0 ? 'Нет товаров для рекомендации.' :
-        '🎯 Выбрано ' + candidates.length + ' кампаний. Общий бюджет: ' + formatNumber(totalBudget) + ' ₽.';
-    document.getElementById('recAI').innerHTML =
-        '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+            for (var i = 0; i < inputs.length; i++) {
+                if (checkboxes[i] && checkboxes[i].checked) {
+                    var val = parseInt(inputs[i].value) || 0;
+                    total += val;
+                    activeCount++;
+                }
+            }
 
-    if (candidates.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading-text">Нет товаров для рекомендации</td></tr>';
-        return;
-    }
+            document.getElementById('recCampaigns').textContent = activeCount;
+            document.getElementById('recBudget').textContent = formatNumber(total) + ' ₽';
 
-    // ===== ОТОБРАЖЕНИЕ ТАБЛИЦЫ =====
-    var html = '';
-    for (var i = 0; i < candidates.length; i++) {
-        var item = candidates[i];
-        
-        // Получаем статус (обрезаем до первого слова, чтобы не было длинно)
-        var statusText = item.status || '—';
-        var statusShort = statusText.split(' ')[0]; // Берём только первое слово
-        
-        // Получаем бюджет (число)
-        var budgetNum = parseInt(String(item.budget || '0').replace(/[^0-9]/g, '')) || 0;
-        
-        // Полный AI-совет (не обрезаем)
-        var aiAdvice = item.aiAdvice || '—';
-        
-        html += '<tr>' +
-            '<td><strong>' + item.article + '</strong></td>' +
-            '<td>' + (item.orders || '—') + '</td>' +
-            '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + statusShort + '</span></td>' +
-            '<td><strong>' + item.score + '</strong></td>' +
-            '<td>' + formatNumber(budgetNum) + ' ₽</td>' +
-            '<td>' + aiAdvice + '</td>' +
-            '</tr>';
-    }
-    tbody.innerHTML = html;
-}
-
-        function renderAllProducts() {
-    var tbody = document.getElementById('allProductsBody');
-    var items = [];
-    for (var i = 0; i < appData.advertising.length; i++) {
-        var item = appData.advertising[i];
-        var status = item.status || '';
-        if (!status.includes('Аномалия') && !status.includes('Не сезон')) {
-            items.push(item);
+            // Обновляем AI-совет
+            var aiText = activeCount === 0 ? 'Нет активных кампаний.' :
+                '🎯 Выбрано ' + activeCount + ' кампаний. Общий бюджет: ' + formatNumber(total) + ' ₽.';
+            document.getElementById('recAI').innerHTML =
+                '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
         }
-    }
-    items.sort(function(a, b) {
-        return (b.score || 0) - (a.score || 0);
-    });
 
-    document.getElementById('allProductsCount').textContent = items.length + ' шт';
-
-    if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="loading-text">Нет товаров</td></tr>';
-        return;
-    }
-
-    var display = items.slice(0, 50);
-    var html = '';
-    for (var i = 0; i < display.length; i++) {
-        var item = display[i];
-        
-        // Парсим бюджет
-        var budgetNum = parseInt(String(item.budget || '0').replace(/[^0-9]/g, '')) || 0;
-        
-        // Получаем статус (коротко)
-        var statusText = item.status || '—';
-        var statusShort = statusText.split(' ')[0];
-        
-        html += '<tr>' +
-            '<td><strong>' + item.article + '</strong></td>' +
-            '<td>' + (item.orders || '—') + '</td>' +
-            '<td>' + (item.fallWeek || '—') + '</td>' +
-            '<td>' + (item.fallDay || '—') + '</td>' +
-            '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + statusShort + '</span></td>' +
-            '<td>' + (item.score || '—') + '</td>' +
-            '<td>' + (budgetNum > 0 ? formatNumber(budgetNum) + ' ₽' : '—') + '</td>' +
-            '<td>' + (item.aiAdvice || '—') + '</td>' +
-            '</tr>';
-    }
-    if (items.length > 50) {
-        html += '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:12px;">Показано 50 из ' +
-            items.length + '</td></tr>';
-    }
-    tbody.innerHTML = html;
-}
-
+        // ===== БЛОК 2: На подумать =====
         function renderThinkBlock() {
-    var tbody = document.getElementById('thinkBody');
-    var items = [];
-    for (var i = 0; i < appData.advertising.length; i++) {
-        var item = appData.advertising[i];
-        var status = item.status || '';
-        if (status.includes('Аномалия') || status.includes('Не сезон')) {
-            items.push(item);
+            var tbody = document.getElementById('thinkBody');
+            var items = [];
+
+            for (var i = 0; i < appData.advertising.length; i++) {
+                var item = appData.advertising[i];
+                var status = item.status || '';
+                if (status.includes('Аномалия') || status.includes('Не сезон')) {
+                    items.push(item);
+                }
+            }
+
+            items.sort(function(a, b) {
+                return (a.score || 0) - (b.score || 0);
+            });
+
+            var aiText = items.length === 0 ? '✅ Аномалий нет.' :
+                '⚠️ Найдено ' + items.length + ' товаров с аномалиями.';
+            document.getElementById('thinkAI').innerHTML =
+                '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading-text">Нет товаров для размышления</td></tr>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                html += '<tr>' +
+                    '<td><strong>' + item.article + '</strong></td>' +
+                    '<td>' + (item.score || '—') + '</td>' +
+                    '<td>' + (item.why || '—') + '</td>' +
+                    '<td>' + (item.aiAdvice || '—') + '</td>' +
+                    '</tr>';
+            }
+            tbody.innerHTML = html;
         }
-    }
-    items.sort(function(a, b) {
-        return (a.score || 0) - (b.score || 0);
-    });
 
-    var aiText = items.length === 0 ? '✅ Аномалий нет.' :
-        '⚠️ Найдено ' + items.length + ' товаров с аномалиями.';
-    document.getElementById('thinkAI').innerHTML =
-        '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+        // ===== БЛОК 3: Все товары =====
+        function renderAllProducts(searchQuery) {
+            var tbody = document.getElementById('allProductsBody');
+            var items = [];
 
-    if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="loading-text">Нет товаров для размышления</td></tr>';
-        return;
-    }
+            for (var i = 0; i < appData.advertising.length; i++) {
+                var item = appData.advertising[i];
+                var status = item.status || '';
+                if (!status.includes('Аномалия') && !status.includes('Не сезон')) {
+                    items.push(item);
+                }
+            }
 
-    var html = '';
-    for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        html += '<tr>' +
-            '<td><strong>' + item.article + '</strong></td>' +
-            '<td>' + (item.score || '—') + '</td>' +
-            '<td>' + (item.why || '—') + '</td>' +
-            '<td>' + (item.aiAdvice || '—') + '</td>' +
-            '</tr>';
-    }
-    tbody.innerHTML = html;
-}
+            items.sort(function(a, b) {
+                return (b.score || 0) - (a.score || 0);
+            });
+
+            // Поиск
+            if (searchQuery && searchQuery.trim() !== '') {
+                var query = searchQuery.trim().toLowerCase();
+                items = items.filter(function(item) {
+                    return item.article.toLowerCase().includes(query);
+                });
+            }
+
+            document.getElementById('allProductsCount').textContent = items.length + ' шт';
+            allProductsCache = items;
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="loading-text">' +
+                    (searchQuery ? 'Ничего не найдено' : 'Нет товаров') +
+                    '</td></tr>';
+                return;
+            }
+
+            var display = items.slice(0, 50);
+            var html = '';
+            for (var i = 0; i < display.length; i++) {
+                var item = display[i];
+                var budgetNum = parseBudget(item.budget);
+                var statusShort = getStatusShort(item.status);
+                var statusClass = getStatusClass(item.status);
+
+                html += '<tr>' +
+                    '<td><strong>' + item.article + '</strong></td>' +
+                    '<td>' + (item.orders || '—') + '</td>' +
+                    '<td>' + (item.fallWeek || '—') + '</td>' +
+                    '<td>' + (item.fallDay || '—') + '</td>' +
+                    '<td><span class="status-badge-small ' + statusClass + '">' + statusShort + '</span></td>' +
+                    '<td>' + (item.score || '—') + '</td>' +
+                    '<td>' + (budgetNum > 0 ? formatNumber(budgetNum) + ' ₽' : '—') + '</td>' +
+                    '<td>' + (item.aiAdvice || '—') + '</td>' +
+                    '</tr>';
+            }
+            if (items.length > 50) {
+                html += '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:12px;">Показано 50 из ' +
+                    items.length + '</td></tr>';
+            }
+            tbody.innerHTML = html;
+        }
+
         // ============================================================
-        // 8. НАВИГАЦИЯ
+        // 8. НАВИГАЦИЯ И ИНТЕРАКТИВ
         // ============================================================
         function setupNavigation() {
+            // Меню
             var menuItems = document.querySelectorAll('.menu-item:not(.disabled)');
             for (var i = 0; i < menuItems.length; i++) {
                 menuItems[i].addEventListener('click', function() {
@@ -1606,6 +1762,7 @@
                 });
             }
 
+            // Обновление
             document.getElementById('refreshBtn').addEventListener('click', function() {
                 this.textContent = '⏳';
                 this.disabled = true;
@@ -1615,6 +1772,7 @@
                 });
             });
 
+            // График
             var chartBtns = document.querySelectorAll('.chart-btn');
             for (var i = 0; i < chartBtns.length; i++) {
                 chartBtns[i].addEventListener('click', function() {
@@ -1627,6 +1785,35 @@
                     renderChart(currentPeriod);
                 });
             }
+
+            // Скрытие блока "На подумать"
+            document.getElementById('hideThinkCheck').addEventListener('change', function() {
+                var content = document.getElementById('thinkContent');
+                content.style.display = this.checked ? 'none' : 'block';
+            });
+
+            // Скрытие блока "Все товары"
+            document.getElementById('hideAllCheck').addEventListener('change', function() {
+                var content = document.getElementById('allProductsContent');
+                content.style.display = this.checked ? 'none' : 'block';
+            });
+
+            // Поиск
+            document.getElementById('searchBtn').addEventListener('click', function() {
+                var query = document.getElementById('searchInput').value;
+                renderAllProducts(query);
+            });
+
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('searchBtn').click();
+                }
+            });
+
+            document.getElementById('clearSearchBtn').addEventListener('click', function() {
+                document.getElementById('searchInput').value = '';
+                renderAllProducts('');
+            });
         }
 
         // ============================================================
@@ -1659,9 +1846,16 @@
         // 10. ЗАПУСК
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 BELTANEE STORE® v0.1 DEMO');
+            console.log('🚀 BELTANEE STORE® v0.2');
+            console.log('📋 Источники данных:');
+            console.log('  • Заказы → Старая таблица → Заказы_WB');
+            console.log('  • Остатки WB → Новая таблица → 📦 Остатки_WB');
+            console.log('  • Номенклатура → Новая таблица → 📋 Номенклатура');
+            console.log('  • Реклама → Старая таблица → Рекомендации 2.0');
+
             setupNavigation();
             loadAllData();
+
             setInterval(function() {
                 console.log('🔄 Автообновление...');
                 loadAllData();
