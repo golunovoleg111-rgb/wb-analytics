@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BELTANEE STORE® — WB Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <style>
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1976D2;
+            --primary-dark: #0D47A1;
+            --bg-dark: #1A1A2E;
+            --bg-card: #FFFFFF;
+            --bg-hover: #F5F7FA;
+            --text-primary: #1A1A2E;
+            --text-secondary: #5A6B7C;
+            --text-light: #FFFFFF;
+            --border: #E8EDF2;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: 0.3s ease;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #F0F2F5;
+            color: var(--text-primary);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ============================================================
+           SIDEBAR
+           ============================================================ */
+        .sidebar {
+            width: 260px;
+            min-height: 100vh;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .sidebar-logo {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sidebar-logo .logo-icon {
+            font-size: 28px;
+        }
+        .sidebar-logo .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+        .sidebar-logo .logo-text small {
+            font-size: 11px;
+            font-weight: 400;
+            opacity: 0.5;
+            display: block;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 12px;
+            flex: 1;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            position: relative;
+        }
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .menu-item.active {
+            background: rgba(25, 118, 210, 0.25);
+            color: #FFFFFF;
+            box-shadow: inset 3px 0 0 var(--primary);
+        }
+        .menu-item .menu-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+        .menu-item .menu-label {
+            font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+        }
+        .menu-item .menu-badge {
+            font-size: 9px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .menu-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .menu-item.disabled:hover {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 8px 14px;
+        }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #FFFFFF;
+            transform: rotate(45deg);
+        }
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .main-content {
+            flex: 1;
+            padding: 24px 32px 40px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        /* ============================================================
+           PAGES
+           ============================================================ */
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================================
+           PAGE HEADER
+           ============================================================ */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .page-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .update-time {
+            background: var(--bg-card);
+            padding: 6px 14px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        .status-badge.loading {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+        .status-badge.success {
+            background: #E8F5E9;
+            color: #1B5E20;
+        }
+        .status-badge.error {
+            background: #FFEBEE;
+            color: #B71C1C;
+        }
+
+        /* ============================================================
+           KPI GRID
+           ============================================================ */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: var(--transition);
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .kpi-icon {
+            font-size: 32px;
+            width: 52px;
+            height: 52px;
+            background: #F0F7FF;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .kpi-content {
+            flex: 1;
+        }
+        .kpi-label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .kpi-value {
+            display: block;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 2px;
+        }
+
+        /* ============================================================
+           CHART
+           ============================================================ */
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .chart-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 4px;
+            background: #F0F2F5;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .chart-btn {
+            padding: 6px 14px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .chart-btn:hover {
+            color: var(--text-primary);
+        }
+        .chart-btn.active {
+            background: var(--bg-card);
+            color: var(--primary);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 280px;
+        }
+
+        /* ============================================================
+           SUMMARY GRID
+           ============================================================ */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .summary-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 18px 22px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .summary-icon {
+            font-size: 24px;
+        }
+        .summary-content {
+            flex: 1;
+        }
+        .summary-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .summary-value {
+            display: block;
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        /* ============================================================
+           РЕКЛАМНЫЙ ОТДЕЛ
+           ============================================================ */
+        .adv-block {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .adv-block-header {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .adv-block-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .adv-block-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .adv-block-meta .meta-item strong {
+            color: var(--text-primary);
+        }
+
+        .adv-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: #F0F2F5;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .adv-block-content {
+            padding: 16px 24px 24px;
+        }
+
+        .ai-summary {
+            background: #F0F7FF;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            border-left: 3px solid var(--primary);
+        }
+        .ai-summary .ai-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .ai-summary .ai-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .adv-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .adv-table thead th {
+            background: #F8FAFC;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+        .adv-table tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .adv-table tbody tr:hover {
+            background: var(--bg-hover);
+        }
+        .adv-table .loading-text {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 24px !important;
+        }
+
+        .status-badge-small {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .status-badge-small.critical {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+        .status-badge-small.high {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+        .status-badge-small.moderate {
+            background: #FFF8E1;
+            color: #F57F17;
+        }
+        .status-badge-small.stable {
+            background: #E8F5E9;
+            color: #1B5E20;
+        }
+        .status-badge-small.season {
+            background: #E3F2FD;
+            color: #0D47A1;
+        }
+        .status-badge-small.new {
+            background: #F3E5F5;
+            color: #6A1B9A;
+        }
+
+        /* ============================================================
+           ЗАГЛУШКИ
+           ============================================================ */
+        .coming-soon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        .coming-soon .soon-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .coming-soon h2 {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .coming-soon p {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+        .coming-soon .soon-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            opacity: 0.6;
+            margin-top: 8px;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1200px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 72px;
+                min-width: 72px;
+            }
+            .sidebar .logo-text,
+            .sidebar .menu-label,
+            .sidebar .menu-badge,
+            .sidebar .version,
+            .sidebar .refresh-btn {
+                display: none;
+            }
+            .sidebar .menu-item {
+                justify-content: center;
+                padding: 12px;
+            }
+            .sidebar .menu-icon {
+                font-size: 22px;
+                width: auto;
+            }
+            .sidebar-footer {
+                justify-content: center;
+            }
+            .main-content {
+                padding: 16px;
+            }
+            .kpi-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .kpi-card {
+                padding: 14px 16px;
+            }
+            .kpi-value {
+                font-size: 22px;
+            }
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-wrapper {
+                height: 200px;
+            }
+            .page-header h1 {
+                font-size: 20px;
+            }
+            .adv-block-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .adv-block-meta {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .kpi-card {
+                flex-direction: column;
+                text-align: center;
+                padding: 12px;
+            }
+            .kpi-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 24px;
+            }
+            .kpi-value {
+                font-size: 20px;
+            }
+            .chart-controls {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+    БОКОВОЕ МЕНЮ
+    ============================================================ -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <span class="logo-icon">📊</span>
+            <span class="logo-text">BELTANEE<br /><small>STORE®</small></span>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item active" data-page="dashboard">
+                <span class="menu-icon">🏠</span>
+                <span class="menu-label">Главная</span>
+            </li>
+            <li class="menu-item" data-page="advertising">
+                <span class="menu-icon">📢</span>
+                <span class="menu-label">Рекламный отдел</span>
+            </li>
+            <li class="menu-divider"></li>
+            <li class="menu-item disabled" data-page="storage">
+                <span class="menu-icon">📦</span>
+                <span class="menu-label">Мой склад</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+            <li class="menu-item disabled" data-page="supplies">
+                <span class="menu-icon">🚚</span>
+                <span class="menu-label">Поставки</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+            <li class="menu-item disabled" data-page="planning">
+                <span class="menu-icon">📋</span>
+                <span class="menu-label">Планирование заказа</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+            <li class="menu-item disabled" data-page="cards">
+                <span class="menu-icon">🃏</span>
+                <span class="menu-label">Мои карточки</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+            <li class="menu-item disabled" data-page="analytics">
+                <span class="menu-icon">📊</span>
+                <span class="menu-label">Аналитика</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+            <li class="menu-item disabled" data-page="reports">
+                <span class="menu-icon">📄</span>
+                <span class="menu-label">Мои отчеты</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+            <li class="menu-divider"></li>
+            <li class="menu-item disabled" data-page="settings">
+                <span class="menu-icon">⚙️</span>
+                <span class="menu-label">Настройки</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+            <li class="menu-item disabled" data-page="learning">
+                <span class="menu-icon">📚</span>
+                <span class="menu-label">Обучение</span>
+                <span class="menu-badge">В разработке</span>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <span class="version">v0.1 DEMO</span>
+            <button class="refresh-btn" id="refreshBtn" title="Обновить данные">🔄</button>
+        </div>
+    </nav>
+
+    <!-- ============================================================
+    ОСНОВНОЙ КОНТЕНТ
+    ============================================================ -->
+    <main class="main-content">
+
+        <!-- ==================== ГЛАВНАЯ СТРАНИЦА ==================== -->
+        <section id="page-dashboard" class="page active">
+            <div class="page-header">
+                <h1>🏠 Центр управления</h1>
+                <div class="header-info">
+                    <span class="update-time" id="updateTime">Загрузка...</span>
+                    <span class="status-badge loading" id="statusBadge">⏳ Загрузка данных...</span>
+                </div>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon">📦</div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">ТОВАРОВ</span>
+                        <span class="kpi-value" id="kpiArticles">—</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">🛒</div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">ЗАКАЗАНО (вчера)</span>
+                        <span class="kpi-value" id="kpiOrders">—</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">✅</div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">ВЫКУПИЛИ (вчера)</span>
+                        <span class="kpi-value" id="kpiDelivered">—</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">📈</div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">КОНВЕРСИЯ</span>
+                        <span class="kpi-value" id="kpiConversion">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>📈 Продажи</h2>
+                    <div class="chart-controls" id="chartControls">
+                        <button class="chart-btn active" data-period="yesterday">Вчера</button>
+                        <button class="chart-btn" data-period="week">Неделя</button>
+                        <button class="chart-btn" data-period="month">Месяц</button>
+                        <button class="chart-btn" data-period="quarter">Квартал</button>
+                        <button class="chart-btn" data-period="year">Год</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <span class="summary-icon">🏪</span>
+                    <div class="summary-content">
+                        <span class="summary-label">Общий остаток WB</span>
+                        <span class="summary-value" id="summaryStock">—</span>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-icon">⭐</span>
+                    <div class="summary-content">
+                        <span class="summary-label">Средний скоринг</span>
+                        <span class="summary-value" id="summaryScore">—</span>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-icon">🔄</span>
+                    <div class="summary-content">
+                        <span class="summary-label">Конверсия в выкуп</span>
+                        <span class="summary-value" id="summaryConversion">—</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== РЕКЛАМНЫЙ ОТДЕЛ ==================== -->
+        <section id="page-advertising" class="page">
+            <div class="page-header">
+                <h1>📢 Рекламный отдел</h1>
+                <div class="header-info">
+                    <span class="update-time" id="advUpdateTime">Загрузка...</span>
+                </div>
+            </div>
+
+            <div class="adv-block recommended-block">
+                <div class="adv-block-header">
+                    <h2>🎯 Рекомендовано к запуску</h2>
+                    <div class="adv-block-meta">
+                        <span class="meta-item"><strong id="recCampaigns">0</strong> кампаний</span>
+                        <span class="meta-item">Бюджет: <strong id="recBudget">0 ₽</strong></span>
+                        <span class="meta-item" id="recDate"></span>
+                    </div>
+                </div>
+                <div class="adv-block-content">
+                    <div class="ai-summary" id="recAI">
+                        <span class="ai-icon">🤖</span>
+                        <span class="ai-text">Загрузка рекомендаций...</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="adv-table" id="recommendedTable">
+                            <thead>
+                                <tr><th>Артикул</th><th>Заказы</th><th>Статус</th><th>Скоринг</th><th>Бюджет</th><th>AI-совет</th></tr>
+                            </thead>
+                            <tbody id="recommendedBody">
+                                <tr><td colspan="6" class="loading-text">Загрузка данных...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="adv-block think-block">
+                <div class="adv-block-header">
+                    <h2>⚠️ На подумать</h2>
+                </div>
+                <div class="adv-block-content">
+                    <div class="ai-summary" id="thinkAI">
+                        <span class="ai-icon">🤖</span>
+                        <span class="ai-text">Загрузка...</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="adv-table" id="thinkTable">
+                            <thead>
+                                <tr><th>Артикул</th><th>Скоринг</th><th>Почему</th><th>AI-совет</th></tr>
+                            </thead>
+                            <tbody id="thinkBody">
+                                <tr><td colspan="4" class="loading-text">Загрузка данных...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="adv-block all-products-block">
+                <div class="adv-block-header">
+                    <h2>📋 Все товары</h2>
+                    <span class="adv-count" id="allProductsCount">0 шт</span>
+                </div>
+                <div class="adv-block-content">
+                    <div class="table-wrapper">
+                        <table class="adv-table" id="allProductsTable">
+                            <thead>
+                                <tr><th>Артикул</th><th>Заказы</th><th>Падение нед</th><th>Падение день</th><th>Статус</th><th>Скоринг</th><th>Бюджет</th><th>AI-совет</th></tr>
+                            </thead>
+                            <tbody id="allProductsBody">
+                                <tr><td colspan="8" class="loading-text">Загрузка данных...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ЗАГЛУШКИ ==================== -->
+        <section id="page-storage" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Мой склад</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится управление складом</span></div>
+        </section>
+        <section id="page-supplies" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Поставки</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится управление поставками</span></div>
+        </section>
+        <section id="page-planning" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Планирование заказа</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится планирование заказов</span></div>
+        </section>
+        <section id="page-cards" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Мои карточки</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится управление карточками</span></div>
+        </section>
+        <section id="page-analytics" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Аналитика</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится глубокая аналитика</span></div>
+        </section>
+        <section id="page-reports" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Мои отчеты</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится генерация отчетов</span></div>
+        </section>
+        <section id="page-settings" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Настройки</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится настройка платформы</span></div>
+        </section>
+        <section id="page-learning" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚧</span><h2>Обучение</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится обучающий центр</span></div>
+        </section>
+
+    </main>
+
+    <!-- ============================================================
+    JAVASCRIPT
+    ============================================================ -->
+    <script>
+        // ============================================================
+        // 1. КОНФИГУРАЦИЯ
+        // ============================================================
+        const CONFIG = {
+            oldSheetId: '1Xjma5SBvsiety6uPfzIvpPfmVEVXe-9oPRnA_cOpH5g',
+            newSheetId: '1x7cJgDKFkn3cRdhZjqgYEEhmpCmEczYEQ1wrFu2nyiQ',
+            apiKey: 'AIzaSyCtoCvEYfV1pksSodjhJHcAf4PdNpZee-g',
+            sheets: {
+                orders: 'Заказы_WB',
+                advertising: 'Рекомендации 2.0',
+                storage: '📦 Остатки_WB',
+                nomenclature: '📋 Номенклатура'
+            },
+            maxCampaigns: 6
+        };
+
+        // ============================================================
+        // 2. ГЛОБАЛЬНЫЕ ДАННЫЕ
+        // ============================================================
+        let appData = { orders: [], advertising: [], storage: [], nomenclature: [] };
+        let chartInstance = null;
+        let currentPeriod = 'yesterday';
+
+        // ============================================================
+        // 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================================
+        function parseDate(value) {
+            if (!value) return null;
+            if (value instanceof Date) return value;
+            if (typeof value === 'number') {
+                return new Date((value - 25569) * 86400 * 1000);
+            }
+            var str = String(value).trim();
+            var match = str.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+            if (match) return new Date(match[3], match[2] - 1, match[1]);
+            match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+            match = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (match) return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+            var parsed = Date.parse(str);
+            if (!isNaN(parsed)) return new Date(parsed);
+            return null;
+        }
+
+        function formatDate(date) {
+            if (!date || isNaN(date.getTime())) return '—';
+            return String(date.getDate()).padStart(2, '0') + '.' +
+                String(date.getMonth() + 1).padStart(2, '0') + '.' +
+                date.getFullYear();
+        }
+
+        function formatNumber(num) {
+            if (num === undefined || num === null || isNaN(num)) return '—';
+            return Number(num).toLocaleString('ru-RU');
+        }
+
+        function getBaseArticle(fullArticle) {
+            if (!fullArticle) return '';
+            var parts = fullArticle.split('_');
+            if (parts.length > 1) {
+                parts.pop();
+                return parts.join('_');
+            }
+            return fullArticle;
+        }
+
+        function getYesterdayStr() {
+            var d = new Date();
+            d.setDate(d.getDate() - 1);
+            return String(d.getDate()).padStart(2, '0') + '.' +
+                String(d.getMonth() + 1).padStart(2, '0') + '.' +
+                d.getFullYear();
+        }
+
+        function getStatusClass(status) {
+            if (!status) return '';
+            var s = status.toLowerCase();
+            if (s.includes('критичный') || s.includes('критическая')) return 'critical';
+            if (s.includes('высокое')) return 'high';
+            if (s.includes('умеренное')) return 'moderate';
+            if (s.includes('стабильно') || s.includes('норма')) return 'stable';
+            if (s.includes('сезон') || s.includes('аномалия')) return 'season';
+            if (s.includes('новинка')) return 'new';
+            return '';
+        }
+
+        // ============================================================
+        // 4. ЗАГРУЗКА ДАННЫХ
+        // ============================================================
+        function fetchSheet(sheetId, sheetName, range) {
+            var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId +
+                '/values/' + encodeURIComponent(sheetName) + '!' + (range || 'A:Z') +
+                '?key=' + CONFIG.apiKey;
+            return fetch(url).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function(data) {
+                return data.values || [];
+            });
+        }
+
+        function loadOrders() {
+            console.log('📥 Загрузка заказов...');
+            return fetchSheet(CONFIG.oldSheetId, CONFIG.sheets.orders, 'A:E')
+                .then(function(rows) {
+                    if (rows.length < 2) return [];
+                    var data = rows.slice(1);
+                    appData.orders = data.filter(function(row) {
+                        return row[0] && String(row[0]).trim() !== '';
+                    }).map(function(row) {
+                        var date = parseDate(row[1]);
+                        return {
+                            article: String(row[0] || '').trim(),
+                            date: date,
+                            dateStr: String(row[1] || '').trim(),
+                            orders: parseInt(row[2]) || 0,
+                            amount: parseFloat(row[3]) || 0,
+                            delivered: parseInt(row[4]) || 0
+                        };
+                    }).filter(function(item) {
+                        return item.date !== null && item.article !== '';
+                    });
+                    console.log('✅ Заказы: ' + appData.orders.length + ' записей');
+                    return appData.orders;
+                }).catch(function(err) {
+                    console.error('❌ Ошибка загрузки заказов:', err);
+                    return [];
+                });
+        }
+
+        function loadStorage() {
+            console.log('📥 Загрузка остатков...');
+            return fetchSheet(CONFIG.newSheetId, CONFIG.sheets.storage, 'A:AF')
+                .then(function(rows) {
+                    if (rows.length < 2) return [];
+                    var data = rows.slice(1);
+                    appData.storage = data.filter(function(row) {
+                        return row[0] && String(row[0]).trim() !== '';
+                    }).map(function(row) {
+                        return {
+                            article: String(row[0] || '').trim(),
+                            available: parseInt(row[31]) || 0
+                        };
+                    });
+                    console.log('✅ Остатки WB: ' + appData.storage.length + ' записей');
+                    return appData.storage;
+                }).catch(function(err) {
+                    console.error('❌ Ошибка загрузки остатков:', err);
+                    return [];
+                });
+        }
+
+        function loadNomenclature() {
+            console.log('📥 Загрузка номенклатуры...');
+            return fetchSheet(CONFIG.newSheetId, CONFIG.sheets.nomenclature, 'A:K')
+                .then(function(rows) {
+                    if (rows.length < 2) return [];
+                    var data = rows.slice(1);
+                    appData.nomenclature = data.filter(function(row) {
+                        return row[0] && String(row[0]).trim() !== '';
+                    }).map(function(row) {
+                        return {
+                            modelArticle: String(row[0] || '').trim(),
+                            size: String(row[1] || '').trim(),
+                            fullArticle: String(row[2] || '').trim(),
+                            baseArticle: String(row[3] || '').trim(),
+                            category: String(row[4] || '').trim(),
+                            gtin: String(row[5] || '').trim(),
+                            wbArticle: String(row[6] || '').trim(),
+                            barcode: String(row[7] || '').trim(),
+                            fabric: String(row[8] || '').trim(),
+                            composition: String(row[9] || '').trim(),
+                            tnved: String(row[10] || '').trim()
+                        };
+                    });
+                    console.log('✅ Номенклатура: ' + appData.nomenclature.length + ' записей');
+                    return appData.nomenclature;
+                }).catch(function(err) {
+                    console.error('❌ Ошибка загрузки номенклатуры:', err);
+                    return [];
+                });
+        }
+
+        function loadAdvertising() {
+            console.log('📥 Загрузка рекламы...');
+            return fetchSheet(CONFIG.oldSheetId, CONFIG.sheets.advertising, 'A:Q')
+                .then(function(rows) {
+                    if (rows.length < 2) return [];
+                    var data = rows.slice(1);
+                    appData.advertising = data.filter(function(row) {
+                        return row[0] && String(row[0]).trim() !== '';
+                    }).map(function(row) {
+                        return {
+                            article: String(row[0] || '').trim(),
+                            orders: String(row[1] || '').trim(),
+                            fallWeek: String(row[2] || '').trim(),
+                            fallDay: String(row[3] || '').trim(),
+                            status: String(row[4] || '').trim(),
+                            setka: String(row[5] || '').trim(),
+                            stockWB: parseFloat(row[6]) || 0,
+                            stockUs: parseFloat(row[7]) || 0,
+                            season: String(row[8] || '').trim(),
+                            priority: String(row[9] || '').trim(),
+                            score: parseInt(row[10]) || 0,
+                            level: String(row[11] || '').trim(),
+                            type: String(row[12] || '').trim(),
+                            budget: parseInt(row[13]) || 0,
+                            forecast: String(row[14] || '').trim(),
+                            why: String(row[15] || '').trim(),
+                            aiAdvice: String(row[16] || '').trim()
+                        };
+                    });
+                    console.log('✅ Реклама: ' + appData.advertising.length + ' записей');
+                    return appData.advertising;
+                }).catch(function(err) {
+                    console.error('❌ Ошибка загрузки рекламы:', err);
+                    return [];
+                });
+        }
+
+        // ============================================================
+        // 5. ГЛАВНАЯ СТРАНИЦА
+        // ============================================================
+        function updateDashboard() {
+            var uniqueBases = new Set();
+            appData.nomenclature.forEach(function(item) {
+                if (item.baseArticle) uniqueBases.add(item.baseArticle);
+            });
+            document.getElementById('kpiArticles').textContent = formatNumber(uniqueBases.size);
+
+            var yesterdayStr = getYesterdayStr();
+            var yesterdayOrders = 0;
+            var yesterdayDelivered = 0;
+
+            appData.orders.forEach(function(item) {
+                if (item.dateStr === yesterdayStr) {
+                    yesterdayOrders += item.orders || 0;
+                    yesterdayDelivered += item.delivered || 0;
+                }
+            });
+
+            document.getElementById('kpiOrders').textContent = formatNumber(yesterdayOrders);
+            document.getElementById('kpiDelivered').textContent = formatNumber(yesterdayDelivered);
+
+            var conversion = yesterdayOrders > 0 ? Math.round((yesterdayDelivered / yesterdayOrders) * 100) : 0;
+            document.getElementById('kpiConversion').textContent = conversion + '%';
+
+            var totalStock = 0;
+            appData.storage.forEach(function(item) {
+                totalStock += item.available || 0;
+            });
+            document.getElementById('summaryStock').textContent = formatNumber(totalStock);
+
+            var scores = [];
+            appData.advertising.forEach(function(item) {
+                if (item.score > 0) scores.push(item.score);
+            });
+            var avgScore = scores.length > 0 ? Math.round((scores.reduce(function(a, b) { return a + b; }, 0) / scores
+                .length) * 10) / 10 : 0;
+            document.getElementById('summaryScore').textContent = avgScore > 0 ? avgScore + ' ★' : '—';
+            document.getElementById('summaryConversion').textContent = conversion + '%';
+
+            updateTime();
+        }
+
+        function updateTime() {
+            var now = new Date();
+            var str = now.toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            var el = document.getElementById('updateTime');
+            if (el) el.textContent = '🔄 ' + str;
+            var advEl = document.getElementById('advUpdateTime');
+            if (advEl) advEl.textContent = '🔄 ' + str;
+        }
+
+        // ============================================================
+        // 6. ГРАФИК
+        // ============================================================
+        function renderChart(period) {
+            var canvas = document.getElementById('salesChart');
+            if (!canvas) return;
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+
+            var data = getChartData(period);
+            var labels = data.labels;
+            var currentData = data.currentData;
+            var previousData = data.previousData;
+
+            if (labels.length === 0) {
+                chartInstance = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: ['Нет данных'],
+                        datasets: [
+                            { label: 'Текущий период', data: [0], borderColor: '#1976D2' },
+                            { label: 'Предыдущий период', data: [0], borderColor: '#90CAF9' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: true } }
+                    }
+                });
+                return;
+            }
+
+            chartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Текущий период',
+                        data: currentData,
+                        borderColor: '#1976D2',
+                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#1976D2'
+                    }, {
+                        label: 'Предыдущий период',
+                        data: previousData,
+                        borderColor: '#90CAF9',
+                        backgroundColor: 'rgba(144, 202, 249, 0.05)',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#90CAF9'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ctx.dataset.label + ': ' + formatNumber(ctx.parsed.y) + ' зак.';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(v) { return formatNumber(v); }
+                            }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function getChartData(period) {
+            var sorted = [];
+            for (var i = 0; i < appData.orders.length; i++) {
+                var item = appData.orders[i];
+                if (item.date !== null) {
+                    sorted.push(item);
+                }
+            }
+            sorted.sort(function(a, b) {
+                return a.date.getTime() - b.date.getTime();
+            });
+
+            if (sorted.length === 0) {
+                return { labels: [], currentData: [], previousData: [] };
+            }
+
+            var now = new Date();
+            var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            var cs, ce, ps, pe;
+
+            switch (period) {
+                case 'yesterday':
+                    ce = new Date(today);
+                    cs = new Date(today);
+                    cs.setDate(cs.getDate() - 1);
+                    pe = new Date(cs);
+                    ps = new Date(pe);
+                    ps.setDate(ps.getDate() - 1);
+                    break;
+                case 'week':
+                    ce = new Date(today);
+                    cs = new Date(today);
+                    cs.setDate(cs.getDate() - 7);
+                    pe = new Date(cs);
+                    ps = new Date(pe);
+                    ps.setDate(ps.getDate() - 7);
+                    break;
+                case 'month':
+                    ce = new Date(today);
+                    cs = new Date(today);
+                    cs.setDate(cs.getDate() - 30);
+                    pe = new Date(cs);
+                    ps = new Date(pe);
+                    ps.setDate(ps.getDate() - 30);
+                    break;
+                case 'quarter':
+                    ce = new Date(today);
+                    cs = new Date(today);
+                    cs.setDate(cs.getDate() - 90);
+                    pe = new Date(cs);
+                    ps = new Date(pe);
+                    ps.setDate(ps.getDate() - 90);
+                    break;
+                case 'year':
+                    ce = new Date(today);
+                    cs = new Date(today);
+                    cs.setDate(cs.getDate() - 365);
+                    pe = new Date(cs);
+                    ps = new Date(pe);
+                    ps.setDate(ps.getDate() - 365);
+                    break;
+                default:
+                    return { labels: [], currentData: [], previousData: [] };
+            }
+
+            function group(start, end) {
+                var res = {};
+                var st = start.getTime();
+                var en = end.getTime();
+                for (var i = 0; i < sorted.length; i++) {
+                    var item = sorted[i];
+                    var t = item.date.getTime();
+                    if (t >= st && t <= en) {
+                        var k = item.date.toISOString().split('T')[0];
+                        if (!res[k]) res[k] = 0;
+                        res[k] += item.orders || 0;
+                    }
+                }
+                return res;
+            }
+
+            var cg = group(cs, ce);
+            var pg = group(ps, pe);
+
+            var labels = [];
+            var cd = [];
+            var pd = [];
+
+            var cur = new Date(cs);
+            while (cur <= ce) {
+                var k = cur.toISOString().split('T')[0];
+                labels.push(formatDate(cur));
+                cd.push(cg[k] || 0);
+
+                var p = new Date(ps);
+                var daysDiff = (cur.getTime() - cs.getTime()) / 86400000;
+                p.setDate(p.getDate() + daysDiff);
+                var pk = p.toISOString().split('T')[0];
+                pd.push(pg[pk] || 0);
+
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            return { labels: labels, currentData: cd, previousData: pd };
+        }
+
+        // ============================================================
+        // 7. РЕКЛАМНЫЙ ОТДЕЛ
+        // ============================================================
+        function updateAdvertising() {
+            renderRecommended();
+            renderThinkBlock();
+            renderAllProducts();
+            updateTime();
+        }
+
+        function renderRecommended() {
+            var tbody = document.getElementById('recommendedBody');
+            var candidates = [];
+            for (var i = 0; i < appData.advertising.length; i++) {
+                var item = appData.advertising[i];
+                if ((item.score || 0) >= 40) {
+                    candidates.push(item);
+                }
+            }
+            candidates.sort(function(a, b) {
+                return (b.score || 0) - (a.score || 0);
+            });
+            candidates = candidates.slice(0, CONFIG.maxCampaigns);
+
+            document.getElementById('recCampaigns').textContent = candidates.length;
+            var totalBudget = 0;
+            for (var i = 0; i < candidates.length; i++) {
+                totalBudget += candidates[i].budget || 0;
+            }
+            document.getElementById('recBudget').textContent = formatNumber(totalBudget) + ' ₽';
+            document.getElementById('recDate').textContent = formatDate(new Date());
+
+            var aiText = candidates.length === 0 ? 'Нет товаров для рекомендации.' :
+                '🎯 Выбрано ' + candidates.length + ' кампаний. Общий бюджет: ' + formatNumber(totalBudget) + ' ₽.';
+            document.getElementById('recAI').innerHTML =
+                '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+
+            if (candidates.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading-text">Нет товаров для рекомендации</td></tr>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < candidates.length; i++) {
+                var item = candidates[i];
+                html += '<tr>' +
+                    '<td><strong>' + item.article + '</strong></td>' +
+                    '<td>' + (item.orders || '—') + '</td>' +
+                    '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + (item.status || '—') +
+                    '</span></td>' +
+                    '<td><strong>' + item.score + '</strong></td>' +
+                    '<td>' + formatNumber(item.budget) + ' ₽</td>' +
+                    '<td>' + (item.aiAdvice || '—') + '</td>' +
+                    '</tr>';
+            }
+            tbody.innerHTML = html;
+        }
+
+        function renderThinkBlock() {
+            var tbody = document.getElementById('thinkBody');
+            var items = [];
+            for (var i = 0; i < appData.advertising.length; i++) {
+                var item = appData.advertising[i];
+                var status = item.status || '';
+                if (status.includes('Аномалия') || status.includes('Не сезон')) {
+                    items.push(item);
+                }
+            }
+            items.sort(function(a, b) {
+                return (a.score || 0) - (b.score || 0);
+            });
+
+            var aiText = items.length === 0 ? '✅ Аномалий нет.' :
+                '⚠️ Найдено ' + items.length + ' товаров с аномалиями.';
+            document.getElementById('thinkAI').innerHTML =
+                '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading-text">Нет товаров для размышления</td></tr>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                html += '<tr>' +
+                    '<td><strong>' + item.article + '</strong></td>' +
+                    '<td>' + (item.score || '—') + '</td>' +
+                    '<td>' + (item.why || '—') + '</td>' +
+                    '<td>' + (item.aiAdvice || '—') + '</td>' +
+                    '</tr>';
+            }
+            tbody.innerHTML = html;
+        }
+
+        function renderAllProducts() {
+            var tbody = document.getElementById('allProductsBody');
+            var items = [];
+            for (var i = 0; i < appData.advertising.length; i++) {
+                var item = appData.advertising[i];
+                var status = item.status || '';
+                if (!status.includes('Аномалия') && !status.includes('Не сезон')) {
+                    items.push(item);
+                }
+            }
+            items.sort(function(a, b) {
+                return (b.score || 0) - (a.score || 0);
+            });
+
+            document.getElementById('allProductsCount').textContent = items.length + ' шт';
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="loading-text">Нет товаров</td></tr>';
+                return;
+            }
+
+            var display = items.slice(0, 50);
+            var html = '';
+            for (var i = 0; i < display.length; i++) {
+                var item = display[i];
+                html += '<tr>' +
+                    '<td><strong>' + item.article + '</strong></td>' +
+                    '<td>' + (item.orders || '—') + '</td>' +
+                    '<td>' + (item.fallWeek || '—') + '</td>' +
+                    '<td>' + (item.fallDay || '—') + '</td>' +
+                    '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + (item.status || '—') +
+                    '</span></td>' +
+                    '<td>' + (item.score || '—') + '</td>' +
+                    '<td>' + (item.budget ? formatNumber(item.budget) + ' ₽' : '—') + '</td>' +
+                    '<td>' + (item.aiAdvice || '—') + '</td>' +
+                    '</tr>';
+            }
+            if (items.length > 50) {
+                html += '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:12px;">Показано 50 из ' +
+                    items.length + '</td></tr>';
+            }
+            tbody.innerHTML = html;
+        }
+
+        // ============================================================
+        // 8. НАВИГАЦИЯ
+        // ============================================================
+        function setupNavigation() {
+            var menuItems = document.querySelectorAll('.menu-item:not(.disabled)');
+            for (var i = 0; i < menuItems.length; i++) {
+                menuItems[i].addEventListener('click', function() {
+                    var page = this.dataset.page;
+                    if (!page) return;
+                    var allItems = document.querySelectorAll('.menu-item');
+                    for (var j = 0; j < allItems.length; j++) {
+                        allItems[j].classList.remove('active');
+                    }
+                    this.classList.add('active');
+                    var allPages = document.querySelectorAll('.page');
+                    for (var j = 0; j < allPages.length; j++) {
+                        allPages[j].classList.remove('active');
+                    }
+                    var target = document.getElementById('page-' + page);
+                    if (target) target.classList.add('active');
+                });
+            }
+
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                this.textContent = '⏳';
+                this.disabled = true;
+                loadAllData().then(function() {
+                    document.getElementById('refreshBtn').textContent = '🔄';
+                    document.getElementById('refreshBtn').disabled = false;
+                });
+            });
+
+            var chartBtns = document.querySelectorAll('.chart-btn');
+            for (var i = 0; i < chartBtns.length; i++) {
+                chartBtns[i].addEventListener('click', function() {
+                    var allBtns = document.querySelectorAll('.chart-btn');
+                    for (var j = 0; j < allBtns.length; j++) {
+                        allBtns[j].classList.remove('active');
+                    }
+                    this.classList.add('active');
+                    currentPeriod = this.dataset.period;
+                    renderChart(currentPeriod);
+                });
+            }
+        }
+
+        // ============================================================
+        // 9. ГЛАВНАЯ ЗАГРУЗКА
+        // ============================================================
+        function loadAllData() {
+            var badge = document.getElementById('statusBadge');
+            badge.textContent = '⏳ Загрузка...';
+            badge.className = 'status-badge loading';
+
+            return Promise.all([
+                loadOrders(),
+                loadStorage(),
+                loadNomenclature(),
+                loadAdvertising()
+            ]).then(function() {
+                updateDashboard();
+                updateAdvertising();
+                badge.textContent = '✅ Данные загружены';
+                badge.className = 'status-badge success';
+                console.log('✅ Все данные загружены!');
+            }).catch(function(err) {
+                console.error('❌ Ошибка:', err);
+                badge.textContent = '❌ Ошибка загрузки';
+                badge.className = 'status-badge error';
+            });
+        }
+
+        // ============================================================
+        // 10. ЗАПУСК
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 BELTANEE STORE® v0.1 DEMO');
+            setupNavigation();
+            loadAllData();
+            setInterval(function() {
+                console.log('🔄 Автообновление...');
+                loadAllData();
+            }, 5 * 60 * 1000);
+        });
+    </script>
+
+</body>
+</html>
