@@ -1433,134 +1433,156 @@
         }
 
         function renderRecommended() {
-            var tbody = document.getElementById('recommendedBody');
-            var candidates = [];
-            for (var i = 0; i < appData.advertising.length; i++) {
-                var item = appData.advertising[i];
-                if ((item.score || 0) >= 40) {
-                    candidates.push(item);
-                }
-            }
-            candidates.sort(function(a, b) {
-                return (b.score || 0) - (a.score || 0);
-            });
-            candidates = candidates.slice(0, CONFIG.maxCampaigns);
-
-            document.getElementById('recCampaigns').textContent = candidates.length;
-            var totalBudget = 0;
-            for (var i = 0; i < candidates.length; i++) {
-                totalBudget += candidates[i].budget || 0;
-            }
-            document.getElementById('recBudget').textContent = formatNumber(totalBudget) + ' ₽';
-            document.getElementById('recDate').textContent = formatDate(new Date());
-
-            var aiText = candidates.length === 0 ? 'Нет товаров для рекомендации.' :
-                '🎯 Выбрано ' + candidates.length + ' кампаний. Общий бюджет: ' + formatNumber(totalBudget) + ' ₽.';
-            document.getElementById('recAI').innerHTML =
-                '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
-
-            if (candidates.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="loading-text">Нет товаров для рекомендации</td></tr>';
-                return;
-            }
-
-            var html = '';
-            for (var i = 0; i < candidates.length; i++) {
-                var item = candidates[i];
-                html += '<tr>' +
-                    '<td><strong>' + item.article + '</strong></td>' +
-                    '<td>' + (item.orders || '—') + '</td>' +
-                    '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + (item.status || '—') +
-                    '</span></td>' +
-                    '<td><strong>' + item.score + '</strong></td>' +
-                    '<td>' + formatNumber(item.budget) + ' ₽</td>' +
-                    '<td>' + (item.aiAdvice || '—') + '</td>' +
-                    '</tr>';
-            }
-            tbody.innerHTML = html;
+    var tbody = document.getElementById('recommendedBody');
+    var candidates = [];
+    for (var i = 0; i < appData.advertising.length; i++) {
+        var item = appData.advertising[i];
+        if ((item.score || 0) >= 40) {
+            candidates.push(item);
         }
+    }
+    candidates.sort(function(a, b) {
+        return (b.score || 0) - (a.score || 0);
+    });
+    candidates = candidates.slice(0, CONFIG.maxCampaigns);
 
-        function renderThinkBlock() {
-            var tbody = document.getElementById('thinkBody');
-            var items = [];
-            for (var i = 0; i < appData.advertising.length; i++) {
-                var item = appData.advertising[i];
-                var status = item.status || '';
-                if (status.includes('Аномалия') || status.includes('Не сезон')) {
-                    items.push(item);
-                }
-            }
-            items.sort(function(a, b) {
-                return (a.score || 0) - (b.score || 0);
-            });
+    // ===== БЮДЖЕТ: берём из данных, а не из таблицы =====
+    document.getElementById('recCampaigns').textContent = candidates.length;
+    var totalBudget = 0;
+    for (var i = 0; i < candidates.length; i++) {
+        // Парсим бюджет из строки (убираем "₽" и пробелы)
+        var budgetStr = String(candidates[i].budget || '0');
+        var budgetNum = parseInt(budgetStr.replace(/[^0-9]/g, '')) || 0;
+        totalBudget += budgetNum;
+    }
+    document.getElementById('recBudget').textContent = formatNumber(totalBudget) + ' ₽';
+    document.getElementById('recDate').textContent = formatDate(new Date());
 
-            var aiText = items.length === 0 ? '✅ Аномалий нет.' :
-                '⚠️ Найдено ' + items.length + ' товаров с аномалиями.';
-            document.getElementById('thinkAI').innerHTML =
-                '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+    // ===== AI-совет: показываем полный текст =====
+    var aiText = candidates.length === 0 ? 'Нет товаров для рекомендации.' :
+        '🎯 Выбрано ' + candidates.length + ' кампаний. Общий бюджет: ' + formatNumber(totalBudget) + ' ₽.';
+    document.getElementById('recAI').innerHTML =
+        '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
 
-            if (items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="loading-text">Нет товаров для размышления</td></tr>';
-                return;
-            }
+    if (candidates.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading-text">Нет товаров для рекомендации</td></tr>';
+        return;
+    }
 
-            var html = '';
-            for (var i = 0; i < items.length; i++) {
-                var item = items[i];
-                html += '<tr>' +
-                    '<td><strong>' + item.article + '</strong></td>' +
-                    '<td>' + (item.score || '—') + '</td>' +
-                    '<td>' + (item.why || '—') + '</td>' +
-                    '<td>' + (item.aiAdvice || '—') + '</td>' +
-                    '</tr>';
-            }
-            tbody.innerHTML = html;
-        }
+    // ===== ОТОБРАЖЕНИЕ ТАБЛИЦЫ =====
+    var html = '';
+    for (var i = 0; i < candidates.length; i++) {
+        var item = candidates[i];
+        
+        // Получаем статус (обрезаем до первого слова, чтобы не было длинно)
+        var statusText = item.status || '—';
+        var statusShort = statusText.split(' ')[0]; // Берём только первое слово
+        
+        // Получаем бюджет (число)
+        var budgetNum = parseInt(String(item.budget || '0').replace(/[^0-9]/g, '')) || 0;
+        
+        // Полный AI-совет (не обрезаем)
+        var aiAdvice = item.aiAdvice || '—';
+        
+        html += '<tr>' +
+            '<td><strong>' + item.article + '</strong></td>' +
+            '<td>' + (item.orders || '—') + '</td>' +
+            '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + statusShort + '</span></td>' +
+            '<td><strong>' + item.score + '</strong></td>' +
+            '<td>' + formatNumber(budgetNum) + ' ₽</td>' +
+            '<td>' + aiAdvice + '</td>' +
+            '</tr>';
+    }
+    tbody.innerHTML = html;
+}
 
         function renderAllProducts() {
-            var tbody = document.getElementById('allProductsBody');
-            var items = [];
-            for (var i = 0; i < appData.advertising.length; i++) {
-                var item = appData.advertising[i];
-                var status = item.status || '';
-                if (!status.includes('Аномалия') && !status.includes('Не сезон')) {
-                    items.push(item);
-                }
-            }
-            items.sort(function(a, b) {
-                return (b.score || 0) - (a.score || 0);
-            });
-
-            document.getElementById('allProductsCount').textContent = items.length + ' шт';
-
-            if (items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="loading-text">Нет товаров</td></tr>';
-                return;
-            }
-
-            var display = items.slice(0, 50);
-            var html = '';
-            for (var i = 0; i < display.length; i++) {
-                var item = display[i];
-                html += '<tr>' +
-                    '<td><strong>' + item.article + '</strong></td>' +
-                    '<td>' + (item.orders || '—') + '</td>' +
-                    '<td>' + (item.fallWeek || '—') + '</td>' +
-                    '<td>' + (item.fallDay || '—') + '</td>' +
-                    '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + (item.status || '—') +
-                    '</span></td>' +
-                    '<td>' + (item.score || '—') + '</td>' +
-                    '<td>' + (item.budget ? formatNumber(item.budget) + ' ₽' : '—') + '</td>' +
-                    '<td>' + (item.aiAdvice || '—') + '</td>' +
-                    '</tr>';
-            }
-            if (items.length > 50) {
-                html += '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:12px;">Показано 50 из ' +
-                    items.length + '</td></tr>';
-            }
-            tbody.innerHTML = html;
+    var tbody = document.getElementById('allProductsBody');
+    var items = [];
+    for (var i = 0; i < appData.advertising.length; i++) {
+        var item = appData.advertising[i];
+        var status = item.status || '';
+        if (!status.includes('Аномалия') && !status.includes('Не сезон')) {
+            items.push(item);
         }
+    }
+    items.sort(function(a, b) {
+        return (b.score || 0) - (a.score || 0);
+    });
 
+    document.getElementById('allProductsCount').textContent = items.length + ' шт';
+
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="loading-text">Нет товаров</td></tr>';
+        return;
+    }
+
+    var display = items.slice(0, 50);
+    var html = '';
+    for (var i = 0; i < display.length; i++) {
+        var item = display[i];
+        
+        // Парсим бюджет
+        var budgetNum = parseInt(String(item.budget || '0').replace(/[^0-9]/g, '')) || 0;
+        
+        // Получаем статус (коротко)
+        var statusText = item.status || '—';
+        var statusShort = statusText.split(' ')[0];
+        
+        html += '<tr>' +
+            '<td><strong>' + item.article + '</strong></td>' +
+            '<td>' + (item.orders || '—') + '</td>' +
+            '<td>' + (item.fallWeek || '—') + '</td>' +
+            '<td>' + (item.fallDay || '—') + '</td>' +
+            '<td><span class="status-badge-small ' + getStatusClass(item.status) + '">' + statusShort + '</span></td>' +
+            '<td>' + (item.score || '—') + '</td>' +
+            '<td>' + (budgetNum > 0 ? formatNumber(budgetNum) + ' ₽' : '—') + '</td>' +
+            '<td>' + (item.aiAdvice || '—') + '</td>' +
+            '</tr>';
+    }
+    if (items.length > 50) {
+        html += '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:12px;">Показано 50 из ' +
+            items.length + '</td></tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+        function renderThinkBlock() {
+    var tbody = document.getElementById('thinkBody');
+    var items = [];
+    for (var i = 0; i < appData.advertising.length; i++) {
+        var item = appData.advertising[i];
+        var status = item.status || '';
+        if (status.includes('Аномалия') || status.includes('Не сезон')) {
+            items.push(item);
+        }
+    }
+    items.sort(function(a, b) {
+        return (a.score || 0) - (b.score || 0);
+    });
+
+    var aiText = items.length === 0 ? '✅ Аномалий нет.' :
+        '⚠️ Найдено ' + items.length + ' товаров с аномалиями.';
+    document.getElementById('thinkAI').innerHTML =
+        '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
+
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading-text">Нет товаров для размышления</td></tr>';
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        html += '<tr>' +
+            '<td><strong>' + item.article + '</strong></td>' +
+            '<td>' + (item.score || '—') + '</td>' +
+            '<td>' + (item.why || '—') + '</td>' +
+            '<td>' + (item.aiAdvice || '—') + '</td>' +
+            '</tr>';
+    }
+    tbody.innerHTML = html;
+}
         // ============================================================
         // 8. НАВИГАЦИЯ
         // ============================================================
