@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BELTANEE STORE® — WB Analytics Platform</title>
+    <title>BELTANEE STORE® — WB Analytics</title>
 
-    <!-- Chart.js для графиков -->
+    <!-- ===== FAVICON — КРИСТАЛЛ С БУКВОЙ "B" ===== -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%236C2BD9'/><stop offset='50%25' stop-color='%23C850C0'/><stop offset='100%25' stop-color='%23FF6B6B'/></linearGradient><filter id='glow'><feGaussianBlur stdDeviation='2' result='blur'/><feMerge><feMergeNode in='blur'/><feMergeNode in='SourceGraphic'/></feMerge></filter></defs><rect width='100' height='100' rx='24' fill='%231A1A2E'/><polygon points='50,8 92,50 50,92 8,50' fill='url(%23g)' opacity='0.15'/><text x='50' y='72' font-size='52' font-family='Inter, sans-serif' font-weight='900' text-anchor='middle' fill='url(%23g)' filter='url(%23glow)'>B</text></svg>" />
+
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
     </script>
 
@@ -20,13 +23,10 @@
         }
 
         :root {
-            /* Градиент фиолетово-розовый */
             --gradient-main: linear-gradient(135deg, #6C2BD9 0%, #C850C0 50%, #FF6B6B 100%);
             --gradient-subtle: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
             --gradient-card: linear-gradient(135deg, rgba(108, 43, 217, 0.06) 0%, rgba(200, 80, 192, 0.06) 100%);
             --gradient-hover: linear-gradient(135deg, rgba(108, 43, 217, 0.12) 0%, rgba(200, 80, 192, 0.12) 100%);
-
-            /* Цвета */
             --primary: #7C3AED;
             --primary-dark: #5B21B6;
             --primary-light: #A78BFA;
@@ -112,51 +112,76 @@
             border-radius: 10px;
         }
 
-        /* Логотип */
+        /* ===== ЛОГОТИП ===== */
         .sidebar-logo {
-            padding: 20px 16px 16px;
+            padding: 18px 16px 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             display: flex;
             align-items: center;
             gap: 12px;
             min-height: 72px;
             flex-shrink: 0;
+            cursor: pointer;
         }
 
         .sidebar-logo .logo-icon {
-            font-size: 28px;
             width: 40px;
-            text-align: center;
+            height: 40px;
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-logo .logo-icon svg {
+            width: 38px;
+            height: 38px;
+            filter: drop-shadow(0 0 12px rgba(108, 43, 217, 0.3));
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes logoPulse {
+            0%,
+            100% {
+                filter: drop-shadow(0 0 12px rgba(108, 43, 217, 0.3));
+            }
+            50% {
+                filter: drop-shadow(0 0 24px rgba(200, 80, 192, 0.4));
+            }
+        }
+
+        .sidebar-logo .logo-text-wrap {
+            opacity: 0;
+            overflow: hidden;
+            transition: opacity var(--transition-slow);
+            white-space: nowrap;
+        }
+        .sidebar:hover .sidebar-logo .logo-text-wrap {
+            opacity: 1;
+        }
+
+        .sidebar-logo .logo-text {
+            font-size: 18px;
+            font-weight: 900;
             background: var(--gradient-main);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-        }
-
-        .sidebar-logo .logo-text {
-            font-size: 16px;
-            font-weight: 800;
-            line-height: 1.2;
             letter-spacing: -0.5px;
-            white-space: nowrap;
-            opacity: 0;
-            overflow: hidden;
-            transition: opacity var(--transition-slow);
-        }
-        .sidebar:hover .sidebar-logo .logo-text {
-            opacity: 1;
         }
 
-        .sidebar-logo .logo-text small {
-            font-size: 10px;
+        .sidebar-logo .logo-sub {
+            font-size: 9px;
             font-weight: 400;
-            opacity: 0.4;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 2px;
+            text-transform: uppercase;
             display: block;
-            letter-spacing: 0.5px;
+            margin-top: -2px;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.3);
         }
 
-        /* Группы меню */
+        /* ===== МЕНЮ ===== */
         .sidebar-menu {
             list-style: none;
             padding: 8px 10px;
@@ -254,7 +279,7 @@
             margin: 6px 12px;
         }
 
-        /* Футер сайдбара */
+        /* ===== ФУТЕР САЙДБАРА ===== */
         .sidebar-footer {
             padding: 12px 16px 16px;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
@@ -329,21 +354,34 @@
             padding: 4px 0;
         }
 
-        .app-header .header-title {
+        .app-header .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .app-header .header-logo svg {
+            width: 32px;
+            height: 32px;
+            filter: drop-shadow(0 0 8px rgba(108, 43, 217, 0.2));
+        }
+
+        .app-header .header-logo .header-title {
             font-size: 20px;
-            font-weight: 700;
+            font-weight: 800;
             background: var(--gradient-main);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            white-space: nowrap;
+            letter-spacing: -0.5px;
         }
 
         /* ===== ГЛОБАЛЬНЫЙ ПОИСК ===== */
         .global-search {
             flex: 1;
-            min-width: 200px;
-            max-width: 480px;
+            min-width: 180px;
+            max-width: 460px;
             position: relative;
         }
 
@@ -398,7 +436,6 @@
             display: block;
         }
 
-        /* Результаты поиска */
         .search-results {
             position: absolute;
             top: calc(100% + 8px);
@@ -503,7 +540,7 @@
             font-size: 14px;
         }
 
-        /* Хедер ссылки */
+        /* ===== ХЕДЕР ССЫЛКИ ===== */
         .header-actions {
             display: flex;
             align-items: center;
@@ -886,7 +923,6 @@
             padding: 16px 24px 24px;
         }
 
-        /* AI-совет */
         .ai-summary {
             background: var(--gradient-card);
             border-radius: var(--radius-sm);
@@ -1268,7 +1304,356 @@
             color: #0369A1;
         }
 
-        /* ===== КОМНАТА "В РАЗРАБОТКЕ" ===== */
+        /* ============================================================
+           МОИ КАРТОЧКИ
+           ============================================================ */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .card-item {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-main);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .card-item:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary-light);
+        }
+
+        .card-item:hover::before {
+            opacity: 1;
+        }
+
+        .card-item .card-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .card-item .card-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .card-item .card-category {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .card-item .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .card-item .card-meta .card-count {
+            background: var(--bg-hover);
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+
+        .card-item .card-meta .card-score {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* ===== ДЕТАЛЬНАЯ КАРТОЧКА (МОДАЛЬНОЕ ОКНО) ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+            padding: 20px;
+            animation: modalFade 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes modalFade {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 32px;
+            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal-content .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-content .modal-close:hover {
+            color: var(--text-primary);
+            transform: rotate(90deg);
+        }
+
+        .modal-content .modal-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 4px;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .modal-content .modal-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .modal-content .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .modal-content .modal-field {
+            background: var(--bg-hover);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+        }
+
+        .modal-content .modal-field .field-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .modal-content .modal-field .field-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 2px;
+            word-break: break-all;
+        }
+
+        .modal-content .modal-field.full {
+            grid-column: 1 / -1;
+        }
+
+        /* ============================================================
+           МОЙ СКЛАД
+           ============================================================ */
+        .warehouse-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .warehouse-tabs .tab-btn {
+            padding: 8px 20px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-card);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .warehouse-tabs .tab-btn:hover {
+            border-color: var(--primary-light);
+            color: var(--text-primary);
+        }
+
+        .warehouse-tabs .tab-btn.active {
+            border-color: var(--primary);
+            background: var(--gradient-card);
+            color: var(--primary);
+        }
+
+        .warehouse-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .pallet-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .pallet-card:hover {
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary-light);
+        }
+
+        .pallet-card .pallet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pallet-card .pallet-name {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .pallet-card .pallet-count {
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--bg-hover);
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+
+        .pallet-card .pallet-items {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .pallet-card .pallet-item {
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: var(--transition);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pallet-card .pallet-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .pallet-card .pallet-item .item-qty {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .pallet-card .pallet-item.mix {
+            background: #FEF3C7;
+            border-radius: 4px;
+            color: #92400E;
+            font-weight: 500;
+        }
+
+        .pallet-card .pallet-actions {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .pallet-card .pallet-actions .btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .pallet-card .pallet-actions .btn-add {
+            background: var(--gradient-main);
+            color: #fff;
+        }
+
+        .pallet-card .pallet-actions .btn-add:hover {
+            transform: scale(1.04);
+        }
+
+        .pallet-card .pallet-actions .btn-remove {
+            background: #FEF2F2;
+            color: #991B1B;
+        }
+
+        .pallet-card .pallet-actions .btn-remove:hover {
+            background: #FEE2E2;
+        }
+
+        .warehouse-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px;
+            background: var(--gradient-card);
+            border-radius: var(--radius);
+        }
+
+        /* ============================================================
+           ЗАГЛУШКИ
+           ============================================================ */
         .coming-soon {
             display: flex;
             flex-direction: column;
@@ -1319,7 +1704,7 @@
             margin-top: 8px;
         }
 
-        /* ===== ЧЕКБОКСЫ СКРЫТИЯ ===== */
+        /* ===== ТОГГЛЫ СКРЫТИЯ ===== */
         .toggle-wrap {
             display: flex;
             align-items: center;
@@ -1353,6 +1738,9 @@
             .think-grid {
                 grid-template-columns: 1fr 1fr;
             }
+            .cards-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
         }
 
         @media (max-width: 992px) {
@@ -1360,6 +1748,9 @@
                 grid-template-columns: 1fr;
             }
             .think-grid {
+                grid-template-columns: 1fr;
+            }
+            .modal-content .modal-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -1401,9 +1792,14 @@
                 padding: 12px 16px 24px;
             }
 
-            .app-header .header-title {
+            .app-header .header-logo .header-title {
                 font-size: 16px;
             }
+            .app-header .header-logo svg {
+                width: 28px;
+                height: 28px;
+            }
+
             .global-search {
                 min-width: 120px;
                 max-width: 100%;
@@ -1470,6 +1866,18 @@
             .all-products-controls .search-input {
                 min-width: 100%;
             }
+
+            .warehouse-grid {
+                grid-template-columns: 1fr;
+            }
+            .cards-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .modal-content {
+                padding: 20px;
+                margin: 10px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1513,6 +1921,10 @@
             .adv-block-header {
                 padding: 12px 14px;
             }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -1523,8 +1935,31 @@
     ============================================================ -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-logo">
-            <span class="logo-icon">📊</span>
-            <span class="logo-text">BELTANEE<br /><small>STORE®</small></span>
+            <div class="logo-icon">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#6C2BD9"/>
+                            <stop offset="50%" stop-color="#C850C0"/>
+                            <stop offset="100%" stop-color="#FF6B6B"/>
+                        </linearGradient>
+                        <filter id="logoGlow">
+                            <feGaussianBlur stdDeviation="2" result="blur"/>
+                            <feMerge>
+                                <feMergeNode in="blur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <rect width="100" height="100" rx="24" fill="#1A1A2E"/>
+                    <polygon points="50,6 94,50 50,94 6,50" fill="url(#logoGrad)" opacity="0.12"/>
+                    <text x="50" y="72" font-size="54" font-family="Inter, sans-serif" font-weight="900" text-anchor="middle" fill="url(#logoGrad)" filter="url(#logoGlow)">B</text>
+                </svg>
+            </div>
+            <div class="logo-text-wrap">
+                <span class="logo-text">BELTANEE</span>
+                <span class="logo-sub">Analytics Platform</span>
+            </div>
         </div>
 
         <ul class="sidebar-menu">
@@ -1543,10 +1978,9 @@
 
             <!-- Склад и поставки -->
             <li class="menu-group-label">Склад и поставки</li>
-            <li class="menu-item disabled" data-page="storage">
+            <li class="menu-item" data-page="storage">
                 <span class="menu-icon">📦</span>
                 <span class="menu-label">Мой склад</span>
-                <span class="menu-badge">Скоро</span>
             </li>
             <li class="menu-item disabled" data-page="supplies">
                 <span class="menu-icon">🚚</span>
@@ -1563,10 +1997,9 @@
 
             <!-- Аналитика -->
             <li class="menu-group-label">Аналитика</li>
-            <li class="menu-item disabled" data-page="cards">
+            <li class="menu-item" data-page="cards">
                 <span class="menu-icon">🃏</span>
                 <span class="menu-label">Мои карточки</span>
-                <span class="menu-badge">Скоро</span>
             </li>
             <li class="menu-item disabled" data-page="analytics">
                 <span class="menu-icon">📊</span>
@@ -1596,7 +2029,7 @@
         </ul>
 
         <div class="sidebar-footer">
-            <span class="version">v2.0</span>
+            <span class="version">v2.1</span>
             <button class="refresh-btn" id="refreshBtn" title="Обновить данные">🔄</button>
         </div>
     </nav>
@@ -1608,7 +2041,21 @@
 
         <!-- ===== ХЕДЕР ===== -->
         <header class="app-header">
-            <span class="header-title">📊 Аналитика</span>
+            <div class="header-logo">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+                    <defs>
+                        <linearGradient id="headerLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#6C2BD9"/>
+                            <stop offset="50%" stop-color="#C850C0"/>
+                            <stop offset="100%" stop-color="#FF6B6B"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="100" height="100" rx="20" fill="#1A1A2E"/>
+                    <polygon points="50,8 92,50 50,92 8,50" fill="url(#headerLogoGrad)" opacity="0.12"/>
+                    <text x="50" y="72" font-size="52" font-family="Inter, sans-serif" font-weight="900" text-anchor="middle" fill="url(#headerLogoGrad)">B</text>
+                </svg>
+                <span class="header-title">Аналитика</span>
+            </div>
 
             <!-- Глобальный поиск -->
             <div class="global-search" id="globalSearch">
@@ -1795,74 +2242,85 @@
         </section>
 
         <!-- ============================================================
-        ЗАГЛУШКИ
+        МОИ КАРТОЧКИ
         ============================================================ -->
-        <section id="page-storage" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">📦</div>
-                <h2>Мой склад</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится управление складом</span>
-            </div>
-        </section>
-        <section id="page-supplies" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">🚚</div>
-                <h2>Поставки</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится управление поставками</span>
-            </div>
-        </section>
-        <section id="page-planning" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">📋</div>
-                <h2>Планирование заказа</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится планирование заказов</span>
-            </div>
-        </section>
         <section id="page-cards" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">🃏</div>
-                <h2>Мои карточки</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится управление карточками</span>
+            <div class="page-header">
+                <h1>🃏 Мои карточки</h1>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <input type="text" id="cardsSearch" placeholder="🔍 Поиск по артикулу..." style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:var(--bg-card);min-width:180px;" />
+                    <button class="btn btn-primary" id="cardsSearchBtn">Найти</button>
+                    <button class="btn btn-secondary" id="cardsClearBtn">Сбросить</button>
+                </div>
             </div>
-        </section>
-        <section id="page-analytics" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">📊</div>
-                <h2>Аналитика</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится глубокая аналитика</span>
-            </div>
-        </section>
-        <section id="page-reports" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">📄</div>
-                <h2>Мои отчеты</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится генерация отчетов</span>
-            </div>
-        </section>
-        <section id="page-settings" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">⚙️</div>
-                <h2>Настройки</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится настройка платформы</span>
-            </div>
-        </section>
-        <section id="page-learning" class="page">
-            <div class="coming-soon">
-                <div class="soon-icon">📚</div>
-                <h2>Обучение</h2>
-                <p>Раздел в разработке</p>
-                <span class="soon-sub">Скоро здесь появится обучающий центр</span>
+            <div class="cards-grid" id="cardsGrid">
+                <div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:40px;">Загрузка карточек...</div>
             </div>
         </section>
 
+        <!-- ============================================================
+        МОЙ СКЛАД
+        ============================================================ -->
+        <section id="page-storage" class="page">
+            <div class="page-header">
+                <h1>📦 Мой склад</h1>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" id="addPalletBtn">➕ Добавить паллету</button>
+                </div>
+            </div>
+
+            <div class="warehouse-tabs" id="warehouseTabs">
+                <button class="tab-btn active" data-warehouse="1">Склад №1</button>
+                <button class="tab-btn" data-warehouse="2">Склад №2</button>
+            </div>
+
+            <div class="warehouse-grid" id="warehouseGrid">
+                <div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:40px;">Загрузка склада...</div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+        ЗАГЛУШКИ ДЛЯ ОСТАЛЬНЫХ РАЗДЕЛОВ
+        ============================================================ -->
+        <section id="page-supplies" class="page">
+            <div class="coming-soon"><span class="soon-icon">🚚</span><h2>Поставки</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится управление поставками</span></div>
+        </section>
+        <section id="page-planning" class="page">
+            <div class="coming-soon"><span class="soon-icon">📋</span><h2>Планирование заказа</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится планирование заказов</span></div>
+        </section>
+        <section id="page-analytics" class="page">
+            <div class="coming-soon"><span class="soon-icon">📊</span><h2>Аналитика</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится глубокая аналитика</span></div>
+        </section>
+        <section id="page-reports" class="page">
+            <div class="coming-soon"><span class="soon-icon">📄</span><h2>Мои отчеты</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится генерация отчетов</span></div>
+        </section>
+        <section id="page-settings" class="page">
+            <div class="coming-soon"><span class="soon-icon">⚙️</span><h2>Настройки</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится настройка платформы</span></div>
+        </section>
+        <section id="page-learning" class="page">
+            <div class="coming-soon"><span class="soon-icon">📚</span><h2>Обучение</h2><p>Раздел в разработке</p><span class="soon-sub">Скоро здесь появится обучающий центр</span></div>
+        </section>
+
     </main>
+
+    <!-- ============================================================
+    МОДАЛЬНОЕ ОКНО ДЛЯ ДЕТАЛЬНОЙ КАРТОЧКИ
+    ============================================================ -->
+    <div class="modal-overlay" id="cardModal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">✕</button>
+            <div class="modal-title" id="modalTitle">Название</div>
+            <div class="modal-subtitle" id="modalSubtitle">Категория</div>
+            <div class="modal-grid" id="modalGrid">
+                <div class="modal-field"><div class="field-label">GTIN</div><div class="field-value" id="modalGtin">—</div></div>
+                <div class="modal-field"><div class="field-label">Артикул WB</div><div class="field-value" id="modalWb">—</div></div>
+                <div class="modal-field"><div class="field-label">Баркод</div><div class="field-value" id="modalBarcode">—</div></div>
+                <div class="modal-field"><div class="field-label">Размеры</div><div class="field-value" id="modalSizes">—</div></div>
+                <div class="modal-field full"><div class="field-label">Состав</div><div class="field-value" id="modalComposition">—</div></div>
+                <div class="modal-field full"><div class="field-label">Ткань / ТН ВЭД</div><div class="field-value" id="modalFabric">—</div></div>
+            </div>
+        </div>
+    </div>
 
     <!-- ============================================================
     JAVASCRIPT
@@ -1879,7 +2337,8 @@
                 orders: 'Заказы_WB',
                 advertising: 'Рекомендации 2.0',
                 storage: '📦 Остатки_WB',
-                nomenclature: '📋 Номенклатура'
+                nomenclature: '📋 Номенклатура',
+                warehouse: '📦 Склад_Хранение'
             },
             maxCampaigns: 6
         };
@@ -1887,10 +2346,11 @@
         // ============================================================
         // 2. ГЛОБАЛЬНЫЕ ДАННЫЕ
         // ============================================================
-        var appData = { orders: [], advertising: [], storage: [], nomenclature: [] };
+        var appData = { orders: [], advertising: [], storage: [], nomenclature: [], warehouse: [] };
         var chartInstance = null;
         var currentPeriod = 'yesterday';
         var allProductsCache = [];
+        var currentWarehouse = 1;
 
         // ============================================================
         // 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -2110,6 +2570,32 @@
                 });
         }
 
+        function loadWarehouse() {
+            console.log('📥 Загрузка склада...');
+            return fetchSheet(CONFIG.oldSheetId, CONFIG.sheets.warehouse, 'A:F')
+                .then(function(rows) {
+                    if (rows.length < 2) return [];
+                    var data = rows.slice(1);
+                    appData.warehouse = data.filter(function(row) {
+                        return row[0] && String(row[0]).trim() !== '';
+                    }).map(function(row) {
+                        return {
+                            article: String(row[0] || '').trim(),
+                            size: String(row[1] || '').trim(),
+                            quantity: parseInt(row[2]) || 0,
+                            pallet: String(row[3] || '').trim(),
+                            box: String(row[4] || '').trim(),
+                            source: String(row[5] || '').trim()
+                        };
+                    });
+                    console.log('✅ Склад: ' + appData.warehouse.length + ' записей');
+                    return appData.warehouse;
+                }).catch(function(err) {
+                    console.error('❌ Ошибка загрузки склада:', err);
+                    return [];
+                });
+        }
+
         // ============================================================
         // 5. ГЛАВНАЯ СТРАНИЦА
         // ============================================================
@@ -2133,7 +2619,6 @@
                 }
             });
 
-            // Предыдущий день для сравнения
             var d = new Date();
             d.setDate(d.getDate() - 2);
             var prevStr = String(d.getDate()).padStart(2, '0') + '.' +
@@ -2153,20 +2638,17 @@
             var conv = yesterdayOrders > 0 ? Math.round((yesterdayDelivered / yesterdayOrders) * 100) : 0;
             animateNumber('kpiConversion', conv);
 
-            // Изменения
             updateChangeBadge('kpiOrdersChange', yesterdayOrders, yesterdayOrdersPrev);
             updateChangeBadge('kpiDeliveredChange', yesterdayDelivered, yesterdayDeliveredPrev);
             var convPrev = yesterdayOrdersPrev > 0 ? Math.round((yesterdayDeliveredPrev / yesterdayOrdersPrev) * 100) : 0;
             updateChangeBadge('kpiConversionChange', conv, convPrev);
 
-            // Остаток
             var totalStock = 0;
             appData.storage.forEach(function(item) {
                 totalStock += item.available || 0;
             });
             document.getElementById('summaryStock').textContent = formatNumber(totalStock);
 
-            // Средний скоринг
             var scores = [];
             appData.advertising.forEach(function(item) {
                 if (item.score > 0) scores.push(item.score);
@@ -2260,8 +2742,10 @@
                     data: {
                         labels: ['Нет данных'],
                         datasets: [
-                            { label: 'Текущий период', data: [0], borderColor: '#7C3AED', backgroundColor: 'rgba(124,58,237,0.1)' },
-                            { label: 'Предыдущий период', data: [0], borderColor: '#EC4899', backgroundColor: 'rgba(236,72,153,0.05)' }
+                            { label: 'Текущий период', data: [0], borderColor: '#7C3AED',
+                                backgroundColor: 'rgba(124,58,237,0.1)' },
+                            { label: 'Предыдущий период', data: [0], borderColor: '#EC4899',
+                                backgroundColor: 'rgba(236,72,153,0.05)' }
                         ]
                     },
                     options: {
@@ -2472,7 +2956,6 @@
             renderAllProducts();
         }
 
-        // ===== БЛОК 1: Рекомендовано к запуску (КАРТОЧКИ) =====
         function renderRecommended() {
             var grid = document.getElementById('recommendedGrid');
 
@@ -2549,7 +3032,6 @@
             }
             grid.innerHTML = html;
 
-            // Интерактив: пересчёт бюджета
             var inputs = grid.querySelectorAll('.campaign-budget-input');
             for (var i = 0; i < inputs.length; i++) {
                 inputs[i].addEventListener('input', function() {
@@ -2588,7 +3070,6 @@
                 '<span class="ai-icon">🤖</span><span class="ai-text">' + aiText + '</span>';
         }
 
-        // ===== БЛОК 2: На подумать (КАРТОЧКИ) =====
         function renderThinkBlock() {
             var grid = document.getElementById('thinkGrid');
             var items = [];
@@ -2630,7 +3111,6 @@
             grid.innerHTML = html;
         }
 
-        // ===== БЛОК 3: Все товары (ТАБЛИЦА) =====
         function renderAllProducts(searchQuery) {
             var tbody = document.getElementById('allProductsBody');
             var items = [];
@@ -2693,7 +3173,209 @@
         }
 
         // ============================================================
-        // 8. ГЛОБАЛЬНЫЙ ПОИСК
+        // 8. МОИ КАРТОЧКИ
+        // ============================================================
+        function renderCards(searchQuery) {
+            var grid = document.getElementById('cardsGrid');
+
+            // Группируем по базовому артикулу
+            var groups = {};
+            appData.nomenclature.forEach(function(item) {
+                var base = item.baseArticle || getBaseArticle(item.fullArticle);
+                if (!base) return;
+                if (!groups[base]) {
+                    groups[base] = {
+                        base: base,
+                        category: item.category || 'Без категории',
+                        sizes: [],
+                        variants: [],
+                        gtin: item.gtin || '—',
+                        wbArticle: item.wbArticle || '—',
+                        barcode: item.barcode || '—',
+                        fabric: item.fabric || '—',
+                        composition: item.composition || '—',
+                        tnved: item.tnved || '—'
+                    };
+                }
+                if (item.size) groups[base].sizes.push(item.size);
+                groups[base].variants.push(item.fullArticle);
+                // Обновляем данными из последнего варианта (или лучшего)
+                if (item.gtin) groups[base].gtin = item.gtin;
+                if (item.wbArticle) groups[base].wbArticle = item.wbArticle;
+                if (item.barcode) groups[base].barcode = item.barcode;
+                if (item.fabric) groups[base].fabric = item.fabric;
+                if (item.composition) groups[base].composition = item.composition;
+                if (item.tnved) groups[base].tnved = item.tnved;
+            });
+
+            var items = Object.values(groups);
+
+            // Поиск
+            if (searchQuery && searchQuery.trim() !== '') {
+                var query = searchQuery.trim().toLowerCase();
+                items = items.filter(function(item) {
+                    return item.base.toLowerCase().includes(query) ||
+                        item.category.toLowerCase().includes(query);
+                });
+            }
+
+            // Сортировка по названию
+            items.sort(function(a, b) {
+                return a.base.localeCompare(b.base);
+            });
+
+            if (items.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:40px;">' +
+                    (searchQuery ? 'Ничего не найдено' : 'Нет карточек') +
+                    '</div>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                var sizeText = item.sizes.length > 0 ? item.sizes.sort().join(', ') : 'Нет размеров';
+                var icon = item.category.includes('Костюм') ? '👔' :
+                    item.category.includes('Плать') ? '👗' :
+                    item.category.includes('Юбк') ? '👗' :
+                    item.category.includes('Джинс') ? '👖' :
+                    item.category.includes('Блуз') || item.category.includes('Топ') ? '👚' :
+                    item.category.includes('Жакет') ? '🧥' :
+                    item.category.includes('Комбез') ? '🦺' :
+                    '👕';
+
+                html += `
+                        <div class="card-item" data-base="${item.base}">
+                            <div class="card-icon">${icon}</div>
+                            <div class="card-name">${item.base}</div>
+                            <div class="card-category">${item.category} · ${item.variants.length} вариантов</div>
+                            <div class="card-meta">
+                                <span class="card-count">📏 ${item.sizes.length} размеров</span>
+                                <span class="card-score">⭐ ${item.gtin !== '—' ? 'есть GTIN' : 'нет GTIN'}</span>
+                            </div>
+                        </div>
+                    `;
+            }
+            grid.innerHTML = html;
+
+            // Клик по карточке → открываем модалку
+            var cardItems = grid.querySelectorAll('.card-item');
+            for (var i = 0; i < cardItems.length; i++) {
+                cardItems[i].addEventListener('click', function() {
+                    var base = this.dataset.base;
+                    var data = groups[base];
+                    if (data) openCardModal(data);
+                });
+            }
+        }
+
+        function openCardModal(data) {
+            document.getElementById('modalTitle').textContent = data.base;
+            document.getElementById('modalSubtitle').textContent = data.category + ' · ' + data.variants.length + ' вариантов';
+            document.getElementById('modalGtin').textContent = data.gtin || '—';
+            document.getElementById('modalWb').textContent = data.wbArticle || '—';
+            document.getElementById('modalBarcode').textContent = data.barcode || '—';
+            document.getElementById('modalSizes').textContent = data.sizes.length > 0 ? data.sizes.sort().join(', ') : 'Нет размеров';
+            document.getElementById('modalComposition').textContent = data.composition || '—';
+            document.getElementById('modalFabric').textContent = (data.fabric || '—') + ' · ТН ВЭД: ' + (data.tnved || '—');
+
+            document.getElementById('cardModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCardModal() {
+            document.getElementById('cardModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // ============================================================
+        // 9. МОЙ СКЛАД
+        // ============================================================
+        function renderWarehouse(warehouseId) {
+            var grid = document.getElementById('warehouseGrid');
+
+            // Фильтруем по складу (source = Склад №1 или Склад №2)
+            var sourceName = 'Склад №' + warehouseId;
+            var items = appData.warehouse.filter(function(item) {
+                return item.source === sourceName;
+            });
+
+            // Группируем по паллетам
+            var pallets = {};
+            items.forEach(function(item) {
+                var palletKey = item.pallet || 'Без паллеты';
+                if (!pallets[palletKey]) {
+                    pallets[palletKey] = [];
+                }
+                var displayName = item.article;
+                if (item.size) displayName += ' ' + item.size;
+                if (item.quantity > 0) displayName += ' р' + item.quantity;
+                if (item.box && item.box.includes('МИКС')) displayName += ' МИКС';
+                pallets[palletKey].push({
+                    display: displayName,
+                    article: item.article,
+                    size: item.size,
+                    quantity: item.quantity,
+                    box: item.box,
+                    isMix: item.box && item.box.includes('МИКС')
+                });
+            });
+
+            var palletKeys = Object.keys(pallets).sort();
+
+            if (palletKeys.length === 0) {
+                grid.innerHTML = `
+                        <div class="warehouse-empty">
+                            <div style="font-size:48px;margin-bottom:12px;">📦</div>
+                            <h3 style="font-size:18px;margin-bottom:4px;">Склад пуст</h3>
+                            <p>На складе №${warehouseId} пока нет товаров</p>
+                            <button class="btn btn-primary" style="margin-top:12px;" onclick="addPallet()">➕ Добавить паллету</button>
+                        </div>
+                    `;
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < palletKeys.length; i++) {
+                var key = palletKeys[i];
+                var itemsList = pallets[key];
+                var totalItems = itemsList.length;
+
+                html += `
+                        <div class="pallet-card" data-pallet="${key}">
+                            <div class="pallet-header">
+                                <span class="pallet-name">📦 ${key}</span>
+                                <span class="pallet-count">${totalItems} товаров</span>
+                            </div>
+                            <div class="pallet-items">
+                        `;
+
+                for (var j = 0; j < itemsList.length; j++) {
+                    var it = itemsList[j];
+                    var mixClass = it.isMix ? 'mix' : '';
+                    html += `
+                            <div class="pallet-item ${mixClass}">
+                                <span>${it.display}</span>
+                                ${it.quantity > 0 ? '<span class="item-qty">' + it.quantity + ' шт</span>' : ''}
+                            </div>
+                        `;
+                }
+
+                html += `
+                            </div>
+                            <div class="pallet-actions">
+                                <button class="btn-sm btn-add" onclick="addItemToPallet('${key}')">➕ Добавить</button>
+                                <button class="btn-sm btn-remove" onclick="removePallet('${key}')">🗑️ Удалить</button>
+                            </div>
+                        </div>
+                    `;
+            }
+
+            grid.innerHTML = html;
+        }
+
+        // ============================================================
+        // 10. ГЛОБАЛЬНЫЙ ПОИСК
         // ============================================================
         function setupGlobalSearch() {
             var input = document.getElementById('searchInput');
@@ -2701,11 +3383,8 @@
             var clear = document.getElementById('searchClear');
             var searchData = [];
 
-            // Собираем данные для поиска из номенклатуры и рекламы
             function buildSearchIndex() {
                 searchData = [];
-
-                // Из номенклатуры
                 appData.nomenclature.forEach(function(item) {
                     if (item.fullArticle) {
                         var base = getBaseArticle(item.fullArticle);
@@ -2724,7 +3403,6 @@
                     }
                 });
 
-                // Из рекламы
                 appData.advertising.forEach(function(item) {
                     if (item.article) {
                         var score = parseInt(item.score) || 0;
@@ -2744,7 +3422,6 @@
                     }
                 });
 
-                // Убираем дубликаты по id
                 var seen = {};
                 var unique = [];
                 for (var i = 0; i < searchData.length; i++) {
@@ -2771,25 +3448,13 @@
                 for (var i = 0; i < searchData.length; i++) {
                     var item = searchData[i];
                     var match = false;
-
-                    // Полный артикул
                     if (item.title.toLowerCase().includes(q)) match = true;
-
-                    // База артикула (без цвета)
                     if (item.base && item.base.toLowerCase().includes(q)) match = true;
-
-                    // Размер
                     if (item.size && item.size.toLowerCase().includes(q)) match = true;
-
-                    // Категория
                     if (item.category && item.category.toLowerCase().includes(q)) match = true;
-
-                    if (match) {
-                        found.push(item);
-                    }
+                    if (match) found.push(item);
                 }
 
-                // Лимит 10 результатов
                 found = found.slice(0, 10);
 
                 if (found.length === 0) {
@@ -2821,23 +3486,21 @@
                 results.innerHTML = html;
                 results.classList.add('active');
 
-                // Клик по результату
                 var items = results.querySelectorAll('.search-result-item');
                 for (var i = 0; i < items.length; i++) {
                     items[i].addEventListener('click', function() {
                         var page = this.dataset.page || 'dashboard';
                         var id = this.dataset.id;
-
-                        // Переключаем страницу
                         navigateTo(page);
-
-                        // Если это рекламный отдел, можно подсветить карточку
                         if (page === 'advertising') {
-                            // Прокручиваем к блоку
                             var block = document.querySelector('.recommended-block');
                             if (block) block.scrollIntoView({ behavior: 'smooth' });
                         }
-
+                        if (page === 'cards') {
+                            var search = document.getElementById('cardsSearch');
+                            if (search) search.value = id;
+                            renderCards(id);
+                        }
                         results.classList.remove('active');
                         input.value = '';
                         clear.classList.remove('visible');
@@ -2845,34 +3508,24 @@
                 }
             }
 
-            // События
-            input.addEventListener('input', function() {
-                performSearch(this.value);
-            });
-
+            input.addEventListener('input', function() { performSearch(this.value); });
             input.addEventListener('focus', function() {
-                if (this.value.trim() !== '') {
-                    performSearch(this.value);
-                }
+                if (this.value.trim() !== '') performSearch(this.value);
             });
-
             clear.addEventListener('click', function() {
                 input.value = '';
                 results.classList.remove('active');
                 this.classList.remove('visible');
                 input.focus();
             });
-
             document.addEventListener('click', function(e) {
                 var container = document.getElementById('globalSearch');
-                if (!container.contains(e.target)) {
-                    results.classList.remove('active');
-                }
+                if (!container.contains(e.target)) results.classList.remove('active');
             });
         }
 
         // ============================================================
-        // 9. НАВИГАЦИЯ
+        // 11. НАВИГАЦИЯ
         // ============================================================
         function navigateTo(page) {
             var allItems = document.querySelectorAll('.menu-item');
@@ -2888,6 +3541,10 @@
             }
             var target = document.getElementById('page-' + page);
             if (target) target.classList.add('active');
+
+            // Обновляем данные при переходе
+            if (page === 'cards') renderCards('');
+            if (page === 'storage') renderWarehouse(currentWarehouse);
         }
 
         function setupNavigation() {
@@ -2900,7 +3557,6 @@
                 });
             }
 
-            // Обновление
             document.getElementById('refreshBtn').addEventListener('click', function() {
                 this.classList.add('spinning');
                 this.disabled = true;
@@ -2910,7 +3566,6 @@
                 });
             });
 
-            // График
             var chartBtns = document.querySelectorAll('.chart-btn');
             for (var i = 0; i < chartBtns.length; i++) {
                 chartBtns[i].addEventListener('click', function() {
@@ -2924,7 +3579,6 @@
                 });
             }
 
-            // Скрытие блоков
             document.getElementById('hideThinkCheck').addEventListener('change', function() {
                 document.getElementById('thinkContent').style.display = this.checked ? 'none' : 'block';
             });
@@ -2933,26 +3587,118 @@
                 document.getElementById('allProductsContent').style.display = this.checked ? 'none' : 'block';
             });
 
-            // Поиск по всем товарам
             document.getElementById('allSearchBtn').addEventListener('click', function() {
                 var query = document.getElementById('allSearchInput').value;
                 renderAllProducts(query);
             });
 
             document.getElementById('allSearchInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    document.getElementById('allSearchBtn').click();
-                }
+                if (e.key === 'Enter') document.getElementById('allSearchBtn').click();
             });
 
             document.getElementById('allClearBtn').addEventListener('click', function() {
                 document.getElementById('allSearchInput').value = '';
                 renderAllProducts('');
             });
+
+            // Карточки: поиск
+            document.getElementById('cardsSearchBtn').addEventListener('click', function() {
+                var query = document.getElementById('cardsSearch').value;
+                renderCards(query);
+            });
+
+            document.getElementById('cardsSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') document.getElementById('cardsSearchBtn').click();
+            });
+
+            document.getElementById('cardsClearBtn').addEventListener('click', function() {
+                document.getElementById('cardsSearch').value = '';
+                renderCards('');
+            });
+
+            // Модальное окно
+            document.getElementById('modalClose').addEventListener('click', closeCardModal);
+            document.getElementById('cardModal').addEventListener('click', function(e) {
+                if (e.target === this) closeCardModal();
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeCardModal();
+            });
+
+            // Склад: переключение табов
+            var tabBtns = document.querySelectorAll('.tab-btn');
+            for (var i = 0; i < tabBtns.length; i++) {
+                tabBtns[i].addEventListener('click', function() {
+                    var allBtns = document.querySelectorAll('.tab-btn');
+                    for (var j = 0; j < allBtns.length; j++) {
+                        allBtns[j].classList.remove('active');
+                    }
+                    this.classList.add('active');
+                    currentWarehouse = parseInt(this.dataset.warehouse);
+                    renderWarehouse(currentWarehouse);
+                });
+            }
+
+            // Склад: добавление паллеты
+            document.getElementById('addPalletBtn').addEventListener('click', function() {
+                addPallet();
+            });
         }
 
         // ============================================================
-        // 10. ГЛАВНАЯ ЗАГРУЗКА
+        // 12. СКЛАД: ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================================
+        function addPallet() {
+            var palletName = prompt('Введите название паллеты (например: Паллета №135):');
+            if (!palletName || palletName.trim() === '') return;
+
+            // Добавляем в данные (в реальности здесь будет сохранение)
+            var sourceName = 'Склад №' + currentWarehouse;
+            appData.warehouse.push({
+                article: 'Новый товар',
+                size: '',
+                quantity: 0,
+                pallet: palletName.trim(),
+                box: '',
+                source: sourceName
+            });
+
+            renderWarehouse(currentWarehouse);
+        }
+
+        function addItemToPallet(palletName) {
+            var itemName = prompt('Введите название товара (например: КБЖ№1 Гр44р26):');
+            if (!itemName || itemName.trim() === '') return;
+
+            var qty = prompt('Введите количество:');
+            if (qty === null) return;
+            qty = parseInt(qty) || 1;
+
+            var sourceName = 'Склад №' + currentWarehouse;
+            appData.warehouse.push({
+                article: itemName.trim(),
+                size: '',
+                quantity: qty,
+                pallet: palletName,
+                box: '',
+                source: sourceName
+            });
+
+            renderWarehouse(currentWarehouse);
+        }
+
+        function removePallet(palletName) {
+            if (!confirm('Удалить паллету "' + palletName + '" и все товары на ней?')) return;
+
+            appData.warehouse = appData.warehouse.filter(function(item) {
+                return item.pallet !== palletName;
+            });
+
+            renderWarehouse(currentWarehouse);
+        }
+
+        // ============================================================
+        // 13. ГЛАВНАЯ ЗАГРУЗКА
         // ============================================================
         function loadAllData() {
             var badge = document.querySelector('.status-badge');
@@ -2969,11 +3715,13 @@
                 loadOrders(),
                 loadStorage(),
                 loadNomenclature(),
-                loadAdvertising()
+                loadAdvertising(),
+                loadWarehouse()
             ]).then(function() {
                 updateDashboard();
                 updateAdvertising();
-                // Перестраиваем индекс поиска
+                renderCards('');
+                renderWarehouse(currentWarehouse);
                 setupGlobalSearch();
 
                 if (badge) {
@@ -2991,24 +3739,24 @@
         }
 
         // ============================================================
-        // 11. ЗАПУСК
+        // 14. ЗАПУСК
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 BELTANEE STORE® v2.0');
-            console.log('🎨 Фиолетово-розовый градиент');
+            console.log('🚀 BELTANEE STORE® v2.1');
+            console.log('🎨 Фиолетово-розовый градиент с кристаллом');
             console.log('🔍 Глобальный поиск');
             console.log('📇 Карточки в рекламном отделе');
+            console.log('🃏 Мои карточки — открыты!');
+            console.log('📦 Мой склад — открыт! (2 склада)');
 
             setupNavigation();
             loadAllData();
 
-            // Автообновление
             setInterval(function() {
                 console.log('🔄 Автообновление...');
                 loadAllData();
             }, 5 * 60 * 1000);
         });
     </script>
-
 </body>
 </html>
