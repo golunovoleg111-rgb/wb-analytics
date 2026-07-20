@@ -5092,163 +5092,163 @@ async function init() {
 
     await loadAllData();
 
+    // === БЕЗОПАСНАЯ ФУНКЦИЯ ДЛЯ ДОБАВЛЕНИЯ СОБЫТИЙ ===
+    function safeAddListener(id, event, handler) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener(event, handler);
+            return true;
+        } else {
+            console.warn('⚠️ Элемент не найден:', id);
+            return false;
+        }
+    }
+
+    function safeQuerySelector(selector, event, handler) {
+        const el = document.querySelector(selector);
+        if (el) {
+            el.addEventListener(event, handler);
+            return true;
+        } else {
+            console.warn('⚠️ Элемент не найден:', selector);
+            return false;
+        }
+    }
+
+    function safeQuerySelectorAll(selector, event, handler) {
+        const els = document.querySelectorAll(selector);
+        if (els.length > 0) {
+            els.forEach(el => el.addEventListener(event, handler));
+            return true;
+        } else {
+            console.warn('⚠️ Элементы не найдены:', selector);
+            return false;
+        }
+    }
+
+    // === НАВИГАЦИЯ ===
     setupNavigation();
     setupSearch();
     setupAI();
     setupImport();
 
-    // Обновление
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', async () => {
-            await loadAllData();
-            refreshCurrentPage();
-        });
-    }
-
-    // Тема
-    const themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) {
-        themeToggle.addEventListener('click', () => {
-            const themes = ['default', 'purple', 'blue'];
-            const current = APP.settings.colorTheme || 'default';
-            const idx = themes.indexOf(current);
-            const next = themes[(idx + 1) % themes.length];
-            APP.settings.colorTheme = next;
-            applySettings();
-            dbSave('settings', { key: 'colorTheme', value: next });
-        });
-    }
-
-    // Сохранение настроек
-    const settingsSaveBtn = document.getElementById('settingsSaveBtn');
-    if (settingsSaveBtn) {
-        settingsSaveBtn.addEventListener('click', saveSettings);
-    }
-
-    // Очистка данных
-    const clearOrdersBtn = document.getElementById('clearOrdersBtn');
-    if (clearOrdersBtn) {
-        clearOrdersBtn.addEventListener('click', async () => {
-            if (!confirm('Удалить все заказы?')) return;
-            await dbClear('orders');
-            APP.data.orders = [];
-            alert('✅ Заказы очищены');
-            refreshCurrentPage();
-        });
-    }
-
-    const clearNomenclatureBtn = document.getElementById('clearNomenclatureBtn');
-    if (clearNomenclatureBtn) {
-        clearNomenclatureBtn.addEventListener('click', async () => {
-            if (!confirm('Удалить всю номенклатуру?')) return;
-            await dbClear('nomenclature');
-            APP.data.nomenclature = [];
-            alert('✅ Номенклатура очищена');
-            refreshCurrentPage();
-        });
-    }
-
-    const clearStorageBtn = document.getElementById('clearStorageBtn');
-    if (clearStorageBtn) {
-        clearStorageBtn.addEventListener('click', async () => {
-            if (!confirm('Удалить все остатки?')) return;
-            await dbClear('storage');
-            APP.data.storage = [];
-            alert('✅ Остатки очищены');
-            refreshCurrentPage();
-        });
-    }
-
-    const clearAllBtn = document.getElementById('clearAllBtn');
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', async () => {
-            if (!confirm('Удалить ВСЕ данные? Это действие необратимо!')) return;
-            await dbClear('orders');
-            await dbClear('nomenclature');
-            await dbClear('storage');
-            await dbClear('warehouse');
-            await dbClear('supplies');
-            await dbClear('planning');
-            APP.data = { orders: [], nomenclature: [], storage: [], warehouse: [], supplies: [], planning: [] };
-            alert('✅ Все данные очищены');
-            refreshCurrentPage();
-        });
-    }
-
-    // Новая поставка
-    const newSupplyBtn = document.getElementById('newSupplyBtn');
-    if (newSupplyBtn) {
-        newSupplyBtn.addEventListener('click', async () => {
-            if (supplyCart.length === 0) {
-                alert('Добавьте товары в корзину');
-                return;
-            }
-            const name = prompt('Введите название поставки:') || 'Поставка #' + Date.now();
-            const planning = {
-                id: Date.now(),
-                name: name,
-                date: formatDate(new Date()),
-                items: supplyCart.length,
-                weight: supplyCart.reduce((s, item) => s + (item.qty || 1) * 0.5, 0),
-                status: 'Запланировано',
-                cart: [...supplyCart]
-            };
-            await dbSave('planning', planning);
-            APP.data.planning = await dbGetAll('planning');
-            supplyCart = [];
-            updateSupplyCart();
-            renderPlanning('planned');
-            alert('✅ Поставка создана! Перейдите в раздел "Планирование"');
-        });
-    }
-
-    const createSupplyBtn = document.getElementById('createSupplyBtn');
-    if (createSupplyBtn) {
-        createSupplyBtn.addEventListener('click', () => {
-            const newSupplyBtn = document.getElementById('newSupplyBtn');
-            if (newSupplyBtn) newSupplyBtn.click();
-        });
-    }
-
-    // Планирование
-    document.querySelectorAll('[data-plan]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('[data-plan]').forEach(b => b.className = 'btn btn-secondary btn-sm');
-            btn.className = 'btn btn-primary btn-sm';
-            APP.ui.currentPlan = btn.dataset.plan;
-            renderPlanning(APP.ui.currentPlan);
-        });
+    // === ОБНОВЛЕНИЕ ===
+    safeAddListener('refreshBtn', 'click', async () => {
+        await loadAllData();
+        refreshCurrentPage();
     });
 
-    // Склад
-    document.querySelectorAll('[data-warehouse]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('[data-warehouse]').forEach(b => b.className = 'btn btn-secondary btn-sm');
-            btn.className = 'btn btn-primary btn-sm';
-            APP.ui.currentWarehouse = parseInt(btn.dataset.warehouse);
-            renderWarehouse(APP.ui.currentWarehouse);
-        });
+    // === ТЕМА ===
+    safeAddListener('themeToggle', 'click', () => {
+        const themes = ['default', 'purple', 'blue'];
+        const current = APP.settings.colorTheme || 'default';
+        const idx = themes.indexOf(current);
+        const next = themes[(idx + 1) % themes.length];
+        APP.settings.colorTheme = next;
+        applySettings();
+        dbSave('settings', { key: 'colorTheme', value: next });
     });
 
-    // График
-    document.querySelectorAll('.chart-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            APP.ui.currentPeriod = btn.dataset.period;
-            renderChart(APP.ui.currentPeriod);
-        });
+    // === СОХРАНЕНИЕ НАСТРОЕК ===
+    safeAddListener('settingsSaveBtn', 'click', saveSettings);
+
+    // === ОЧИСТКА ДАННЫХ ===
+    safeAddListener('clearOrdersBtn', 'click', async () => {
+        if (!confirm('Удалить все заказы?')) return;
+        await dbClear('orders');
+        APP.data.orders = [];
+        alert('✅ Заказы очищены');
+        refreshCurrentPage();
     });
 
-    // Карточки
-    const cardsSearchBtn = document.getElementById('cardsSearchBtn');
-    if (cardsSearchBtn) {
-        cardsSearchBtn.addEventListener('click', () => {
-            const input = document.getElementById('cardsSearch');
-            renderCards(input ? input.value : '');
-        });
-    }
+    safeAddListener('clearNomenclatureBtn', 'click', async () => {
+        if (!confirm('Удалить всю номенклатуру?')) return;
+        await dbClear('nomenclature');
+        APP.data.nomenclature = [];
+        alert('✅ Номенклатура очищена');
+        refreshCurrentPage();
+    });
+
+    safeAddListener('clearStorageBtn', 'click', async () => {
+        if (!confirm('Удалить все остатки?')) return;
+        await dbClear('storage');
+        APP.data.storage = [];
+        alert('✅ Остатки очищены');
+        refreshCurrentPage();
+    });
+
+    safeAddListener('clearAllBtn', 'click', async () => {
+        if (!confirm('Удалить ВСЕ данные? Это действие необратимо!')) return;
+        await dbClear('orders');
+        await dbClear('nomenclature');
+        await dbClear('storage');
+        await dbClear('warehouse');
+        await dbClear('supplies');
+        await dbClear('planning');
+        APP.data = { orders: [], nomenclature: [], storage: [], warehouse: [], supplies: [], planning: [] };
+        alert('✅ Все данные очищены');
+        refreshCurrentPage();
+    });
+
+    // === НОВАЯ ПОСТАВКА ===
+    safeAddListener('newSupplyBtn', 'click', async () => {
+        if (supplyCart.length === 0) {
+            alert('Добавьте товары в корзину');
+            return;
+        }
+        const name = prompt('Введите название поставки:') || 'Поставка #' + Date.now();
+        const planning = {
+            id: Date.now(),
+            name: name,
+            date: formatDate(new Date()),
+            items: supplyCart.length,
+            weight: supplyCart.reduce((s, item) => s + (item.qty || 1) * 0.5, 0),
+            status: 'Запланировано',
+            cart: [...supplyCart]
+        };
+        await dbSave('planning', planning);
+        APP.data.planning = await dbGetAll('planning');
+        supplyCart = [];
+        updateSupplyCart();
+        renderPlanning('planned');
+        alert('✅ Поставка создана! Перейдите в раздел "Планирование"');
+    });
+
+    safeAddListener('createSupplyBtn', 'click', () => {
+        const btn = document.getElementById('newSupplyBtn');
+        if (btn) btn.click();
+    });
+
+    // === ПЛАНИРОВАНИЕ ===
+    safeQuerySelectorAll('[data-plan]', 'click', function() {
+        document.querySelectorAll('[data-plan]').forEach(b => b.className = 'btn btn-secondary btn-sm');
+        this.className = 'btn btn-primary btn-sm';
+        APP.ui.currentPlan = this.dataset.plan;
+        renderPlanning(APP.ui.currentPlan);
+    });
+
+    // === СКЛАД ===
+    safeQuerySelectorAll('[data-warehouse]', 'click', function() {
+        document.querySelectorAll('[data-warehouse]').forEach(b => b.className = 'btn btn-secondary btn-sm');
+        this.className = 'btn btn-primary btn-sm';
+        APP.ui.currentWarehouse = parseInt(this.dataset.warehouse);
+        renderWarehouse(APP.ui.currentWarehouse);
+    });
+
+    // === ГРАФИК ===
+    safeQuerySelectorAll('.chart-btn', 'click', function() {
+        document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        APP.ui.currentPeriod = this.dataset.period;
+        renderChart(APP.ui.currentPeriod);
+    });
+
+    // === КАРТОЧКИ ===
+    safeAddListener('cardsSearchBtn', 'click', () => {
+        const input = document.getElementById('cardsSearch');
+        renderCards(input ? input.value : '');
+    });
+
     const cardsSearch = document.getElementById('cardsSearch');
     if (cardsSearch) {
         cardsSearch.addEventListener('keypress', (e) => {
@@ -5258,23 +5258,19 @@ async function init() {
             }
         });
     }
-    const cardsClearBtn = document.getElementById('cardsClearBtn');
-    if (cardsClearBtn) {
-        cardsClearBtn.addEventListener('click', () => {
-            const input = document.getElementById('cardsSearch');
-            if (input) input.value = '';
-            renderCards('');
-        });
-    }
 
-    // Аналитика
-    const analyticsSearchBtn = document.getElementById('analyticsSearchBtn');
-    if (analyticsSearchBtn) {
-        analyticsSearchBtn.addEventListener('click', () => {
-            const input = document.getElementById('analyticsSearch');
-            renderAnalytics(input ? input.value : '');
-        });
-    }
+    safeAddListener('cardsClearBtn', 'click', () => {
+        const input = document.getElementById('cardsSearch');
+        if (input) input.value = '';
+        renderCards('');
+    });
+
+    // === АНАЛИТИКА ===
+    safeAddListener('analyticsSearchBtn', 'click', () => {
+        const input = document.getElementById('analyticsSearch');
+        renderAnalytics(input ? input.value : '');
+    });
+
     const analyticsSearch = document.getElementById('analyticsSearch');
     if (analyticsSearch) {
         analyticsSearch.addEventListener('keypress', (e) => {
@@ -5285,28 +5281,21 @@ async function init() {
         });
     }
 
-    // Реклама
-    const refreshAdvBtn = document.getElementById('refreshAdvBtn');
-    if (refreshAdvBtn) {
-        refreshAdvBtn.addEventListener('click', () => renderAdvertising(APP.ui.currentAdvTab));
-    }
-    document.querySelectorAll('[data-adv-tab]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.dataset.advTab;
-            switchAdvTab(tab);
-            renderAdvertising(tab);
-        });
+    // === РЕКЛАМА ===
+    safeAddListener('refreshAdvBtn', 'click', () => renderAdvertising(APP.ui.currentAdvTab));
+
+    safeQuerySelectorAll('[data-adv-tab]', 'click', function() {
+        const tab = this.dataset.advTab;
+        switchAdvTab(tab);
+        renderAdvertising(tab);
     });
 
-    // Поиск в рекламе
-    const allSearchBtn = document.getElementById('allSearchBtn');
-    if (allSearchBtn) {
-        allSearchBtn.addEventListener('click', () => {
-            const data = generateAdvertisingData();
-            const input = document.getElementById('allSearchInput');
-            renderAllProducts(data, input ? input.value : '');
-        });
-    }
+    safeAddListener('allSearchBtn', 'click', () => {
+        const data = generateAdvertisingData();
+        const input = document.getElementById('allSearchInput');
+        renderAllProducts(data, input ? input.value : '');
+    });
+
     const allSearchInput = document.getElementById('allSearchInput');
     if (allSearchInput) {
         allSearchInput.addEventListener('keypress', (e) => {
@@ -5316,55 +5305,34 @@ async function init() {
             }
         });
     }
-    const allClearBtn = document.getElementById('allClearBtn');
-    if (allClearBtn) {
-        allClearBtn.addEventListener('click', () => {
-            const input = document.getElementById('allSearchInput');
-            if (input) input.value = '';
-            const data = generateAdvertisingData();
-            renderAllProducts(data);
-        });
-    }
 
-    // Сортировка в рекламе
-    const allSortSelect = document.getElementById('allSortSelect');
-    if (allSortSelect) {
-        allSortSelect.addEventListener('change', () => {
-            const data = generateAdvertisingData();
-            const input = document.getElementById('allSearchInput');
-            renderAllProducts(data, input ? input.value : '');
-        });
-    }
+    safeAddListener('allClearBtn', 'click', () => {
+        const input = document.getElementById('allSearchInput');
+        if (input) input.value = '';
+        const data = generateAdvertisingData();
+        renderAllProducts(data);
+    });
 
-    // Отчёты
-    const reportsRefresh = document.getElementById('reportsRefresh');
-    if (reportsRefresh) {
-        reportsRefresh.addEventListener('click', renderReports);
-    }
-    const planningRefresh = document.getElementById('planningRefresh');
-    if (planningRefresh) {
-        planningRefresh.addEventListener('click', () => renderPlanning(APP.ui.currentPlan));
-    }
+    safeAddListener('allSortSelect', 'change', () => {
+        const data = generateAdvertisingData();
+        const input = document.getElementById('allSearchInput');
+        renderAllProducts(data, input ? input.value : '');
+    });
 
-    // Экспорт отчёта
-    const exportReportBtn = document.getElementById('exportReportBtn');
-    if (exportReportBtn) {
-        exportReportBtn.addEventListener('click', () => {
-            alert('📤 Функция экспорта в разработке. Будет доступна в следующей версии.');
-        });
-    }
+    // === ОТЧЁТЫ ===
+    safeAddListener('reportsRefresh', 'click', renderReports);
+    safeAddListener('planningRefresh', 'click', () => renderPlanning(APP.ui.currentPlan));
+    safeAddListener('exportReportBtn', 'click', () => {
+        alert('📤 Функция экспорта в разработке. Будет доступна в следующей версии.');
+    });
 
-    // Модалки
-    const importModalClose = document.getElementById('importModalClose');
-    if (importModalClose) {
-        importModalClose.addEventListener('click', () => {
-            document.getElementById('importModal').classList.remove('active');
-        });
-    }
-    const cardModalClose = document.getElementById('cardModalClose');
-    if (cardModalClose) {
-        cardModalClose.addEventListener('click', closeCardModal);
-    }
+    // === МОДАЛКИ ===
+    safeAddListener('importModalClose', 'click', () => {
+        document.getElementById('importModal').classList.remove('active');
+    });
+
+    safeAddListener('cardModalClose', 'click', closeCardModal);
+
     const cardModal = document.getElementById('cardModal');
     if (cardModal) {
         cardModal.addEventListener('click', (e) => {
@@ -5372,26 +5340,19 @@ async function init() {
         });
     }
 
-    const importBtn = document.getElementById('importBtn');
-    if (importBtn) {
-        importBtn.addEventListener('click', () => {
-            document.getElementById('importModal').classList.add('active');
-        });
-    }
-
-    // Обучение
-    document.querySelectorAll('[data-learn-tab]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            switchLearnTab(btn.dataset.learnTab);
-        });
+    safeAddListener('importBtn', 'click', () => {
+        document.getElementById('importModal').classList.add('active');
     });
 
-    // FAQ
-    document.querySelectorAll('.faq-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const answer = item.querySelector('.faq-answer');
-            if (answer) answer.style.display = answer.style.display === 'block' ? 'none' : 'block';
-        });
+    // === ОБУЧЕНИЕ ===
+    safeQuerySelectorAll('[data-learn-tab]', 'click', function() {
+        switchLearnTab(this.dataset.learnTab);
+    });
+
+    // === FAQ ===
+    safeQuerySelectorAll('.faq-item', 'click', function() {
+        const answer = this.querySelector('.faq-answer');
+        if (answer) answer.style.display = answer.style.display === 'block' ? 'none' : 'block';
     });
 
     const faqSearch = document.getElementById('faqSearch');
@@ -5405,37 +5366,44 @@ async function init() {
         });
     }
 
-    // Импорт паллет
-    const importPalletBtn = document.getElementById('importPalletBtn');
-    if (importPalletBtn) {
-        importPalletBtn.addEventListener('click', () => {
-            const text = prompt('Вставьте данные для импорта паллет (артикул, размер, количество, паллета через запятую):\nПример: 21_К_Вельвет_бир,40,5,Паллета_135');
-            if (!text) return;
-            const lines = text.split('\n').filter(l => l.trim());
-            let count = 0;
-            lines.forEach(line => {
-                const parts = line.split(',').map(s => s.trim());
-                if (parts.length >= 4) {
-                    const [article, size, qty, pallet] = parts;
-                    addWarehouseItem(article, size, parseInt(qty) || 1, pallet);
-                    count++;
-                }
-            });
-            alert(`✅ Импортировано ${count} позиций`);
+    // === ИМПОРТ ПАЛЛЕТ ===
+    safeAddListener('importPalletBtn', 'click', () => {
+        const text = prompt('Вставьте данные для импорта паллет (артикул, размер, количество, паллета через запятую):\nПример: 21_К_Вельвет_бир,40,5,Паллета_135');
+        if (!text) return;
+        const lines = text.split('\n').filter(l => l.trim());
+        let count = 0;
+        lines.forEach(line => {
+            const parts = line.split(',').map(s => s.trim());
+            if (parts.length >= 4) {
+                const [article, size, qty, pallet] = parts;
+                addWarehouseItem(article, size, parseInt(qty) || 1, pallet);
+                count++;
+            }
         });
+        alert(`✅ Импортировано ${count} позиций`);
+    });
+
+    // === ДОБАВЛЕНИЕ ПАЛЛЕТЫ ===
+    safeAddListener('addPalletBtn', 'click', () => {
+        const palletName = prompt('Введите название паллеты:');
+        if (!palletName) return;
+        const article = prompt('Введите артикул товара:');
+        if (!article) return;
+        const qty = parseInt(prompt('Введите количество:') || '1') || 1;
+        addWarehouseItem(article, '', qty, palletName);
+    });
+
+    // === ВКЛАДКИ В ОБУЧЕНИИ (дополнительно) ===
+    // Убеждаемся, что первая вкладка активна
+    const firstLearnTab = document.querySelector('[data-learn-tab].active');
+    if (firstLearnTab) {
+        switchLearnTab(firstLearnTab.dataset.learnTab);
     }
 
-    // Добавление паллеты
-    const addPalletBtn = document.getElementById('addPalletBtn');
-    if (addPalletBtn) {
-        addPalletBtn.addEventListener('click', () => {
-            const palletName = prompt('Введите название паллеты:');
-            if (!palletName) return;
-            const article = prompt('Введите артикул товара:');
-            if (!article) return;
-            const qty = parseInt(prompt('Введите количество:') || '1') || 1;
-            addWarehouseItem(article, '', qty, palletName);
-        });
+    // === ВКЛАДКИ В РЕКЛАМЕ (дополнительно) ===
+    const firstAdvTab = document.querySelector('[data-adv-tab].active');
+    if (firstAdvTab) {
+        switchAdvTab(firstAdvTab.dataset.advTab);
     }
 
     updateStatus('info', 'Готово');
