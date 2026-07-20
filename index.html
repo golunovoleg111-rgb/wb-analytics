@@ -4210,266 +4210,177 @@
             }
         });
     }
+// ================================================================
+// 22. ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
+// ================================================================
 
-    // ================================================================
-    // 22. ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
-    // ================================================================
+async function init() {
+    console.log('🚀 BELTANEE STORE® v3.0');
+    console.log('🤖 AI-ассистент активен');
+    console.log('📦 Умная аналитика для WB');
 
-    async function init() {
-        console.log('🚀 BELTANEE STORE® v3.0');
-        console.log('🤖 AI-ассистент активен');
-        console.log('📦 Умная аналитика для WB');
+    // Загружаем данные
+    await loadAllData();
 
-        // Загружаем данные
+    // Навигация
+    setupNavigation();
+
+    // Поиск
+    setupSearch();
+
+    // AI
+    setupAI();
+
+    // Импорт
+    setupImport();
+
+    // Обновление
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
         await loadAllData();
-
-        // Навигация
-        setupNavigation();
-
-        // Поиск
-        setupSearch();
-
-        // AI
-        setupAI();
-
-        // Импорт
-        setupImport();
-
-        // Обновление
-        document.getElementById('refreshBtn').addEventListener('click', async () => {
-            await loadAllData();
-            refreshCurrentPage();
-        });
-
-        // Тема
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            APP.settings.darkTheme = !APP.settings.darkTheme;
-            applySettings();
-            dbSave('settings', { key: 'darkTheme', value: APP.settings.darkTheme });
-        });
-
-        // Сохранение настроек
-        document.getElementById('settingsSaveBtn').addEventListener('click', saveSettings);
-
-        // Новая поставка
-        document.getElementById('newSupplyBtn').addEventListener('click', () => {
-            if (supplyCart.length === 0) {
-                alert('Добавьте товары в корзину');
-                return;
-            }
-            const name = prompt('Введите название поставки:') || 'Поставка #' + Date.now();
-            const planning = {
-                id: Date.now(),
-                name: name,
-                date: formatDate(new Date()),
-                items: supplyCart.length,
-                weight: supplyCart.length * 0.5,
-                status: 'Запланировано',
-                cart: [...supplyCart]
-            };
-            dbSave('planning', planning);
-            APP.data.planning = await dbGetAll('planning');
-            supplyCart = [];
-            updateSupplyCart();
-            renderPlanning('planned');
-            alert('✅ Поставка создана! Перейдите в раздел "Планирование"');
-        });
-
-        // Создание поставки из конструктора
-        document.getElementById('createSupplyBtn').addEventListener('click', () => {
-            document.getElementById('newSupplyBtn').click();
-        });
-
-        // Планирование — вкладки
-        document.querySelectorAll('[data-plan]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('[data-plan]').forEach(b => b.className = 'btn btn-secondary btn-sm');
-                btn.className = 'btn btn-primary btn-sm';
-                APP.ui.currentPlan = btn.dataset.plan;
-                renderPlanning(APP.ui.currentPlan);
-            });
-        });
-
-        // Склад — вкладки
-        document.querySelectorAll('[data-warehouse]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('[data-warehouse]').forEach(b => b.className = 'btn btn-secondary btn-sm');
-                btn.className = 'btn btn-primary btn-sm';
-                APP.ui.currentWarehouse = parseInt(btn.dataset.warehouse);
-                renderWarehouse(APP.ui.currentWarehouse);
-            });
-        });
-
-        // График
-        document.querySelectorAll('.chart-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                APP.ui.currentPeriod = btn.dataset.period;
-                renderChart(APP.ui.currentPeriod);
-            });
-        });
-
-        // Карточки
-        document.getElementById('cardsSearchBtn').addEventListener('click', () => {
-            renderCards(document.getElementById('cardsSearch').value);
-        });
-        document.getElementById('cardsSearch').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('cardsSearchBtn').click();
-        });
-        document.getElementById('cardsClearBtn').addEventListener('click', () => {
-            document.getElementById('cardsSearch').value = '';
-            renderCards('');
-        });
-
-        // Аналитика
-        document.getElementById('analyticsSearchBtn').addEventListener('click', () => {
-            renderAnalytics(document.getElementById('analyticsSearch').value);
-        });
-        document.getElementById('analyticsSearch').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('analyticsSearchBtn').click();
-        });
-
-        // Реклама
-        document.getElementById('refreshAdvBtn').addEventListener('click', renderAdvertising);
-        document.getElementById('hideThinkCheck').addEventListener('change', (e) => {
-            document.getElementById('thinkContent').style.display = e.target.checked ? 'none' : 'block';
-        });
-        document.getElementById('hideAllCheck').addEventListener('change', (e) => {
-            document.getElementById('allProductsContent').style.display = e.target.checked ? 'none' : 'block';
-        });
-        document.getElementById('allSearchBtn').addEventListener('click', () => {
-            const data = generateAdvertisingData();
-            renderAllProducts(data, document.getElementById('allSearchInput').value);
-        });
-        document.getElementById('allSearchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('allSearchBtn').click();
-        });
-        document.getElementById('allClearBtn').addEventListener('click', () => {
-            document.getElementById('allSearchInput').value = '';
-            const data = generateAdvertisingData();
-            renderAllProducts(data);
-        });
-
-        // Отчёты
-        document.getElementById('reportsRefresh').addEventListener('click', renderReports);
-        document.getElementById('planningRefresh').addEventListener('click', () => renderPlanning(APP.ui.currentPlan));
-
-        // Модалки
-        document.getElementById('importModalClose').addEventListener('click', () => {
-            document.getElementById('importModal').classList.remove('active');
-        });
-        document.getElementById('cardModalClose').addEventListener('click', closeCardModal);
-        document.getElementById('cardModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) closeCardModal();
-        });
-
-        // Импорт
-        document.getElementById('importBtn').addEventListener('click', () => {
-            document.getElementById('importModal').classList.add('active');
-        });
-
-        // Загрузка данных
-        updateStatus('info', 'Загрузка завершена');
         refreshCurrentPage();
+    });
 
-        // Автообновление каждые 5 минут
-        setInterval(async () => {
-            console.log('🔄 Автообновление...');
-            await loadAllData();
-            refreshCurrentPage();
-        }, 5 * 60 * 1000);
+    // Тема
+    document.getElementById('themeToggle').addEventListener('click', () => {
+        APP.settings.darkTheme = !APP.settings.darkTheme;
+        applySettings();
+        dbSave('settings', { key: 'darkTheme', value: APP.settings.darkTheme });
+    });
 
-        console.log('✅ Система готова к работе');
-    }
+    // Сохранение настроек
+    document.getElementById('settingsSaveBtn').addEventListener('click', saveSettings);
 
-    function refreshCurrentPage() {
-        navigateTo(APP.ui.currentPage);
-    }
-
-    function setupNavigation() {
-        document.querySelectorAll('.menu-item:not(.disabled)').forEach(item => {
-            item.addEventListener('click', () => {
-                const page = item.dataset.page;
-                if (page) navigateTo(page);
-            });
-        });
-    }
-
-    function setupImport() {
-        const dropZone = document.getElementById('importDropZone');
-        const fileInput = document.getElementById('importFileInput');
-        const confirmBtn = document.getElementById('importConfirmBtn');
-        const preview = document.getElementById('importPreview');
-        let selectedFile = null;
-
-        dropZone.addEventListener('click', () => fileInput.click());
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                selectedFile = e.dataTransfer.files[0];
-                showImportPreview(selectedFile);
-            }
-        });
-
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                selectedFile = fileInput.files[0];
-                showImportPreview(selectedFile);
-            }
-        });
-
-        function showImportPreview(file) {
-            preview.style.display = 'block';
-            preview.innerHTML = `
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <span>📄</span>
-                    <div>
-                        <div style="font-weight:600;">${file.name}</div>
-                        <div style="font-size:12px;color:var(--text-secondary);">${(file.size / 1024).toFixed(1)} KB</div>
-                    </div>
-                </div>
-            `;
+    // Новая поставка
+    document.getElementById('newSupplyBtn').addEventListener('click', async () => {
+        if (supplyCart.length === 0) {
+            alert('Добавьте товары в корзину');
+            return;
         }
+        const name = prompt('Введите название поставки:') || 'Поставка #' + Date.now();
+        const planning = {
+            id: Date.now(),
+            name: name,
+            date: formatDate(new Date()),
+            items: supplyCart.length,
+            weight: supplyCart.length * 0.5,
+            status: 'Запланировано',
+            cart: [...supplyCart]
+        };
+        await dbSave('planning', planning);
+        APP.data.planning = await dbGetAll('planning');
+        supplyCart = [];
+        updateSupplyCart();
+        renderPlanning('planned');
+        alert('✅ Поставка создана! Перейдите в раздел "Планирование"');
+    });
 
-        confirmBtn.addEventListener('click', async () => {
-            if (!selectedFile) {
-                alert('Выберите файл для импорта');
-                return;
-            }
+    // Создание поставки из конструктора
+    document.getElementById('createSupplyBtn').addEventListener('click', () => {
+        document.getElementById('newSupplyBtn').click();
+    });
 
-            const type = document.getElementById('importType').value;
-            confirmBtn.disabled = true;
-            confirmBtn.textContent = '⏳ Импорт...';
-
-            try {
-                await importData(selectedFile, type);
-                alert(`✅ Импортировано ${selectedFile.name}`);
-                document.getElementById('importModal').classList.remove('active');
-                selectedFile = null;
-                preview.style.display = 'none';
-                fileInput.value = '';
-                await loadAllData();
-                refreshCurrentPage();
-            } catch (err) {
-                alert('❌ Ошибка: ' + err);
-            } finally {
-                confirmBtn.disabled = false;
-                confirmBtn.textContent = '✅ Импортировать';
-            }
+    // Планирование — вкладки
+    document.querySelectorAll('[data-plan]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-plan]').forEach(b => b.className = 'btn btn-secondary btn-sm');
+            btn.className = 'btn btn-primary btn-sm';
+            APP.ui.currentPlan = btn.dataset.plan;
+            renderPlanning(APP.ui.currentPlan);
         });
-    }
+    });
+
+    // Склад — вкладки
+    document.querySelectorAll('[data-warehouse]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-warehouse]').forEach(b => b.className = 'btn btn-secondary btn-sm');
+            btn.className = 'btn btn-primary btn-sm';
+            APP.ui.currentWarehouse = parseInt(btn.dataset.warehouse);
+            renderWarehouse(APP.ui.currentWarehouse);
+        });
+    });
+
+    // График
+    document.querySelectorAll('.chart-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            APP.ui.currentPeriod = btn.dataset.period;
+            renderChart(APP.ui.currentPeriod);
+        });
+    });
+
+    // Карточки
+    document.getElementById('cardsSearchBtn').addEventListener('click', () => {
+        renderCards(document.getElementById('cardsSearch').value);
+    });
+    document.getElementById('cardsSearch').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('cardsSearchBtn').click();
+    });
+    document.getElementById('cardsClearBtn').addEventListener('click', () => {
+        document.getElementById('cardsSearch').value = '';
+        renderCards('');
+    });
+
+    // Аналитика
+    document.getElementById('analyticsSearchBtn').addEventListener('click', () => {
+        renderAnalytics(document.getElementById('analyticsSearch').value);
+    });
+    document.getElementById('analyticsSearch').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('analyticsSearchBtn').click();
+    });
+
+    // Реклама
+    document.getElementById('refreshAdvBtn').addEventListener('click', renderAdvertising);
+    document.getElementById('hideThinkCheck').addEventListener('change', (e) => {
+        document.getElementById('thinkContent').style.display = e.target.checked ? 'none' : 'block';
+    });
+    document.getElementById('hideAllCheck').addEventListener('change', (e) => {
+        document.getElementById('allProductsContent').style.display = e.target.checked ? 'none' : 'block';
+    });
+    document.getElementById('allSearchBtn').addEventListener('click', () => {
+        const data = generateAdvertisingData();
+        renderAllProducts(data, document.getElementById('allSearchInput').value);
+    });
+    document.getElementById('allSearchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('allSearchBtn').click();
+    });
+    document.getElementById('allClearBtn').addEventListener('click', () => {
+        document.getElementById('allSearchInput').value = '';
+        const data = generateAdvertisingData();
+        renderAllProducts(data);
+    });
+
+    // Отчёты
+    document.getElementById('reportsRefresh').addEventListener('click', renderReports);
+    document.getElementById('planningRefresh').addEventListener('click', () => renderPlanning(APP.ui.currentPlan));
+
+    // Модалки
+    document.getElementById('importModalClose').addEventListener('click', () => {
+        document.getElementById('importModal').classList.remove('active');
+    });
+    document.getElementById('cardModalClose').addEventListener('click', closeCardModal);
+    document.getElementById('cardModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeCardModal();
+    });
+
+    // Импорт
+    document.getElementById('importBtn').addEventListener('click', () => {
+        document.getElementById('importModal').classList.add('active');
+    });
+
+    // Загрузка данных
+    updateStatus('info', 'Загрузка завершена');
+    refreshCurrentPage();
+
+    // Автообновление каждые 5 минут
+    setInterval(async () => {
+        console.log('🔄 Автообновление...');
+        await loadAllData();
+        refreshCurrentPage();
+    }, 5 * 60 * 1000);
+
+    console.log('✅ Система готова к работе');
+}
 
     // ================================================================
     // 23. ЗАПУСК
