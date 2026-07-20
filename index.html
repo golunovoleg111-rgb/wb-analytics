@@ -3192,79 +3192,95 @@
     }
 
     // ================================================================
-    // 7. ОТОБРАЖЕНИЕ: ГЛАВНАЯ
-    // ================================================================
+// 7. ОТОБРАЖЕНИЕ: ГЛАВНАЯ
+// ================================================================
 
-    function updateDashboard() {
-        const orders = APP.data.orders;
-        const storage = APP.data.storage;
-        const nomenclature = APP.data.nomenclature;
+function updateDashboard() {
+    const orders = APP.data.orders;
+    const storage = APP.data.storage;
+    const nomenclature = APP.data.nomenclature;
 
-        const uniqueArticles = new Set(nomenclature.map(n => n.baseArticle || n.article || '').filter(Boolean));
-        document.getElementById('kpiArticles').textContent = formatNumber(uniqueArticles.size);
-
-        const yesterday = getYesterdayStr();
-        let yesterdayOrders = 0, yesterdayDelivered = 0, yesterdayAmount = 0;
-        let prevOrders = 0, prevDelivered = 0, prevAmount = 0;
-
-        const d = new Date();
-        d.setDate(d.getDate() - 2);
-        const prevStr = formatDate(d);
-
-        orders.forEach(o => {
-            if (o.date === yesterday) {
-                yesterdayOrders += o.orders || 0;
-                yesterdayDelivered += o.delivered || 0;
-                yesterdayAmount += o.amount || 0;
-            }
-            if (o.date === prevStr) {
-                prevOrders += o.orders || 0;
-                prevDelivered += o.delivered || 0;
-                prevAmount += o.amount || 0;
-            }
-        });
-
-        animateNumber('kpiOrders', yesterdayOrders);
-        animateNumber('kpiDelivered', yesterdayDelivered);
-
-        const conv = yesterdayOrders > 0 ? Math.round((yesterdayDelivered / yesterdayOrders) * 100) : 0;
-        animateNumber('kpiConversion', conv);
-
-        updateChange('kpiOrdersChange', yesterdayOrders, prevOrders);
-        updateChange('kpiDeliveredChange', yesterdayDelivered, prevDelivered);
-        const convPrev = prevOrders > 0 ? Math.round((prevDelivered / prevOrders) * 100) : 0;
-        updateChange('kpiConversionChange', conv, convPrev);
-
-        const totalStock = storage.reduce((sum, s) => sum + (s.available || 0), 0);
-        document.getElementById('summaryStock').textContent = formatNumber(totalStock);
-
-        document.getElementById('widgetRevenue').textContent = formatNumber(yesterdayAmount) + ' ₽';
-        const revenueChange = prevAmount > 0 ? Math.round(((yesterdayAmount - prevAmount) / prevAmount) * 100) : 0;
-        document.getElementById('widgetRevenueChange').textContent =
-            (revenueChange > 0 ? '▲ +' : revenueChange < 0 ? '▼ ' : '↔ ') +
-            (revenueChange !== 0 ? revenueChange + '%' : '0%') + ' к прошлому дню';
-
-        const advData = generateAdvertisingData();
-        const scores = advData.map(a => a.score).filter(s => s > 0);
-        const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0;
-        document.getElementById('summaryScore').textContent = avgScore > 0 ? avgScore + ' ★' : '—';
-        document.getElementById('summaryConversion').textContent = conv + '%';
-
-        // Оборачиваемость
-        const turnover = calculateTurnover();
-        document.getElementById('widgetTurnover').textContent = turnover + ' дн.';
-
-        // Топ-5 товаров
-        renderTopProducts(advData);
-
-        // Индекс остатка (ИО)
-        renderIOWidget(advData);
-
-        // Красная зона
-        renderRedZone(advData);
-
-        updateTime();
+    // Безопасное обновление элемента
+    function setText(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
     }
+
+    function setHTML(id, html) {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    }
+
+    const uniqueArticles = new Set(nomenclature.map(n => n.baseArticle || n.article || '').filter(Boolean));
+    setText('kpiArticles', formatNumber(uniqueArticles.size));
+
+    const yesterday = getYesterdayStr();
+    let yesterdayOrders = 0, yesterdayDelivered = 0, yesterdayAmount = 0;
+    let prevOrders = 0, prevDelivered = 0, prevAmount = 0;
+
+    const d = new Date();
+    d.setDate(d.getDate() - 2);
+    const prevStr = formatDate(d);
+
+    orders.forEach(o => {
+        if (o.date === yesterday) {
+            yesterdayOrders += o.orders || 0;
+            yesterdayDelivered += o.delivered || 0;
+            yesterdayAmount += o.amount || 0;
+        }
+        if (o.date === prevStr) {
+            prevOrders += o.orders || 0;
+            prevDelivered += o.delivered || 0;
+            prevAmount += o.amount || 0;
+        }
+    });
+
+    animateNumber('kpiOrders', yesterdayOrders);
+    animateNumber('kpiDelivered', yesterdayDelivered);
+
+    const conv = yesterdayOrders > 0 ? Math.round((yesterdayDelivered / yesterdayOrders) * 100) : 0;
+    animateNumber('kpiConversion', conv);
+
+    updateChange('kpiOrdersChange', yesterdayOrders, prevOrders);
+    updateChange('kpiDeliveredChange', yesterdayDelivered, prevDelivered);
+    const convPrev = prevOrders > 0 ? Math.round((prevDelivered / prevOrders) * 100) : 0;
+    updateChange('kpiConversionChange', conv, convPrev);
+
+    // Общий остаток
+    const totalStock = storage.reduce((sum, s) => sum + (s.available || 0), 0);
+    setText('summaryStock', formatNumber(totalStock));
+
+    // Выручка
+    setText('widgetRevenue', formatNumber(yesterdayAmount) + ' ₽');
+    const revenueChange = prevAmount > 0 ? Math.round(((yesterdayAmount - prevAmount) / prevAmount) * 100) : 0;
+    const revenueEl = document.getElementById('widgetRevenueChange');
+    if (revenueEl) {
+        revenueEl.textContent = (revenueChange > 0 ? '▲ +' : revenueChange < 0 ? '▼ ' : '↔ ') +
+            (revenueChange !== 0 ? revenueChange + '%' : '0%') + ' к прошлому дню';
+    }
+
+    // Скоринг
+    const advData = generateAdvertisingData();
+    const scores = advData.map(a => a.score).filter(s => s > 0);
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0;
+    setText('summaryScore', avgScore > 0 ? avgScore + ' ★' : '—');
+    setText('summaryConversion', conv + '%');
+
+    // Оборачиваемость
+    const turnover = calculateTurnover();
+    setText('widgetTurnover', turnover + ' дн.');
+
+    // Топ-5 товаров
+    renderTopProducts(advData);
+
+    // Индекс остатка (ИО)
+    renderIOWidget(advData);
+
+    // Красная зона
+    renderRedZone(advData);
+
+    updateTime();
+}
 
     function calculateTurnover() {
         const orders = APP.data.orders;
@@ -3290,91 +3306,97 @@
     }
 
     function renderTopProducts(advData) {
-        const container = document.getElementById('topProducts');
-        const sorted = [...advData].sort((a, b) => b.orders - a.orders).slice(0, 5);
+    const container = document.getElementById('topProducts');
+    if (!container) return;
 
-        if (sorted.length === 0) {
-            container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
-            return;
-        }
+    const sorted = [...advData].sort((a, b) => b.orders - a.orders).slice(0, 5);
 
-        let html = '';
-        sorted.forEach((item, i) => {
-            const trend = item.fallWeek.includes('-') ? 'down' : 'up';
-            const trendText = item.fallWeek.includes('-') ? item.fallWeek : '+' + item.fallWeek;
-            html += `
-                <div class="top-product-item">
-                    <span class="rank">#${i + 1}</span>
-                    <span class="name" title="${item.article}">${item.article}</span>
-                    <span class="value">${formatNumber(item.orders)} зак.</span>
-                    <span class="trend ${trend}">${trendText}</span>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
+    if (sorted.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
+        return;
     }
+
+    let html = '';
+    sorted.forEach((item, i) => {
+        const trend = item.fallWeek.includes('-') ? 'down' : 'up';
+        const trendText = item.fallWeek.includes('-') ? item.fallWeek : '+' + item.fallWeek;
+        html += `
+            <div class="top-product-item">
+                <span class="rank">#${i + 1}</span>
+                <span class="name" title="${item.article}">${item.article}</span>
+                <span class="value">${formatNumber(item.orders)} зак.</span>
+                <span class="trend ${trend}">${trendText}</span>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
 
     function renderIOWidget(advData) {
-        const container = document.getElementById('ioWidget');
-        const storage = APP.data.storage;
+    const container = document.getElementById('ioWidget');
+    if (!container) return;
 
-        if (storage.length === 0 || advData.length === 0) {
-            container.innerHTML = '<div class="text-muted text-center" style="padding:8px;font-size:11px;">Нет данных</div>';
-            return;
-        }
+    const storage = APP.data.storage;
 
-        const items = advData.slice(0, 5);
-        let html = '';
-        items.forEach(item => {
-            const stock = item.stock || 0;
-            const orders = item.orders || 1;
-            const io = Math.min(1, stock / (orders * 30));
-            const color = io > 0.5 ? 'green' : io > 0.2 ? 'yellow' : 'red';
-            const label = io > 0.5 ? '✅' : io > 0.2 ? '⚠️' : '🔴';
-
-            html += `
-                <div class="io-bar" style="margin-bottom:4px;">
-                    <span style="width:16px;">${label}</span>
-                    <span style="flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
-                    <div class="io-track" style="width:60px;">
-                        <div class="io-fill ${color}" style="width:${Math.round(io * 100)}%;"></div>
-                    </div>
-                    <span style="font-size:10px;width:30px;text-align:right;">${Math.round(io * 100)}%</span>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
+    if (storage.length === 0 || advData.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center" style="padding:8px;font-size:11px;">Нет данных</div>';
+        return;
     }
+
+    const items = advData.slice(0, 5);
+    let html = '';
+    items.forEach(item => {
+        const stock = item.stock || 0;
+        const orders = item.orders || 1;
+        const io = Math.min(1, stock / (orders * 30));
+        const color = io > 0.5 ? 'green' : io > 0.2 ? 'yellow' : 'red';
+        const label = io > 0.5 ? '✅' : io > 0.2 ? '⚠️' : '🔴';
+
+        html += `
+            <div class="io-bar" style="margin-bottom:4px;">
+                <span style="width:16px;">${label}</span>
+                <span style="flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
+                <div class="io-track" style="width:60px;">
+                    <div class="io-fill ${color}" style="width:${Math.round(io * 100)}%;"></div>
+                </div>
+                <span style="font-size:10px;width:30px;text-align:right;">${Math.round(io * 100)}%</span>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
 
     function renderRedZone(advData) {
-        const container = document.getElementById('widgetRedZone');
-        const critical = advData.filter(a =>
-            a.stock < 5 ||
-            (a.fallWeek && parseFloat(a.fallWeek) < -30) ||
-            a.status.includes('Критичный')
-        ).slice(0, 3);
+    const container = document.getElementById('widgetRedZone');
+    if (!container) return;
 
-        if (critical.length === 0) {
-            container.innerHTML = '<div class="text-muted text-center" style="padding:8px;font-size:11px;">✅ Проблем нет</div>';
-            return;
-        }
+    const critical = advData.filter(a =>
+        a.stock < 5 ||
+        (a.fallWeek && parseFloat(a.fallWeek) < -30) ||
+        a.status.includes('Критичный')
+    ).slice(0, 3);
 
-        let html = '';
-        critical.forEach(item => {
-            let reason = '';
-            if (item.stock < 5) reason = '⚠️ Остаток < 5 шт';
-            else if (item.fallWeek && parseFloat(item.fallWeek) < -30) reason = '📉 Падение ' + item.fallWeek;
-            else reason = '🔴 ' + item.status;
-
-            html += `
-                <div class="red-zone-item">
-                    <span style="font-weight:500;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
-                    <span class="reason">${reason}</span>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
+    if (critical.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center" style="padding:8px;font-size:11px;">✅ Проблем нет</div>';
+        return;
     }
+
+    let html = '';
+    critical.forEach(item => {
+        let reason = '';
+        if (item.stock < 5) reason = '⚠️ Остаток < 5 шт';
+        else if (item.fallWeek && parseFloat(item.fallWeek) < -30) reason = '📉 Падение ' + item.fallWeek;
+        else reason = '🔴 ' + item.status;
+
+        html += `
+            <div class="red-zone-item">
+                <span style="font-weight:500;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
+                <span class="reason">${reason}</span>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
 
     function animateNumber(id, target) {
         const el = document.getElementById(id);
