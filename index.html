@@ -2674,18 +2674,29 @@
         });
         break;
 
-   case 'orders':
+  case 'orders':
     storeName = 'orders';
     
-    console.log('📄 Заказы: обработка', data.length, 'строк');
-    console.log('📄 Первая строка (сырая):', JSON.stringify(data[0]));
+    console.log('========================================');
+    console.log('📥 НАЧАЛО ИМПОРТА ЗАКАЗОВ');
+    console.log('📄 Количество строк в файле:', data.length);
     
-    // Получаем заголовки (первая строка)
-    const headers = Object.keys(data[0] || {});
-    console.log('📄 Заголовки:', headers);
+    // Показываем ПЕРВУЮ строку целиком
+    if (data.length > 0) {
+        console.log('📄 ПЕРВАЯ СТРОКА (ВСЕ ПОЛЯ):', JSON.stringify(data[0], null, 2));
+        console.log('📄 КЛЮЧИ (заголовки):', Object.keys(data[0]));
+    } else {
+        console.error('❌ Файл пуст!');
+        reject('Файл пуст');
+        return;
+    }
     
-    // Определяем индексы колонок ПО ПОРЯДКУ (A, B, C, D...)
-    // Ваша структура:
+    // Получаем ВСЕ ключи (заголовки) из первой строки
+    const allKeys = Object.keys(data[0]);
+    console.log('📄 Все заголовки по порядку:', allKeys.map((k, i) => i + ': ' + k).join(' | '));
+    
+    // === ЖЁСТКОЕ СООТВЕТСТВИЕ ПО ИНДЕКСАМ ===
+    // Ваша структура (по порядку):
     // 0 - Бренд
     // 1 - Неделя года
     // 2 - День
@@ -2695,56 +2706,80 @@
     // 6 - Заказано, шт.
     // 7 - Сумма заказов минус комиссия WB, руб.
     
-    const colBrand = headers[0] || 'Бренд';
-    const colWeek = headers[1] || 'Неделя года';
-    const colDate = headers[2] || 'День';
-    const colSeller = headers[3] || 'Артикул продавца';
-    const colDelivered = headers[4] || 'Выкупили, шт.';
-    const colTransfer = headers[5] || 'К перечислению за товар, руб.';
-    const colOrders = headers[6] || 'Заказано, шт.';
-    const colAmount = headers[7] || 'Сумма заказов минус комиссия WB, руб.';
+    // Берём ключи по ИНДЕКСАМ (не по названию!)
+    const key0 = allKeys[0] || 'col0';
+    const key1 = allKeys[1] || 'col1';
+    const key2 = allKeys[2] || 'col2';
+    const key3 = allKeys[3] || 'col3';
+    const key4 = allKeys[4] || 'col4';
+    const key5 = allKeys[5] || 'col5';
+    const key6 = allKeys[6] || 'col6';
+    const key7 = allKeys[7] || 'col7';
     
-    console.log('📄 Использую колонки:');
-    console.log('  Бренд:', colBrand);
-    console.log('  День:', colDate);
-    console.log('  Артикул продавца:', colSeller);
-    console.log('  Заказано:', colOrders);
-    console.log('  Выкупили:', colDelivered);
-    console.log('  Сумма:', colAmount);
-    console.log('  Перечисление:', colTransfer);
+    console.log('📄 Использую индексы:');
+    console.log('  [0] Бренд → ключ:', key0);
+    console.log('  [1] Неделя → ключ:', key1);
+    console.log('  [2] День → ключ:', key2);
+    console.log('  [3] Артикул → ключ:', key3);
+    console.log('  [4] Выкупили → ключ:', key4);
+    console.log('  [5] Перечисление → ключ:', key5);
+    console.log('  [6] Заказано → ключ:', key6);
+    console.log('  [7] Сумма → ключ:', key7);
     
-    // Парсим числа с запятой
-    const parseNumber = (val) => {
+    // Функция для безопасного получения значения
+    const getVal = (row, key) => {
+        const val = row[key];
+        if (val === undefined || val === null) return '';
+        return String(val).trim();
+    };
+    
+    // Парсим числа (поддержка запятой)
+    const parseNum = (val) => {
         if (val === undefined || val === null || val === '') return 0;
         const str = String(val).replace(/\s/g, '').replace(',', '.');
         const num = parseFloat(str);
         return isNaN(num) ? 0 : num;
     };
     
-    // Очищаем артикул от лишних символов
-    const cleanArticle = (val) => {
-        if (!val) return '';
-        return String(val).trim();
-    };
-    
     mapped = [];
     
+    // Проходим по всем строкам
     for (let i = 0; i < data.length; i++) {
         const row = data[i];
         
-        // Берем значения по ключам (заголовкам)
-        const article = cleanArticle(row[colSeller]);
-        const brand = String(row[colBrand] || '').trim();
-        const week = parseInt(row[colWeek]) || 0;
-        const dateRaw = String(row[colDate] || '').trim();
-        const orders = parseInt(row[colOrders]) || 0;
-        const delivered = parseInt(row[colDelivered]) || 0;
-        const amount = parseNumber(row[colAmount]);
-        const transfer = parseNumber(row[colTransfer]);
+        // Берём значения по ключам
+        const brand = getVal(row, key0);
+        const week = parseInt(getVal(row, key1)) || 0;
+        const dateRaw = getVal(row, key2);
+        const article = getVal(row, key3);
+        const delivered = parseInt(getVal(row, key4)) || 0;
+        const transfer = parseNum(getVal(row, key5));
+        const orders = parseInt(getVal(row, key6)) || 0;
+        const amount = parseNum(getVal(row, key7));
         
-        // Парсим дату (01.07.2026)
+        // Логируем первую строку с данными
+        if (i === 0) {
+            console.log('📄 Первая строка (значения):');
+            console.log('  Бренд:', brand);
+            console.log('  Неделя:', week);
+            console.log('  День (сырая):', dateRaw);
+            console.log('  Артикул:', article);
+            console.log('  Заказано:', orders);
+            console.log('  Выкупили:', delivered);
+            console.log('  Сумма:', amount);
+            console.log('  Перечисление:', transfer);
+        }
+        
+        // Пропускаем строки без артикула
+        if (!article) {
+            console.log('⚠️ Строка', i, 'пропущена (нет артикула)');
+            continue;
+        }
+        
+        // Парсим дату (01.07.2026 → 01.07.2026)
         let dateStr = '';
         if (dateRaw) {
+            // Пробуем формат ДД.ММ.ГГГГ
             const match = dateRaw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
             if (match) {
                 dateStr = match[1] + '.' + match[2] + '.' + match[3];
@@ -2761,18 +2796,6 @@
             dateStr = formatDate(new Date());
         }
         
-        // Пропускаем строки без артикула
-        if (!article) {
-            console.log('⚠️ Строка', i, 'пропущена (нет артикула)');
-            continue;
-        }
-        
-        // Пропускаем строки где нет заказов и выкупов
-        if (orders === 0 && delivered === 0 && amount === 0) {
-            console.log('⚠️ Строка', i, 'пропущена (нет данных)');
-            continue;
-        }
-        
         mapped.push({
             id: Date.now() + i + Math.random(),
             article: article,
@@ -2783,7 +2806,6 @@
             delivered: delivered,
             amount: amount,
             transfer: transfer,
-            // Пустые поля для совместимости
             wbArticle: '',
             barcode: '',
             size: '',
@@ -2793,17 +2815,19 @@
         });
     }
     
-    console.log('✅ Заказы обработаны:', mapped.length, 'строк с данными');
+    console.log('✅ Обработано строк с данными:', mapped.length);
     
     if (mapped.length === 0) {
-        reject('Не найдено данных в файле. Проверьте структуру колонок.');
+        console.error('❌ Нет данных для импорта!');
+        reject('Не найдено данных в файле. Проверьте структуру.');
         return;
     }
     
-    console.log('📄 Пример первой строки результата:', JSON.stringify(mapped[0]));
+    console.log('📄 Первый результат:', JSON.stringify(mapped[0], null, 2));
+    console.log('========================================');
     
     break;
-
+                           
     case 'storage':
         storeName = 'storage';
         mapped = data.map((row, i) => {
