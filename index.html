@@ -2584,67 +2584,239 @@ async function importData(file, type) {
         reader.onload = async (e) => {
             try {
                 console.log('========================================');
-                console.log('📄 ТЕСТОВОЕ ЧТЕНИЕ ФАЙЛА');
-                console.log('📄 Имя файла:', file.name);
-                console.log('📄 Размер:', file.size, 'байт');
-                console.log('📄 Тип:', type);
+                console.log('📥 ИМПОРТ', type);
+                console.log('📄 Файл:', file.name);
 
-                // Пробуем прочитать как Excel
+                // Читаем Excel
                 const workbook = XLSX.read(e.target.result, { 
                     type: 'array',
-                    cellDates: false
+                    cellDates: false,
+                    dateNF: 'yyyy-mm-dd'
                 });
                 
-                console.log('📄 Листы в файле:', workbook.SheetNames);
-                
                 const sheetName = workbook.SheetNames[0];
-                console.log('📄 Использую лист:', sheetName);
-                
                 const sheet = workbook.Sheets[sheetName];
+                let data = XLSX.utils.sheet_to_json(sheet, { 
+                    defval: '',
+                    raw: false
+                });
                 
-                // Пробуем прочитать в разных режимах
-                console.log('📄 Читаем с sheet_to_json...');
-                let data1 = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
-                console.log('📄 Режим 1 (sheet_to_json):', data1.length, 'строк');
-                if (data1.length > 0) {
-                    console.log('📄 Первая строка:', JSON.stringify(data1[0]));
-                    console.log('📄 Ключи:', Object.keys(data1[0]));
-                }
+                console.log('📄 Прочитано строк:', data.length);
                 
-                // Пробуем прочитать как массив массивов
-                console.log('📄 Читаем с sheet_to_json({header:1})...');
-                let data2 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                console.log('📄 Режим 2 (header:1):', data2.length, 'строк');
-                if (data2.length > 0) {
-                    console.log('📄 Первая строка (массив):', JSON.stringify(data2[0]));
-                    console.log('📄 Вторая строка (массив):', data2.length > 1 ? JSON.stringify(data2[1]) : 'нет');
-                }
-                
-                // Пробуем прочитать сырые данные
-                console.log('📄 Читаем с sheet_to_json({header:1, raw:true})...');
-                let data3 = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
-                console.log('📄 Режим 3 (raw:true):', data3.length, 'строк');
-                if (data3.length > 0) {
-                    console.log('📄 Первая строка (сырая):', JSON.stringify(data3[0]));
-                }
-                
-                console.log('========================================');
-                
-                // Если данные есть — показываем их
-                if (data1.length > 0) {
-                    alert('✅ Файл прочитан! Найдено ' + data1.length + ' строк. Смотрите консоль (F12) для деталей.');
-                    resolve({ count: data1.length, type: 'test' });
-                } else if (data2.length > 0) {
-                    alert('✅ Файл прочитан (режим 2)! Найдено ' + data2.length + ' строк. Смотрите консоль.');
-                    resolve({ count: data2.length, type: 'test' });
-                } else {
-                    alert('❌ Файл пуст! В нём нет данных. Проверьте файл в Excel.');
+                if (data.length === 0) {
                     reject('Файл пуст');
+                    return;
                 }
+
+                console.log('📄 Первая строка:', JSON.stringify(data[0]));
+
+                let storeName = '';
+                let mapped = [];
+
+                // === ОБРАБОТКА В ЗАВИСИМОСТИ ОТ ТИПА ===
+                switch (type) {
+                    case 'orders':
+                        storeName = 'orders';
+                        
+                        // Ваша структура (по порядку):
+                        // 0 - Бренд
+                        // 1 - Неделя года
+                        // 2 - День
+                        // 3 - Артикул продавца
+                        // 4 - Выкупили, шт.
+                        // 5 - К перечислению за товар, руб.
+                        // 6 - Заказано, шт.
+                        // 7 - Сумма заказов минус комиссия WB, руб.
+                        
+                        const keys = Object.keys(data[0]);
+                        console.log('📄 Заголовки:', keys);
+                        
+                        const k0 = keys[0];
+                        const k1 = keys[1];
+                        const k2 = keys[2];
+                        const k3 = keys[3];
+                        const k4 = keys[4];
+                        const k5 = keys[5];
+                        const k6 = keys[6];
+                        const k7 = keys[7];
+                        
+                        const getVal = (row, key) => {
+                            if (!row) return '';
+                            const val = row[key];
+                            if (val === undefined || val === null) return '';
+                            return String(val).trim();
+                        };
+                        
+                        const parseNum = (val) => {
+                            if (val === undefined || val === null || val === '') return 0;
+                            const str = String(val).replace(/\s/g, '').replace(',', '.');
+                            const num = parseFloat(str);
+                            return isNaN(num) ? 0 : num;
+                        };
+                        
+                        mapped = [];
+                        
+                        for (let i = 0; i < data.length; i++) {
+                            const row = data[i];
+                            
+                            const brand = getVal(row, k0);
+                            const week = parseInt(getVal(row, k1)) || 0;
+                            const dateRaw = getVal(row, k2);
+                            const article = getVal(row, k3);
+                            const delivered = parseInt(getVal(row, k4)) || 0;
+                            const transfer = parseNum(getVal(row, k5));
+                            const orders = parseInt(getVal(row, k6)) || 0;
+                            const amount = parseNum(getVal(row, k7));
+                            
+                            if (!article && orders === 0 && delivered === 0) continue;
+                            
+                            let finalArticle = article;
+                            if (!finalArticle) finalArticle = 'Товар_' + i;
+                            
+                            // Парсим дату
+                            let dateStr = '';
+                            if (dateRaw) {
+                                const match = dateRaw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+                                if (match) {
+                                    dateStr = match[1] + '.' + match[2] + '.' + match[3];
+                                } else {
+                                    // Пробуем другие форматы
+                                    const d = new Date(dateRaw);
+                                    if (!isNaN(d.getTime())) {
+                                        dateStr = formatDate(d);
+                                    } else {
+                                        dateStr = formatDate(new Date());
+                                    }
+                                }
+                            } else {
+                                dateStr = formatDate(new Date());
+                            }
+                            
+                            mapped.push({
+                                id: Date.now() + i + Math.random(),
+                                article: finalArticle,
+                                brand: brand,
+                                week: week,
+                                date: dateStr,
+                                orders: orders,
+                                delivered: delivered,
+                                amount: amount,
+                                transfer: transfer,
+                                wbArticle: '',
+                                barcode: '',
+                                size: '',
+                                warehouse: '',
+                                stock: 0,
+                                name: finalArticle
+                            });
+                        }
+                        
+                        console.log('✅ Обработано заказов:', mapped.length);
+                        break;
+
+                    case 'nomenclature':
+                        storeName = 'nomenclature';
+                        // ... код для номенклатуры (оставляем как было)
+                        mapped = data.map((row, i) => {
+                            const keys = Object.keys(row);
+                            const colFull = keys.find(k => /Артикул_полный|полный артикул|full_article|full/i.test(k));
+                            const colSize = keys.find(k => /Размер|size|SZ|размер/i.test(k));
+                            const colBase = keys.find(k => /База_артикула|база артикула|base_article|base/i.test(k));
+                            const colCategory = keys.find(k => /Категория|category|кат/i.test(k));
+                            const colWb = keys.find(k => /Артикул_WB|артикул wb|wb_article|wb/i.test(k));
+                            const colBarcode = keys.find(k => /Баркод|barcode|bar|штрих|штрихкод/i.test(k));
+                            const colTnved = keys.find(k => /ТН_ВЭД|тн вэд|tnved|вэд/i.test(k));
+
+                            const fullArticle = String(row[colFull] || row[keys[0]] || '');
+                            const size = String(row[colSize] || row[keys[1]] || '');
+                            const baseArticle = String(row[colBase] || row[keys[2]] || '');
+                            const category = String(row[colCategory] || row[keys[3]] || detectCategory(fullArticle));
+                            const wbArticle = String(row[colWb] || row[keys[4]] || '');
+                            const barcode = String(row[colBarcode] || row[keys[5]] || '');
+                            const tnved = String(row[colTnved] || row[keys[6]] || '');
+
+                            let color = '';
+                            const parts = fullArticle.split('_');
+                            if (parts.length >= 2) {
+                                for (let p = 0; p < parts.length; p++) {
+                                    const part = parts[p];
+                                    if (!/^\d+$/.test(part) && !/^[А-Я]$/i.test(part) && !/^[A-Z]$/i.test(part)) {
+                                        color = part;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            return {
+                                id: Date.now() + i + Math.random(),
+                                article: fullArticle,
+                                modelArticle: fullArticle,
+                                baseArticle: baseArticle || getBaseArticle(fullArticle),
+                                size: size,
+                                color: color,
+                                category: category,
+                                gtin: '',
+                                wbArticle: wbArticle,
+                                barcode: barcode,
+                                fabric: '',
+                                composition: '',
+                                tnved: tnved
+                            };
+                        });
+                        break;
+
+                    case 'storage':
+                        storeName = 'storage';
+                        // ... код для остатков (оставляем как было)
+                        mapped = data.map((row, i) => {
+                            const keys = Object.keys(row);
+                            const colSeller = keys.find(k => /Артикул продавца|артикул продавца|seller_article|артикул продав/i.test(k));
+                            const colSize = keys.find(k => /Размер вещи|размер вещи|size|размер/i.test(k));
+                            const colTotal = keys.find(k => /Всего находится на складах|всего находится|total_stock|всего на складах/i.test(k));
+
+                            const article = String(row[colSeller] || row[keys[0]] || '');
+                            const size = String(row[colSize] || row[keys[1]] || '');
+                            const total = parseInt(row[colTotal]) || 0;
+
+                            return {
+                                id: Date.now() + i + Math.random(),
+                                article: article,
+                                size: size,
+                                available: total,
+                                inTransit: 0,
+                                returnTransit: 0,
+                                warehouses: {},
+                                total: total,
+                                date: formatDate(new Date())
+                            };
+                        });
+                        break;
+
+                    default:
+                        reject('Неизвестный тип данных');
+                        return;
+                }
+
+                if (mapped.length === 0) {
+                    reject('Нет данных для импорта');
+                    return;
+                }
+
+                // === СОХРАНЯЕМ В БАЗУ ===
+                await dbClear(storeName);
+                for (const item of mapped) {
+                    await dbSave(storeName, item);
+                }
+
+                APP.data[storeName] = await dbGetAll(storeName);
                 
+                console.log('✅ Импорт завершён! Сохранено:', mapped.length, 'записей');
+                alert('✅ Импортировано ' + mapped.length + ' записей!');
+                resolve({ count: mapped.length, type });
+
             } catch (err) {
                 console.error('❌ Ошибка:', err);
-                alert('❌ Ошибка чтения: ' + err.message);
+                alert('❌ Ошибка: ' + err.message);
                 reject(err.message);
             }
         };
@@ -2654,7 +2826,6 @@ async function importData(file, type) {
             reject('Ошибка чтения файла');
         };
 
-        // Читаем как ArrayBuffer для Excel
         reader.readAsArrayBuffer(file);
     });
 }
