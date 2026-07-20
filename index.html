@@ -4210,180 +4210,534 @@
             }
         });
     }
-// ================================================================
-// 22. ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
-// ================================================================
+    // ================================================================
+    // 22. НАВИГАЦИЯ (ДОЛЖНА БЫТЬ ОПРЕДЕЛЕНА ДО ВЫЗОВА)
+    // ================================================================
 
-async function init() {
-    console.log('🚀 BELTANEE STORE® v3.0');
-    console.log('🤖 AI-ассистент активен');
-    console.log('📦 Умная аналитика для WB');
-
-    // Загружаем данные
-    await loadAllData();
-
-    // Навигация
-    setupNavigation();
-
-    // Поиск
-    setupSearch();
-
-    // AI
-    setupAI();
-
-    // Импорт
-    setupImport();
-
-    // Обновление
-    document.getElementById('refreshBtn').addEventListener('click', async () => {
-        await loadAllData();
-        refreshCurrentPage();
-    });
-
-    // Тема
-    document.getElementById('themeToggle').addEventListener('click', () => {
-        APP.settings.darkTheme = !APP.settings.darkTheme;
-        applySettings();
-        dbSave('settings', { key: 'darkTheme', value: APP.settings.darkTheme });
-    });
-
-    // Сохранение настроек
-    document.getElementById('settingsSaveBtn').addEventListener('click', saveSettings);
-
-    // Новая поставка
-    document.getElementById('newSupplyBtn').addEventListener('click', async () => {
-        if (supplyCart.length === 0) {
-            alert('Добавьте товары в корзину');
-            return;
-        }
-        const name = prompt('Введите название поставки:') || 'Поставка #' + Date.now();
-        const planning = {
-            id: Date.now(),
-            name: name,
-            date: formatDate(new Date()),
-            items: supplyCart.length,
-            weight: supplyCart.length * 0.5,
-            status: 'Запланировано',
-            cart: [...supplyCart]
-        };
-        await dbSave('planning', planning);
-        APP.data.planning = await dbGetAll('planning');
-        supplyCart = [];
-        updateSupplyCart();
-        renderPlanning('planned');
-        alert('✅ Поставка создана! Перейдите в раздел "Планирование"');
-    });
-
-    // Создание поставки из конструктора
-    document.getElementById('createSupplyBtn').addEventListener('click', () => {
-        document.getElementById('newSupplyBtn').click();
-    });
-
-    // Планирование — вкладки
-    document.querySelectorAll('[data-plan]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('[data-plan]').forEach(b => b.className = 'btn btn-secondary btn-sm');
-            btn.className = 'btn btn-primary btn-sm';
-            APP.ui.currentPlan = btn.dataset.plan;
-            renderPlanning(APP.ui.currentPlan);
+    function setupNavigation() {
+        document.querySelectorAll('.menu-item:not(.disabled)').forEach(item => {
+            item.addEventListener('click', () => {
+                const page = item.dataset.page;
+                if (page) navigateTo(page);
+            });
         });
-    });
-
-    // Склад — вкладки
-    document.querySelectorAll('[data-warehouse]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('[data-warehouse]').forEach(b => b.className = 'btn btn-secondary btn-sm');
-            btn.className = 'btn btn-primary btn-sm';
-            APP.ui.currentWarehouse = parseInt(btn.dataset.warehouse);
-            renderWarehouse(APP.ui.currentWarehouse);
-        });
-    });
-
-    // График
-    document.querySelectorAll('.chart-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            APP.ui.currentPeriod = btn.dataset.period;
-            renderChart(APP.ui.currentPeriod);
-        });
-    });
-
-    // Карточки
-    document.getElementById('cardsSearchBtn').addEventListener('click', () => {
-        renderCards(document.getElementById('cardsSearch').value);
-    });
-    document.getElementById('cardsSearch').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') document.getElementById('cardsSearchBtn').click();
-    });
-    document.getElementById('cardsClearBtn').addEventListener('click', () => {
-        document.getElementById('cardsSearch').value = '';
-        renderCards('');
-    });
-
-    // Аналитика
-    document.getElementById('analyticsSearchBtn').addEventListener('click', () => {
-        renderAnalytics(document.getElementById('analyticsSearch').value);
-    });
-    document.getElementById('analyticsSearch').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') document.getElementById('analyticsSearchBtn').click();
-    });
-
-    // Реклама
-    document.getElementById('refreshAdvBtn').addEventListener('click', renderAdvertising);
-    document.getElementById('hideThinkCheck').addEventListener('change', (e) => {
-        document.getElementById('thinkContent').style.display = e.target.checked ? 'none' : 'block';
-    });
-    document.getElementById('hideAllCheck').addEventListener('change', (e) => {
-        document.getElementById('allProductsContent').style.display = e.target.checked ? 'none' : 'block';
-    });
-    document.getElementById('allSearchBtn').addEventListener('click', () => {
-        const data = generateAdvertisingData();
-        renderAllProducts(data, document.getElementById('allSearchInput').value);
-    });
-    document.getElementById('allSearchInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') document.getElementById('allSearchBtn').click();
-    });
-    document.getElementById('allClearBtn').addEventListener('click', () => {
-        document.getElementById('allSearchInput').value = '';
-        const data = generateAdvertisingData();
-        renderAllProducts(data);
-    });
-
-    // Отчёты
-    document.getElementById('reportsRefresh').addEventListener('click', renderReports);
-    document.getElementById('planningRefresh').addEventListener('click', () => renderPlanning(APP.ui.currentPlan));
-
-    // Модалки
-    document.getElementById('importModalClose').addEventListener('click', () => {
-        document.getElementById('importModal').classList.remove('active');
-    });
-    document.getElementById('cardModalClose').addEventListener('click', closeCardModal);
-    document.getElementById('cardModal').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeCardModal();
-    });
-
-    // Импорт
-    document.getElementById('importBtn').addEventListener('click', () => {
-        document.getElementById('importModal').classList.add('active');
-    });
-
-    // Загрузка данных
-    updateStatus('info', 'Загрузка завершена');
-    refreshCurrentPage();
-
-    // Автообновление каждые 5 минут
-    setInterval(async () => {
-        console.log('🔄 Автообновление...');
-        await loadAllData();
-        refreshCurrentPage();
-    }, 5 * 60 * 1000);
-
-    console.log('✅ Система готова к работе');
-}
+    }
 
     // ================================================================
-    // 23. ЗАПУСК
+    // 23. НАСТРОЙКА ИМПОРТА
+    // ================================================================
+
+    function setupImport() {
+        const dropZone = document.getElementById('importDropZone');
+        const fileInput = document.getElementById('importFileInput');
+        const confirmBtn = document.getElementById('importConfirmBtn');
+        const preview = document.getElementById('importPreview');
+        let selectedFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                selectedFile = e.dataTransfer.files[0];
+                showImportPreview(selectedFile);
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                selectedFile = fileInput.files[0];
+                showImportPreview(selectedFile);
+            }
+        });
+
+        function showImportPreview(file) {
+            preview.style.display = 'block';
+            preview.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span>📄</span>
+                    <div>
+                        <div style="font-weight:600;">${file.name}</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        confirmBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                alert('Выберите файл для импорта');
+                return;
+            }
+
+            const type = document.getElementById('importType').value;
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = '⏳ Импорт...';
+
+            try {
+                await importData(selectedFile, type);
+                alert(`✅ Импортировано ${selectedFile.name}`);
+                document.getElementById('importModal').classList.remove('active');
+                selectedFile = null;
+                preview.style.display = 'none';
+                fileInput.value = '';
+                await loadAllData();
+                refreshCurrentPage();
+            } catch (err) {
+                alert('❌ Ошибка: ' + err);
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = '✅ Импортировать';
+            }
+        });
+    }
+
+    // ================================================================
+    // 24. НАВИГАЦИЯ (функция перехода)
+    // ================================================================
+
+    function navigateTo(page) {
+        // Меню
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+        const menuItem = document.querySelector(`.menu-item[data-page="${page}"]`);
+        if (menuItem) menuItem.classList.add('active');
+
+        // Страницы
+        document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+        const pageEl = document.getElementById('page-' + page);
+        if (pageEl) pageEl.classList.add('active');
+
+        APP.ui.currentPage = page;
+
+        // Обновляем содержимое
+        switch (page) {
+            case 'dashboard':
+                updateDashboard();
+                renderChart(APP.ui.currentPeriod);
+                break;
+            case 'advertising':
+                renderAdvertising();
+                break;
+            case 'cards':
+                renderCards('');
+                break;
+            case 'storage':
+                renderWarehouse(APP.ui.currentWarehouse);
+                break;
+            case 'supplies':
+                renderSupplies();
+                break;
+            case 'planning':
+                renderPlanning(APP.ui.currentPlan);
+                break;
+            case 'analytics':
+                renderAnalytics();
+                break;
+            case 'reports':
+                renderReports();
+                break;
+            case 'settings':
+                renderSettings();
+                break;
+            case 'learning':
+                renderLearning();
+                break;
+        }
+    }
+
+    // ================================================================
+    // 25. ОБНОВЛЕНИЕ ТЕКУЩЕЙ СТРАНИЦЫ
+    // ================================================================
+
+    function refreshCurrentPage() {
+        navigateTo(APP.ui.currentPage);
+    }
+
+    // ================================================================
+    // 26. НАСТРОЙКА ПОИСКА
+    // ================================================================
+
+    function setupSearch() {
+        const input = document.getElementById('searchInput');
+        const results = document.getElementById('searchResults');
+        const clear = document.getElementById('searchClear');
+
+        function performSearch(query) {
+            if (!query || query.trim() === '') {
+                results.classList.remove('active');
+                clear.classList.remove('visible');
+                return;
+            }
+
+            clear.classList.add('visible');
+            const q = query.toLowerCase();
+            const items = [];
+
+            // Ищем в номенклатуре
+            APP.data.nomenclature.forEach(n => {
+                const article = n.article || n.fullArticle || '';
+                if (article.toLowerCase().includes(q)) {
+                    items.push({ id: article, title: article, subtitle: 'Товар', icon: '📦', page: 'cards' });
+                }
+            });
+
+            // Ищем в рекламе
+            const adv = generateAdvertisingData();
+            adv.forEach(a => {
+                if (a.article.toLowerCase().includes(q)) {
+                    items.push({ id: a.article, title: a.article, subtitle: 'Реклама ⭐' + a.score, icon: '📢', page: 'advertising' });
+                }
+            });
+
+            // Ищем на складе
+            APP.data.warehouse.forEach(w => {
+                if (w.article.toLowerCase().includes(q)) {
+                    items.push({ id: w.article, title: w.article, subtitle: 'Склад ' + (w.pallet || ''), icon: '📦', page: 'storage' });
+                }
+            });
+
+            const unique = [];
+            const seen = new Set();
+            items.forEach(item => {
+                if (!seen.has(item.id)) {
+                    seen.add(item.id);
+                    unique.push(item);
+                }
+            });
+
+            unique.slice(0, 10);
+
+            if (unique.length === 0) {
+                results.innerHTML = '<div class="search-result-empty">❌ Ничего не найдено</div>';
+                results.classList.add('active');
+                return;
+            }
+
+            let html = '';
+            unique.slice(0, 10).forEach(item => {
+                html += `
+                    <div class="search-result-item" data-id="${item.id}" data-page="${item.page}" style="padding:8px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;border-left:3px solid transparent;">
+                        <span>${item.icon}</span>
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">${item.title}</div>
+                            <div style="font-size:12px;color:var(--text-secondary);">${item.subtitle}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            results.innerHTML = html;
+            results.classList.add('active');
+
+            results.querySelectorAll('.search-result-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const page = el.dataset.page;
+                    const id = el.dataset.id;
+                    navigateTo(page);
+                    if (page === 'cards') {
+                        document.getElementById('cardsSearch').value = id;
+                        renderCards(id);
+                    }
+                    if (page === 'advertising') {
+                        document.getElementById('allSearchInput').value = id;
+                        renderAdvertising();
+                    }
+                    results.classList.remove('active');
+                    input.value = '';
+                    clear.classList.remove('visible');
+                });
+            });
+        }
+
+        input.addEventListener('input', () => performSearch(input.value));
+        clear.addEventListener('click', () => {
+            input.value = '';
+            results.classList.remove('active');
+            clear.classList.remove('visible');
+        });
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('globalSearch').contains(e.target)) {
+                results.classList.remove('active');
+            }
+        });
+    }
+
+    // ================================================================
+    // 27. НАСТРОЙКА AI-АССИСТЕНТА
+    // ================================================================
+
+    function setupAI() {
+        const fab = document.getElementById('aiFab');
+        const chat = document.getElementById('aiChat');
+        const close = document.getElementById('aiClose');
+        const input = document.getElementById('aiInput');
+        const send = document.getElementById('aiSend');
+        const messages = document.getElementById('aiMessages');
+
+        fab.addEventListener('click', () => {
+            chat.classList.toggle('active');
+        });
+
+        close.addEventListener('click', () => {
+            chat.classList.remove('active');
+        });
+
+        function addMessage(text, isUser = false) {
+            const div = document.createElement('div');
+            div.className = 'msg ' + (isUser ? 'user' : 'ai');
+            if (!isUser) {
+                div.innerHTML = `<span class="msg-icon">🤖</span> ${text}`;
+            } else {
+                div.textContent = text;
+            }
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function getAIResponse(query) {
+            const q = query.toLowerCase();
+
+            // Статистика
+            if (q.includes('сколько') || q.includes('статистик') || q.includes('товар')) {
+                const total = APP.data.nomenclature.length;
+                const orders = APP.data.orders.reduce((s, o) => s + (o.orders || 0), 0);
+                const stock = APP.data.storage.reduce((s, o) => s + (o.available || 0), 0);
+                return `📊 Текущая статистика:\n• Товаров: ${formatNumber(total)}\n• Заказов всего: ${formatNumber(orders)}\n• Остаток на складах: ${formatNumber(stock)} шт\n• Загружено данных: ${formatDate(new Date())}`;
+            }
+
+            // Чек-лист
+            if (q.includes('чек') || q.includes('сегодня') || q.includes('сделать')) {
+                const planning = APP.data.planning || [];
+                const today = formatDate(new Date());
+                const tasks = planning.filter(p => p.date === today && p.status !== 'Отгружено');
+                if (tasks.length === 0) return '✅ На сегодня задач нет. Отдыхайте!';
+                return `📋 Чек-лист на сегодня:\n${tasks.map((t, i) => `${i+1}. Поставка #${t.id} — ${t.status}`).join('\n')}`;
+            }
+
+            // Проблемы
+            if (q.includes('проблем') || q.includes('критич') || q.includes('красн')) {
+                const adv = generateAdvertisingData();
+                const critical = adv.filter(a => a.stock < 5 && a.orders > 0);
+                if (critical.length === 0) return '✅ Критических проблем нет. Все товары в порядке!';
+                return `🚨 Товары с критическими проблемами:\n${critical.map(a => `• ${a.article} — остаток ${formatNumber(a.stock)} шт, заказов ${formatNumber(a.orders)}`).join('\n')}`;
+            }
+
+            // Поставка
+            if (q.includes('поставк') || q.includes('собрать')) {
+                return `📦 Как собрать поставку:\n1. Перейдите в раздел "Поставки"\n2. Используйте конструктор или поиск\n3. Добавляйте товары в корзину\n4. Нажмите "Сформировать поставку"\n5. Отслеживайте статус в "Планирование"`;
+            }
+
+            // Общее
+            return `Я вас понял. Вот что я могу:\n• 📊 Показать статистику\n• ✅ Сгенерировать чек-лист\n• 🚨 Найти проблемные товары\n• 📦 Объяснить, как собрать поставку\n\nЗадайте конкретный вопрос!`;
+        }
+
+        function handleAI() {
+            const text = input.value.trim();
+            if (!text) return;
+            addMessage(text, true);
+            input.value = '';
+
+            const response = getAIResponse(text);
+            setTimeout(() => addMessage(response), 500);
+        }
+
+        send.addEventListener('click', handleAI);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAI();
+        });
+
+        // Быстрые действия
+        document.querySelectorAll('.ai-quick-actions button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                input.value = btn.dataset.question;
+                handleAI();
+            });
+        });
+    }
+
+    // ================================================================
+    // 28. ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
+    // ================================================================
+
+    async function init() {
+        console.log('🚀 BELTANEE STORE® v3.0');
+        console.log('🤖 AI-ассистент активен');
+        console.log('📦 Умная аналитика для WB');
+
+        // Загружаем данные
+        await loadAllData();
+
+        // Навигация
+        setupNavigation();
+
+        // Поиск
+        setupSearch();
+
+        // AI
+        setupAI();
+
+        // Импорт
+        setupImport();
+
+        // Обновление
+        document.getElementById('refreshBtn').addEventListener('click', async () => {
+            await loadAllData();
+            refreshCurrentPage();
+        });
+
+        // Тема
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            APP.settings.darkTheme = !APP.settings.darkTheme;
+            applySettings();
+            dbSave('settings', { key: 'darkTheme', value: APP.settings.darkTheme });
+        });
+
+        // Сохранение настроек
+        document.getElementById('settingsSaveBtn').addEventListener('click', saveSettings);
+
+        // Новая поставка
+        document.getElementById('newSupplyBtn').addEventListener('click', async () => {
+            if (supplyCart.length === 0) {
+                alert('Добавьте товары в корзину');
+                return;
+            }
+            const name = prompt('Введите название поставки:') || 'Поставка #' + Date.now();
+            const planning = {
+                id: Date.now(),
+                name: name,
+                date: formatDate(new Date()),
+                items: supplyCart.length,
+                weight: supplyCart.length * 0.5,
+                status: 'Запланировано',
+                cart: [...supplyCart]
+            };
+            await dbSave('planning', planning);
+            APP.data.planning = await dbGetAll('planning');
+            supplyCart = [];
+            updateSupplyCart();
+            renderPlanning('planned');
+            alert('✅ Поставка создана! Перейдите в раздел "Планирование"');
+        });
+
+        // Создание поставки из конструктора
+        document.getElementById('createSupplyBtn').addEventListener('click', () => {
+            document.getElementById('newSupplyBtn').click();
+        });
+
+        // Планирование — вкладки
+        document.querySelectorAll('[data-plan]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-plan]').forEach(b => b.className = 'btn btn-secondary btn-sm');
+                btn.className = 'btn btn-primary btn-sm';
+                APP.ui.currentPlan = btn.dataset.plan;
+                renderPlanning(APP.ui.currentPlan);
+            });
+        });
+
+        // Склад — вкладки
+        document.querySelectorAll('[data-warehouse]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-warehouse]').forEach(b => b.className = 'btn btn-secondary btn-sm');
+                btn.className = 'btn btn-primary btn-sm';
+                APP.ui.currentWarehouse = parseInt(btn.dataset.warehouse);
+                renderWarehouse(APP.ui.currentWarehouse);
+            });
+        });
+
+        // График
+        document.querySelectorAll('.chart-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                APP.ui.currentPeriod = btn.dataset.period;
+                renderChart(APP.ui.currentPeriod);
+            });
+        });
+
+        // Карточки
+        document.getElementById('cardsSearchBtn').addEventListener('click', () => {
+            renderCards(document.getElementById('cardsSearch').value);
+        });
+        document.getElementById('cardsSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('cardsSearchBtn').click();
+        });
+        document.getElementById('cardsClearBtn').addEventListener('click', () => {
+            document.getElementById('cardsSearch').value = '';
+            renderCards('');
+        });
+
+        // Аналитика
+        document.getElementById('analyticsSearchBtn').addEventListener('click', () => {
+            renderAnalytics(document.getElementById('analyticsSearch').value);
+        });
+        document.getElementById('analyticsSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('analyticsSearchBtn').click();
+        });
+
+        // Реклама
+        document.getElementById('refreshAdvBtn').addEventListener('click', renderAdvertising);
+        document.getElementById('hideThinkCheck').addEventListener('change', (e) => {
+            document.getElementById('thinkContent').style.display = e.target.checked ? 'none' : 'block';
+        });
+        document.getElementById('hideAllCheck').addEventListener('change', (e) => {
+            document.getElementById('allProductsContent').style.display = e.target.checked ? 'none' : 'block';
+        });
+        document.getElementById('allSearchBtn').addEventListener('click', () => {
+            const data = generateAdvertisingData();
+            renderAllProducts(data, document.getElementById('allSearchInput').value);
+        });
+        document.getElementById('allSearchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('allSearchBtn').click();
+        });
+        document.getElementById('allClearBtn').addEventListener('click', () => {
+            document.getElementById('allSearchInput').value = '';
+            const data = generateAdvertisingData();
+            renderAllProducts(data);
+        });
+
+        // Отчёты
+        document.getElementById('reportsRefresh').addEventListener('click', renderReports);
+        document.getElementById('planningRefresh').addEventListener('click', () => renderPlanning(APP.ui.currentPlan));
+
+        // Модалки
+        document.getElementById('importModalClose').addEventListener('click', () => {
+            document.getElementById('importModal').classList.remove('active');
+        });
+        document.getElementById('cardModalClose').addEventListener('click', closeCardModal);
+        document.getElementById('cardModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeCardModal();
+        });
+
+        // Импорт
+        document.getElementById('importBtn').addEventListener('click', () => {
+            document.getElementById('importModal').classList.add('active');
+        });
+
+        // Загрузка данных
+        updateStatus('info', 'Загрузка завершена');
+        refreshCurrentPage();
+
+        // Автообновление каждые 5 минут
+        setInterval(async () => {
+            console.log('🔄 Автообновление...');
+            await loadAllData();
+            refreshCurrentPage();
+        }, 5 * 60 * 1000);
+
+        console.log('✅ Система готова к работе');
+    }
+
+    // ================================================================
+    // 29. ЗАПУСК
     // ================================================================
 
     document.addEventListener('DOMContentLoaded', init);
