@@ -2674,46 +2674,110 @@
         });
         break;
 
-    case 'orders':
-        storeName = 'orders';
-        mapped = data.map((row, i) => {
-            const keys = Object.keys(row);
-            
-            // Ищем колонки
-            const colName = keys.find(k => /Наименование|наименование|name|название/i.test(k));
-            const colSeller = keys.find(k => /Артикул продавца|артикул продавца|seller_article|артикул продав/i.test(k));
-            const colWb = keys.find(k => /Артикул WB|артикул wb|wb_article|wb/i.test(k));
-            const colBarcode = keys.find(k => /Баркод|barcode|bar|штрих|штрихкод/i.test(k));
-            const colSize = keys.find(k => /Размер|size|SZ|размер/i.test(k));
-            const colWarehouse = keys.find(k => /Склад|склад|warehouse|wh/i.test(k));
-            const colOrders = keys.find(k => /шт\.|шт|заказано|orders|qty|количество|кол-во/i.test(k) && !/выкуп/i.test(k));
-            const colAmount = keys.find(k => /Сумма заказов|сумма|amount|sum/i.test(k));
-            const colDelivered = keys.find(k => /Выкупили|выкупили|delivered|выкуп/i.test(k));
-            const colTransfer = keys.find(k => /К перечислению|перечислению|transfer|к перечисл/i.test(k));
-            const colStock = keys.find(k => /Текущий остаток|остаток|stock|остат/i.test(k));
+   case 'orders':
+    storeName = 'orders';
+    
+    console.log('📄 Заказы: структура распознана, строк:', data.length);
+    console.log('📄 Первая строка:', JSON.stringify(data[0]));
+    
+    mapped = data.map((row, i) => {
+        const keys = Object.keys(row);
+        
+        // === НОВАЯ СТРУКТУРА ===
+        // A - Бренд (не используем)
+        // B - Неделя года (не используем)
+        // C - День (ДАТА!)
+        // D - Артикул продав
+        // E - Выкупили, шт.
+        // F - К перечислению
+        // G - Заказано, шт.
+        // H - Сумма заказов
+        
+        // Ищем колонки по ключевым словам
+        const colBrand = keys.find(k => /Бренд|бренд|brand/i.test(k));
+        const colWeek = keys.find(k => /Неделя|неделя|week/i.test(k));
+        const colDate = keys.find(k => /День|день|date|дата|day/i.test(k));
+        const colSeller = keys.find(k => /Артикул продав|артикул продав|seller|продав/i.test(k));
+        const colDelivered = keys.find(k => /Выкупили|выкупили|delivered|выкуп/i.test(k));
+        const colTransfer = keys.find(k => /К перечислен|перечислен|transfer|перечисл/i.test(k));
+        const colOrders = keys.find(k => /Заказано|заказано|orders|заказ/i.test(k));
+        const colAmount = keys.find(k => /Сумма заказов|сумма заказов|amount|sum|сумма/i.test(k));
 
-            // Берем артикул (приоритет: Артикул продавца > Артикул WB > Наименование)
-            let article = String(row[colSeller] || '');
-            if (!article) article = String(row[colWb] || '');
-            if (!article) article = String(row[colName] || '');
+        // Парсим дату
+        let dateStr = '';
+        if (colDate && row[colDate]) {
+            const rawDate = String(row[colDate]).trim();
+            console.log('📅 Сырая дата:', rawDate);
+            // Пробуем распарсить (01.07.2026)
+            const match = rawDate.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+            if (match) {
+                dateStr = match[1] + '.' + match[2] + '.' + match[3];
+                console.log('✅ Дата распознана:', dateStr);
+            } else {
+                // Пробуем другие форматы
+                const parsed = parseDate(rawDate);
+                if (parsed) {
+                    dateStr = formatDate(parsed);
+                    console.log('✅ Дата распознана (альт):', dateStr);
+                } else {
+                    dateStr = formatDate(new Date());
+                    console.log('⚠️ Дата не распознана, ставим сегодня:', dateStr);
+                }
+            }
+        } else {
+            dateStr = formatDate(new Date());
+            console.log('⚠️ Колонка с датой не найдена, ставим сегодня:', dateStr);
+        }
 
-            return {
-                id: Date.now() + i + Math.random(),
-                article: article,
-                wbArticle: String(row[colWb] || ''),
-                barcode: String(row[colBarcode] || ''),
-                size: String(row[colSize] || ''),
-                warehouse: String(row[colWarehouse] || ''),
-                orders: parseInt(row[colOrders]) || 0,
-                amount: parseFloat(row[colAmount]) || 0,
-                delivered: parseInt(row[colDelivered]) || 0,
-                transfer: parseFloat(row[colTransfer]) || 0,
-                stock: parseInt(row[colStock]) || 0,
-                date: formatDate(new Date()),
-                name: String(row[colName] || '')
-            };
-        });
-        break;
+        // Парсим числа с запятой
+        const parseNumber = (val) => {
+            if (!val && val !== 0) return 0;
+            const str = String(val).replace(/\s/g, '').replace(',', '.');
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num;
+        };
+
+        // Берем артикул
+        let article = String(row[colSeller] || '');
+        if (!article) article = String(row[keys[3]] || '');
+        if (!article) article = String(row[keys[2]] || '');
+
+        // Если артикул содержит "Beltanee" или начинается с цифры/буквы — оставляем
+        // Убираем возможные пробелы в конце
+        article = article.trim();
+
+        // Бренд
+        const brand = String(row[colBrand] || '').trim();
+
+        // Неделя
+        const week = parseInt(row[colWeek]) || 0;
+
+        return {
+            id: Date.now() + i + Math.random(),
+            article: article,
+            brand: brand,
+            week: week,
+            date: dateStr,
+            orders: parseInt(row[colOrders]) || 0,
+            delivered: parseInt(row[colDelivered]) || 0,
+            amount: parseNumber(row[colAmount]),
+            transfer: parseNumber(row[colTransfer]),
+            // Дополнительные поля (для совместимости)
+            wbArticle: '',
+            barcode: '',
+            size: '',
+            warehouse: '',
+            stock: 0,
+            name: article
+        };
+    });
+    
+    // Фильтруем пустые строки (где нет артикула и заказов)
+    mapped = mapped.filter(item => item.article && (item.orders > 0 || item.delivered > 0));
+    
+    console.log('✅ Заказы обработаны:', mapped.length, 'строк с данными');
+    
+    break;
 
     case 'storage':
         storeName = 'storage';
