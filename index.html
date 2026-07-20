@@ -2614,48 +2614,165 @@
                     let storeName = '';
                     let mapped = [];
 
-                    switch (type) {
-                        case 'nomenclature':
-                            storeName = 'nomenclature';
-                            mapped = data.map((row, i) => ({
-                                id: Date.now() + i,
-                                article: String(row['Артикул'] || row['article'] || row['ART'] || ''),
-                                barcode: String(row['Баркод'] || row['barcode'] || row['BAR'] || ''),
-                                size: String(row['Размер'] || row['size'] || row['SZ'] || ''),
-                                color: String(row['Цвет'] || row['color'] || row['COLOR'] || ''),
-                                tnved: String(row['ТН ВЭД'] || row['tnved'] || row['TNVED'] || ''),
-                                gtin: String(row['GTIN'] || row['gtin'] || ''),
-                                composition: String(row['Состав'] || row['composition'] || row['COMP'] || ''),
-                                category: detectCategory(String(row['Артикул'] || row['article'] || ''))
-                            }));
-                            break;
+                   switch (type) {
+    case 'nomenclature':
+        storeName = 'nomenclature';
+        mapped = data.map((row, i) => {
+            const keys = Object.keys(row);
+            
+            const colModel = keys.find(k => /Артикул_модели|артикул модели|model_article|model/i.test(k));
+            const colSize = keys.find(k => /Размер|size|SZ|размер/i.test(k));
+            const colFull = keys.find(k => /Артикул_полный|полный артикул|full_article|full/i.test(k));
+            const colBase = keys.find(k => /База_артикула|база артикула|base_article|base/i.test(k));
+            const colCategory = keys.find(k => /Категория|category|кат/i.test(k));
+            const colGtin = keys.find(k => /GTIN|gtin/i.test(k));
+            const colWb = keys.find(k => /Артикул_WB|артикул wb|wb_article|wb/i.test(k));
+            const colBarcode = keys.find(k => /Баркод|barcode|bar|штрих|штрихкод/i.test(k));
+            const colFabric = keys.find(k => /Ткань|fabric|тка/i.test(k));
+            const colComposition = keys.find(k => /Состав|composition|comp|сост/i.test(k));
+            const colTnved = keys.find(k => /ТН_ВЭД|тн вэд|tnved|вэд/i.test(k));
 
-                        case 'orders':
-                            storeName = 'orders';
-                            mapped = data.map((row, i) => ({
-                                id: Date.now() + i,
-                                article: String(row['Артикул'] || row['article'] || row['ART'] || ''),
-                                date: row['Дата'] || row['date'] || row['DATE'] || '',
-                                orders: parseInt(row['Заказы'] || row['orders'] || row['ORD'] || 0),
-                                amount: parseFloat(row['Сумма'] || row['amount'] || row['SUM'] || 0),
-                                delivered: parseInt(row['Выкупили'] || row['delivered'] || row['DEL'] || 0)
-                            }));
-                            break;
+            const modelArticle = String(row[colModel] || row[keys[0]] || '');
+            const size = String(row[colSize] || row[keys[1]] || '');
+            const fullArticle = String(row[colFull] || row[keys[2]] || modelArticle);
+            const baseArticle = String(row[colBase] || row[keys[3]] || '');
+            const category = String(row[colCategory] || row[keys[4]] || detectCategory(fullArticle || modelArticle));
+            const gtin = String(row[colGtin] || row[keys[5]] || '');
+            const wbArticle = String(row[colWb] || row[keys[6]] || '');
+            const barcode = String(row[colBarcode] || row[keys[7]] || '');
+            const fabric = String(row[colFabric] || row[keys[8]] || '');
+            const composition = String(row[colComposition] || row[keys[9]] || '');
+            const tnved = String(row[colTnved] || row[keys[10]] || '');
 
-                        case 'storage':
-                            storeName = 'storage';
-                            mapped = data.map((row, i) => ({
-                                id: Date.now() + i,
-                                article: String(row['Артикул'] || row['article'] || row['ART'] || ''),
-                                size: String(row['Размер'] || row['size'] || row['SZ'] || ''),
-                                available: parseInt(row['Доступно'] || row['available'] || row['AVAIL'] || 0)
-                            }));
-                            break;
-
-                        default:
-                            reject('Неизвестный тип данных');
-                            return;
+            let color = '';
+            const parts = fullArticle.split('_');
+            if (parts.length >= 2) {
+                for (let p = 0; p < parts.length; p++) {
+                    const part = parts[p];
+                    if (!/^\d+$/.test(part) && !/^[А-Я]$/i.test(part) && !/^[A-Z]$/i.test(part)) {
+                        color = part;
+                        break;
                     }
+                }
+            }
+
+            return {
+                id: Date.now() + i + Math.random(),
+                article: fullArticle || modelArticle,
+                modelArticle: modelArticle,
+                baseArticle: baseArticle || getBaseArticle(fullArticle),
+                size: size,
+                color: color,
+                category: category,
+                gtin: gtin,
+                wbArticle: wbArticle,
+                barcode: barcode,
+                fabric: fabric,
+                composition: composition,
+                tnved: tnved
+            };
+        });
+        break;
+
+    case 'orders':
+        storeName = 'orders';
+        mapped = data.map((row, i) => {
+            const keys = Object.keys(row);
+            
+            // Ищем колонки
+            const colName = keys.find(k => /Наименование|наименование|name|название/i.test(k));
+            const colSeller = keys.find(k => /Артикул продавца|артикул продавца|seller_article|артикул продав/i.test(k));
+            const colWb = keys.find(k => /Артикул WB|артикул wb|wb_article|wb/i.test(k));
+            const colBarcode = keys.find(k => /Баркод|barcode|bar|штрих|штрихкод/i.test(k));
+            const colSize = keys.find(k => /Размер|size|SZ|размер/i.test(k));
+            const colWarehouse = keys.find(k => /Склад|склад|warehouse|wh/i.test(k));
+            const colOrders = keys.find(k => /шт\.|шт|заказано|orders|qty|количество|кол-во/i.test(k) && !/выкуп/i.test(k));
+            const colAmount = keys.find(k => /Сумма заказов|сумма|amount|sum/i.test(k));
+            const colDelivered = keys.find(k => /Выкупили|выкупили|delivered|выкуп/i.test(k));
+            const colTransfer = keys.find(k => /К перечислению|перечислению|transfer|к перечисл/i.test(k));
+            const colStock = keys.find(k => /Текущий остаток|остаток|stock|остат/i.test(k));
+
+            // Берем артикул (приоритет: Артикул продавца > Артикул WB > Наименование)
+            let article = String(row[colSeller] || '');
+            if (!article) article = String(row[colWb] || '');
+            if (!article) article = String(row[colName] || '');
+
+            return {
+                id: Date.now() + i + Math.random(),
+                article: article,
+                wbArticle: String(row[colWb] || ''),
+                barcode: String(row[colBarcode] || ''),
+                size: String(row[colSize] || ''),
+                warehouse: String(row[colWarehouse] || ''),
+                orders: parseInt(row[colOrders]) || 0,
+                amount: parseFloat(row[colAmount]) || 0,
+                delivered: parseInt(row[colDelivered]) || 0,
+                transfer: parseFloat(row[colTransfer]) || 0,
+                stock: parseInt(row[colStock]) || 0,
+                date: formatDate(new Date()),
+                name: String(row[colName] || '')
+            };
+        });
+        break;
+
+    case 'storage':
+        storeName = 'storage';
+        mapped = data.map((row, i) => {
+            const keys = Object.keys(row);
+            
+            const colSeller = keys.find(k => /Артикул продавца|артикул продавца|seller_article|артикул продав/i.test(k));
+            const colSize = keys.find(k => /Размер вещи|размер вещи|size|размер/i.test(k));
+            const colInTransit = keys.find(k => /В пути до получателей|в пути до получателей|in_transit|в пути/i.test(k));
+            const colReturnTransit = keys.find(k => /В пути возвраты|возвраты|return_transit|возврат/i.test(k));
+            const colTotal = keys.find(k => /Всего находится на складах|всего находится|total_stock|всего на складах/i.test(k));
+            
+            // Ищем колонки со складами (от F до AE или AD)
+            const warehouseCols = [];
+            const warehouseNames = ['Коледино', 'Казань', 'Электросталь', 'Краснодар', 'Екатеринбург', 
+                'Тула', 'Невинномысск', 'Рязань', 'Хабаровск', 'Котовск', 'Самара', 'Волгоград', 
+                'Актобе', 'Владимир', 'Сарапул', 'Ереван', 'Шушары', 'Воронеж', 'Истра', 
+                'Владивосток', 'Пенза', 'Ташкент', 'Тверь'];
+            
+            keys.forEach(k => {
+                for (const name of warehouseNames) {
+                    if (k.includes(name)) {
+                        warehouseCols.push({ name: name, key: k });
+                        break;
+                    }
+                }
+            });
+
+            // Собираем детальные остатки по складам
+            const warehouses = {};
+            warehouseCols.forEach(w => {
+                const val = parseInt(row[w.key]) || 0;
+                if (val > 0) warehouses[w.name] = val;
+            });
+
+            const article = String(row[colSeller] || row[keys[0]] || '');
+            const size = String(row[colSize] || row[keys[1]] || '');
+            const total = parseInt(row[colTotal]) || 0;
+            const inTransit = parseInt(row[colInTransit]) || 0;
+            const returnTransit = parseInt(row[colReturnTransit]) || 0;
+
+            return {
+                id: Date.now() + i + Math.random(),
+                article: article,
+                size: size,
+                available: total,
+                inTransit: inTransit,
+                returnTransit: returnTransit,
+                warehouses: warehouses,
+                total: total,
+                date: formatDate(new Date())
+            };
+        });
+        break;
+
+    default:
+        reject('Неизвестный тип данных');
+        return;
+}
 
                     // Очищаем старые данные и сохраняем новые
                     await dbClear(storeName);
