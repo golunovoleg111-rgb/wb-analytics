@@ -2577,395 +2577,88 @@
     // ================================================================
     // 6. ИМПОРТ ДАННЫХ
     // ================================================================
-
-    async function importData(file, type) {
+async function importData(file, type) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
 
         reader.onload = async (e) => {
             try {
-                let data = [];
-                const fileName = file.name.toLowerCase();
-                const ext = fileName.split('.').pop();
-
                 console.log('========================================');
-                console.log('📄 Файл:', file.name);
-                console.log('📄 Расширение:', ext);
+                console.log('📄 ТЕСТОВОЕ ЧТЕНИЕ ФАЙЛА');
+                console.log('📄 Имя файла:', file.name);
                 console.log('📄 Размер:', file.size, 'байт');
-                console.log('📄 Тип данных:', type);
+                console.log('📄 Тип:', type);
 
-                // === JSON ===
-                if (ext === 'json') {
-                    try {
-                        data = JSON.parse(e.target.result);
-                        console.log('✅ JSON распознан, строк:', data.length);
-                    } catch (err) {
-                        reject('Ошибка парсинга JSON: ' + err.message);
-                        return;
-                    }
+                // Пробуем прочитать как Excel
+                const workbook = XLSX.read(e.target.result, { 
+                    type: 'array',
+                    cellDates: false
+                });
+                
+                console.log('📄 Листы в файле:', workbook.SheetNames);
+                
+                const sheetName = workbook.SheetNames[0];
+                console.log('📄 Использую лист:', sheetName);
+                
+                const sheet = workbook.Sheets[sheetName];
+                
+                // Пробуем прочитать в разных режимах
+                console.log('📄 Читаем с sheet_to_json...');
+                let data1 = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+                console.log('📄 Режим 1 (sheet_to_json):', data1.length, 'строк');
+                if (data1.length > 0) {
+                    console.log('📄 Первая строка:', JSON.stringify(data1[0]));
+                    console.log('📄 Ключи:', Object.keys(data1[0]));
                 }
-                // === CSV ===
-                else if (ext === 'csv') {
-                    const text = e.target.result;
-                    console.log('📄 CSV текст, длина:', text.length);
-                    
-                    let delimiter = ',';
-                    if (text.includes(';') && !text.includes(',')) {
-                        delimiter = ';';
-                    }
-                    if (text.includes('\t') && !text.includes(',') && !text.includes(';')) {
-                        delimiter = '\t';
-                    }
-                    console.log('📄 Разделитель:', delimiter === ',' ? 'запятая' : delimiter === ';' ? 'точка с запятой' : 'табуляция');
-
-                    const lines = text.split(/\r?\n/).filter(l => l.trim());
-                    console.log('📄 Строк в CSV:', lines.length);
-
-                    if (lines.length === 0) {
-                        reject('Файл пуст');
-                        return;
-                    }
-
-                    const headerLine = lines[0];
-                    const headers = headerLine.split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
-                    console.log('📄 Заголовки:', headers);
-
-                    const hasHeaders = headers.some(h => h && h.length > 0 && !/^[A-Z]+$/.test(h));
-                    
-                    let startRow = 0;
-                    let actualHeaders = headers;
-                    
-                    if (!hasHeaders || headers.length === 0 || headers[0] === '') {
-                        actualHeaders = headers.map((_, i) => String.fromCharCode(65 + i));
-                        startRow = 0;
-                        console.log('📄 Заголовков нет, генерируем:', actualHeaders);
-                    } else {
-                        startRow = 1;
-                        console.log('📄 Заголовки найдены');
-                    }
-
-                    for (let i = startRow; i < lines.length; i++) {
-                        const line = lines[i];
-                        if (!line.trim()) continue;
-                        
-                        const values = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
-                        const obj = {};
-                        actualHeaders.forEach((h, idx) => {
-                            obj[h] = values[idx] || '';
-                        });
-                        data.push(obj);
-                    }
-                    
-                    console.log('✅ CSV распознан, строк:', data.length);
+                
+                // Пробуем прочитать как массив массивов
+                console.log('📄 Читаем с sheet_to_json({header:1})...');
+                let data2 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                console.log('📄 Режим 2 (header:1):', data2.length, 'строк');
+                if (data2.length > 0) {
+                    console.log('📄 Первая строка (массив):', JSON.stringify(data2[0]));
+                    console.log('📄 Вторая строка (массив):', data2.length > 1 ? JSON.stringify(data2[1]) : 'нет');
                 }
-                // === Excel ===
-                else if (ext === 'xlsx' || ext === 'xls') {
-                    try {
-                        console.log('📄 Читаем Excel файл...');
-                        const workbook = XLSX.read(e.target.result, { 
-                            type: 'array',
-                            cellDates: false,
-                            dateNF: 'yyyy-mm-dd'
-                        });
-                        console.log('📄 Листы в Excel:', workbook.SheetNames);
-                        
-                        const sheetName = workbook.SheetNames[0];
-                        console.log('📄 Использую лист:', sheetName);
-                        
-                        const sheet = workbook.Sheets[sheetName];
-                        data = XLSX.utils.sheet_to_json(sheet, { 
-                            defval: '',
-                            raw: false
-                        });
-                        console.log('✅ Excel распознан, строк:', data.length);
-                        
-                        if (data.length > 0) {
-                            console.log('📄 Первая строка Excel:', JSON.stringify(data[0]));
-                            console.log('📄 Ключи (заголовки):', Object.keys(data[0]));
-                        } else {
-                            console.warn('⚠️ Excel пустой или нет данных на листе');
-                        }
-                    } catch (err) {
-                        console.error('❌ Ошибка парсинга Excel:', err);
-                        reject('Ошибка парсинга Excel: ' + err.message);
-                        return;
-                    }
+                
+                // Пробуем прочитать сырые данные
+                console.log('📄 Читаем с sheet_to_json({header:1, raw:true})...');
+                let data3 = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+                console.log('📄 Режим 3 (raw:true):', data3.length, 'строк');
+                if (data3.length > 0) {
+                    console.log('📄 Первая строка (сырая):', JSON.stringify(data3[0]));
                 }
-                else {
-                    reject('Неподдерживаемый формат файла. Используйте XLSX, CSV или JSON.');
-                    return;
+                
+                console.log('========================================');
+                
+                // Если данные есть — показываем их
+                if (data1.length > 0) {
+                    alert('✅ Файл прочитан! Найдено ' + data1.length + ' строк. Смотрите консоль (F12) для деталей.');
+                    resolve({ count: data1.length, type: 'test' });
+                } else if (data2.length > 0) {
+                    alert('✅ Файл прочитан (режим 2)! Найдено ' + data2.length + ' строк. Смотрите консоль.');
+                    resolve({ count: data2.length, type: 'test' });
+                } else {
+                    alert('❌ Файл пуст! В нём нет данных. Проверьте файл в Excel.');
+                    reject('Файл пуст');
                 }
-
-                // === ПРОВЕРКА: есть ли данные ===
-                if (!data || data.length === 0) {
-                    console.error('❌ data пустое!');
-                    reject('Файл пуст или не содержит данных. Проверьте: 1) есть ли данные в файле 2) правильный ли лист выбран');
-                    return;
-                }
-
-                // Проверяем, есть ли хоть какие-то значения
-                const hasValues = data.some(row => Object.values(row).some(v => v && String(v).trim()));
-                if (!hasValues) {
-                    console.error('❌ Все строки пустые!');
-                    reject('Файл содержит только пустые строки');
-                    return;
-                }
-
-                console.log('✅ Данные загружены, строк:', data.length);
-                console.log('📄 Пример первой строки:', JSON.stringify(data[0]));
-
-                // === СОХРАНЕНИЕ В ЗАВИСИМОСТИ ОТ ТИПА ===
-                let storeName = '';
-                let mapped = [];
-
-                switch (type) {
-                    case 'nomenclature':
-                        storeName = 'nomenclature';
-                        mapped = data.map((row, i) => {
-                            const keys = Object.keys(row);
-                            
-                            const colModel = keys.find(k => /Артикул_модели|артикул модели|model_article|model/i.test(k));
-                            const colSize = keys.find(k => /Размер|size|SZ|размер/i.test(k));
-                            const colFull = keys.find(k => /Артикул_полный|полный артикул|full_article|full/i.test(k));
-                            const colBase = keys.find(k => /База_артикула|база артикула|base_article|base/i.test(k));
-                            const colCategory = keys.find(k => /Категория|category|кат/i.test(k));
-                            const colGtin = keys.find(k => /GTIN|gtin/i.test(k));
-                            const colWb = keys.find(k => /Артикул_WB|артикул wb|wb_article|wb/i.test(k));
-                            const colBarcode = keys.find(k => /Баркод|barcode|bar|штрих|штрихкод/i.test(k));
-                            const colFabric = keys.find(k => /Ткань|fabric|тка/i.test(k));
-                            const colComposition = keys.find(k => /Состав|composition|comp|сост/i.test(k));
-                            const colTnved = keys.find(k => /ТН_ВЭД|тн вэд|tnved|вэд/i.test(k));
-
-                            const modelArticle = String(row[colModel] || row[keys[0]] || '');
-                            const size = String(row[colSize] || row[keys[1]] || '');
-                            const fullArticle = String(row[colFull] || row[keys[2]] || modelArticle);
-                            const baseArticle = String(row[colBase] || row[keys[3]] || '');
-                            const category = String(row[colCategory] || row[keys[4]] || detectCategory(fullArticle || modelArticle));
-                            const gtin = String(row[colGtin] || row[keys[5]] || '');
-                            const wbArticle = String(row[colWb] || row[keys[6]] || '');
-                            const barcode = String(row[colBarcode] || row[keys[7]] || '');
-                            const fabric = String(row[colFabric] || row[keys[8]] || '');
-                            const composition = String(row[colComposition] || row[keys[9]] || '');
-                            const tnved = String(row[colTnved] || row[keys[10]] || '');
-
-                            let color = '';
-                            const parts = fullArticle.split('_');
-                            if (parts.length >= 2) {
-                                for (let p = 0; p < parts.length; p++) {
-                                    const part = parts[p];
-                                    if (!/^\d+$/.test(part) && !/^[А-Я]$/i.test(part) && !/^[A-Z]$/i.test(part)) {
-                                        color = part;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            return {
-                                id: Date.now() + i + Math.random(),
-                                article: fullArticle || modelArticle,
-                                modelArticle: modelArticle,
-                                baseArticle: baseArticle || getBaseArticle(fullArticle),
-                                size: size,
-                                color: color,
-                                category: category,
-                                gtin: gtin,
-                                wbArticle: wbArticle,
-                                barcode: barcode,
-                                fabric: fabric,
-                                composition: composition,
-                                tnved: tnved
-                            };
-                        });
-                        break;
-
-                    case 'orders':
-                        storeName = 'orders';
-                        
-                        console.log('📥 ИМПОРТ ЗАКАЗОВ');
-                        console.log('📄 Получено строк из файла:', data.length);
-                        
-                        if (data.length === 0) {
-                            reject('Файл не содержит данных');
-                            return;
-                        }
-                        
-                        console.log('📄 ПЕРВАЯ СТРОКА:', JSON.stringify(data[0]));
-                        
-                        const allKeys = Object.keys(data[0]);
-                        console.log('📄 Заголовки:', allKeys);
-                        
-                        const key0 = allKeys[0] || 'col0';
-                        const key1 = allKeys[1] || 'col1';
-                        const key2 = allKeys[2] || 'col2';
-                        const key3 = allKeys[3] || 'col3';
-                        const key4 = allKeys[4] || 'col4';
-                        const key5 = allKeys[5] || 'col5';
-                        const key6 = allKeys[6] || 'col6';
-                        const key7 = allKeys[7] || 'col7';
-                        
-                        console.log('📄 Использую индексы:');
-                        console.log('  [0] →', key0, '=', data[0][key0]);
-                        console.log('  [1] →', key1, '=', data[0][key1]);
-                        console.log('  [2] →', key2, '=', data[0][key2]);
-                        console.log('  [3] →', key3, '=', data[0][key3]);
-                        console.log('  [4] →', key4, '=', data[0][key4]);
-                        console.log('  [5] →', key5, '=', data[0][key5]);
-                        console.log('  [6] →', key6, '=', data[0][key6]);
-                        console.log('  [7] →', key7, '=', data[0][key7]);
-                        
-                        const getVal = (row, key) => {
-                            if (!row) return '';
-                            const val = row[key];
-                            if (val === undefined || val === null) return '';
-                            return String(val).trim();
-                        };
-                        
-                        const parseNum = (val) => {
-                            if (val === undefined || val === null || val === '') return 0;
-                            const str = String(val).replace(/\s/g, '').replace(',', '.');
-                            const num = parseFloat(str);
-                            return isNaN(num) ? 0 : num;
-                        };
-                        
-                        mapped = [];
-                        
-                        for (let i = 0; i < data.length; i++) {
-                            const row = data[i];
-                            
-                            if (!row || Object.keys(row).length === 0) {
-                                continue;
-                            }
-                            
-                            const brand = getVal(row, key0);
-                            const week = parseInt(getVal(row, key1)) || 0;
-                            const dateRaw = getVal(row, key2);
-                            const article = getVal(row, key3);
-                            const delivered = parseInt(getVal(row, key4)) || 0;
-                            const transfer = parseNum(getVal(row, key5));
-                            const orders = parseInt(getVal(row, key6)) || 0;
-                            const amount = parseNum(getVal(row, key7));
-                            
-                            if (!brand && !article && orders === 0 && delivered === 0) {
-                                continue;
-                            }
-                            
-                            let finalArticle = article;
-                            if (!finalArticle) {
-                                finalArticle = getVal(row, key0);
-                                if (!finalArticle) finalArticle = getVal(row, key1);
-                                if (!finalArticle) finalArticle = 'Товар_' + i;
-                            }
-                            
-                            let dateStr = '';
-                            if (dateRaw) {
-                                const match = dateRaw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-                                if (match) {
-                                    dateStr = match[1] + '.' + match[2] + '.' + match[3];
-                                } else {
-                                    const parsed = parseDate(dateRaw);
-                                    if (parsed) {
-                                        dateStr = formatDate(parsed);
-                                    } else {
-                                        dateStr = formatDate(new Date());
-                                    }
-                                }
-                            } else {
-                                dateStr = formatDate(new Date());
-                            }
-                            
-                            if (i < 3) {
-                                console.log('📄 Строка', i, '→', { brand, week, dateRaw, article: finalArticle, orders, delivered, amount });
-                            }
-                            
-                            mapped.push({
-                                id: Date.now() + i + Math.random(),
-                                article: finalArticle,
-                                brand: brand,
-                                week: week,
-                                date: dateStr,
-                                orders: orders,
-                                delivered: delivered,
-                                amount: amount,
-                                transfer: transfer,
-                                wbArticle: '',
-                                barcode: '',
-                                size: '',
-                                warehouse: '',
-                                stock: 0,
-                                name: finalArticle
-                            });
-                        }
-                        
-                        console.log('✅ Обработано строк с данными:', mapped.length);
-                        
-                        if (mapped.length === 0) {
-                            console.error('❌ Нет данных для импорта!');
-                            reject('Не найдено данных. Проверьте структуру файла.');
-                            return;
-                        }
-                        
-                        break;
-
-                    case 'storage':
-                        storeName = 'storage';
-                        mapped = data.map((row, i) => {
-                            const keys = Object.keys(row);
-                            
-                            const colSeller = keys.find(k => /Артикул продавца|артикул продавца|seller_article|артикул продав/i.test(k));
-                            const colSize = keys.find(k => /Размер вещи|размер вещи|size|размер/i.test(k));
-                            const colTotal = keys.find(k => /Всего находится на складах|всего находится|total_stock|всего на складах/i.test(k));
-
-                            const article = String(row[colSeller] || row[keys[0]] || '');
-                            const size = String(row[colSize] || row[keys[1]] || '');
-                            const total = parseInt(row[colTotal]) || 0;
-
-                            return {
-                                id: Date.now() + i + Math.random(),
-                                article: article,
-                                size: size,
-                                available: total,
-                                inTransit: 0,
-                                returnTransit: 0,
-                                warehouses: {},
-                                total: total,
-                                date: formatDate(new Date())
-                            };
-                        });
-                        break;
-
-                    default:
-                        reject('Неизвестный тип данных');
-                        return;
-                }
-
-                // === СОХРАНЯЕМ В БАЗУ ===
-                await dbClear(storeName);
-                for (const item of mapped) {
-                    await dbSave(storeName, item);
-                }
-
-                APP.data[storeName] = await dbGetAll(storeName);
-                console.log('✅ Импорт завершён! Сохранено:', mapped.length, 'записей');
-                resolve({ count: mapped.length, type });
-
+                
             } catch (err) {
-                console.error('❌ Ошибка импорта:', err);
-                reject(err.message || 'Ошибка обработки файла');
+                console.error('❌ Ошибка:', err);
+                alert('❌ Ошибка чтения: ' + err.message);
+                reject(err.message);
             }
         };
 
-        reader.onerror = () => reject('Ошибка чтения файла');
+        reader.onerror = () => {
+            alert('❌ Ошибка чтения файла');
+            reject('Ошибка чтения файла');
+        };
 
-        // Читаем файл
-        const ext = file.name.toLowerCase().split('.').pop();
-        if (ext === 'xlsx' || ext === 'xls') {
-            reader.readAsArrayBuffer(file);
-        } else {
-            reader.readAsText(file, 'UTF-8');
-        }
+        // Читаем как ArrayBuffer для Excel
+        reader.readAsArrayBuffer(file);
     });
 }
-
+    
     // ================================================================
     // 7. ЛОГИКА РЕКЛАМНОГО ОТДЕЛА (из скрипта)
     // ================================================================
