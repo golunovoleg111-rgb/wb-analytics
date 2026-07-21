@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BELTANEE STORE — Умная платформа управления магазином</title>
+    <title>BELTANEE — Умная платформа управления магазином</title>
 
     <!-- ===== FAVICON ===== -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%236C2BD9'/><stop offset='50%25' stop-color='%23C850C0'/><stop offset='100%25' stop-color='%23FF6B6B'/></linearGradient><filter id='glow'><feGaussianBlur stdDeviation='2' result='blur'/><feMerge><feMergeNode in='blur'/><feMergeNode in='SourceGraphic'/></feMerge></filter></defs><rect width='100' height='100' rx='24' fill='%231A1A2E'/><polygon points='50,8 92,50 50,92 8,50' fill='url(%23g)' opacity='0.15'/><text x='50' y='72' font-size='52' font-family='Inter, sans-serif' font-weight='900' text-anchor='middle' fill='url(%23g)' filter='url(%23glow)'>B</text></svg>" />
@@ -1478,6 +1478,116 @@
         }
 
         /* ============================================================
+           KANBAN BOARD
+           ============================================================ */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .kanban-column {
+            background: var(--bg-hover);
+            border-radius: var(--radius);
+            padding: 12px;
+            min-height: 200px;
+        }
+
+        .kanban-column .column-title {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .kanban-column .column-title .count {
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            padding: 1px 8px;
+            border-radius: 12px;
+        }
+
+        .kanban-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border: 1px solid var(--border);
+            cursor: grab;
+            transition: var(--transition);
+            font-size: 12px;
+        }
+
+        .kanban-card:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .kanban-card .task-title {
+            font-weight: 600;
+        }
+
+        .kanban-card .task-meta {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .kanban-card .task-priority {
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 10px;
+        }
+        .kanban-card .task-priority.high {
+            background: #FEF2F2;
+            color: #991B1B;
+        }
+        .kanban-card .task-priority.medium {
+            background: #FFFBEB;
+            color: #92400E;
+        }
+        .kanban-card .task-priority.low {
+            background: #ECFDF5;
+            color: #065F46;
+        }
+
+        /* ============================================================
+           NEWS WIDGET
+           ============================================================ */
+        .news-item {
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .news-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .news-item .news-title {
+            font-weight: 500;
+        }
+
+        .news-item .news-source {
+            font-size: 9px;
+            color: var(--text-secondary);
+            margin-left: 6px;
+        }
+
+        .news-item .news-date {
+            font-size: 9px;
+            color: var(--text-secondary);
+            float: right;
+        }
+
+        /* ============================================================
            AI FAB
            ============================================================ */
         .ai-fab {
@@ -1530,8 +1640,8 @@
             position: fixed;
             bottom: 88px;
             right: 24px;
-            width: 360px;
-            max-height: 460px;
+            width: 380px;
+            max-height: 500px;
             background: var(--bg-card);
             border-radius: var(--radius);
             box-shadow: 0 16px 64px rgba(0, 0, 0, 0.2);
@@ -1582,7 +1692,7 @@
             flex: 1;
             padding: 12px 14px;
             overflow-y: auto;
-            max-height: 280px;
+            max-height: 300px;
         }
 
         .ai-chat-messages .msg {
@@ -1607,6 +1717,7 @@
             color: var(--text-primary);
             margin-right: auto;
             border-bottom-left-radius: 4px;
+            white-space: pre-line;
         }
 
         .ai-chat-input {
@@ -1795,6 +1906,9 @@
             .campaign-grid {
                 grid-template-columns: 1fr;
             }
+            .kanban-board {
+                grid-template-columns: 1fr 1fr;
+            }
         }
 
         @media (max-width: 992px) {
@@ -1811,6 +1925,9 @@
                 width: 300px;
                 right: 12px;
                 bottom: 80px;
+            }
+            .kanban-board {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1927,6 +2044,9 @@
             .warehouse-grid {
                 grid-template-columns: 1fr;
             }
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1961,6 +2081,9 @@
             }
             .modal-content {
                 padding: 12px;
+            }
+            .kanban-board {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -2018,6 +2141,25 @@
             <li class="menu-item" data-page="reports">
                 <span class="menu-icon">📄</span>
                 <span class="menu-label">Мои отчеты</span>
+            </li>
+            <li class="menu-item" data-page="unitEconomics">
+                <span class="menu-icon">💰</span>
+                <span class="menu-label">Юнит-экономика</span>
+                <span class="menu-dot success"></span>
+            </li>
+
+            <li class="menu-divider"></li>
+
+            <li class="menu-group-label">Управление</li>
+            <li class="menu-item" data-page="tasks">
+                <span class="menu-icon">📋</span>
+                <span class="menu-label">Доска задач</span>
+                <span class="menu-dot warning"></span>
+            </li>
+            <li class="menu-item" data-page="news">
+                <span class="menu-icon">📰</span>
+                <span class="menu-label">Новости</span>
+                <span class="menu-dot danger"></span>
             </li>
 
             <li class="menu-divider"></li>
@@ -2163,6 +2305,17 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Новостная лента -->
+            <div class="card" style="margin-top:14px;border-left:4px solid #3B82F6;">
+                <div class="card-title">
+                    📰 Новости Wildberries
+                    <span class="tag tag-blue" style="font-size:9px;">Обновлено сегодня</span>
+                </div>
+                <div id="newsWidget">
+                    <div class="text-muted text-center" style="padding:12px;font-size:12px;">Загрузка новостей...</div>
+                </div>
+            </div>
         </section>
 
         <!-- ============================================================
@@ -2274,6 +2427,7 @@
                                 <option value="orders">По заказам</option>
                                 <option value="stock">По остаткам</option>
                                 <option value="fall">По падению</option>
+                                <option value="margin">По маржинальности</option>
                             </select>
                         </div>
                         <div style="overflow-x:auto;">
@@ -2289,12 +2443,13 @@
                                         <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Остаток</th>
                                         <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Статус</th>
                                         <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Скоринг</th>
+                                        <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Маржа</th>
                                         <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Бюджет</th>
                                         <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">AI-совет</th>
                                     </tr>
                                 </thead>
                                 <tbody id="allProductsBody">
-                                    <tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Загрузка...</td></tr>
+                                    <tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Загрузка...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2421,6 +2576,7 @@
             <div class="page-header">
                 <h1>🃏 Мои карточки</h1>
                 <div class="page-actions">
+                    <button class="btn btn-primary btn-sm" id="addCardBtn">➕ Добавить карточку</button>
                     <input type="text" id="cardsSearch" placeholder="🔍 Поиск по артикулу..." style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);outline:none;min-width:120px;" />
                     <button class="btn btn-primary btn-sm" id="cardsSearchBtn">Найти</button>
                     <button class="btn btn-secondary btn-sm" id="cardsClearBtn">Сбросить</button>
@@ -2447,7 +2603,67 @@
                 <div class="text-muted text-center" style="padding:40px;">
                     <div style="font-size:36px;margin-bottom:6px;">🔍</div>
                     <div style="font-size:15px;font-weight:600;">Введите артикул для анализа</div>
-                    <div style="font-size:11px;color:var(--text-secondary);">Получите полную историю движения, проблемы и сравнение с конкурентами</div>
+                    <div style="font-size:11px;color:var(--text-secondary);">Получите полную историю движения, проблемы и сравнение</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+        СТРАНИЦА: ЮНИТ-ЭКОНОМИКА (unitEconomics)
+        ============================================================ -->
+        <section id="page-unitEconomics" class="page">
+            <div class="page-header">
+                <h1>💰 Юнит-экономика</h1>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshUnitEconomics">🔄 Обновить</button>
+                    <button class="btn btn-success btn-sm" id="exportUnitEconomics">📤 Экспорт</button>
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-bottom:12px;">
+                <div class="card" style="border-left:4px solid #10B981;">
+                    <div class="card-title">📊 Сводка по маржинальности</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px;">
+                        <div><span class="text-muted" style="font-size:10px;">Средняя маржа</span><div style="font-size:18px;font-weight:700;" id="ueAvgMargin">—</div></div>
+                        <div><span class="text-muted" style="font-size:10px;">Товаров с маржой >20%</span><div style="font-size:18px;font-weight:700;" id="ueHighMargin">—</div></div>
+                        <div><span class="text-muted" style="font-size:10px;">Убыточных товаров</span><div style="font-size:18px;font-weight:700;color:#EF4444;" id="ueNegative">—</div></div>
+                        <div><span class="text-muted" style="font-size:10px;">Общая прибыль</span><div style="font-size:18px;font-weight:700;color:#10B981;" id="ueTotalProfit">—</div></div>
+                    </div>
+                </div>
+                <div class="card" style="border-left:4px solid #3B82F6;">
+                    <div class="card-title">📈 ABC-анализ</div>
+                    <div id="ueABC">
+                        <div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:12px;">
+                <div class="card-title">📊 Тепловая карта маржинальности</div>
+                <div id="ueHeatmap">
+                    <div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 Таблица юнит-экономики</div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;" id="ueTable">
+                        <thead>
+                            <tr style="background:var(--bg-hover);">
+                                <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Артикул</th>
+                                <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Цена</th>
+                                <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Себест.</th>
+                                <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Прибыль</th>
+                                <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Маржа</th>
+                                <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Статус</th>
+                                <th style="padding:4px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:var(--text-secondary);">Категория</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ueTableBody">
+                            <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Загрузка...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -2509,6 +2725,72 @@
                     <div id="redZoneList">
                         <div class="text-muted text-center" style="padding:12px;font-size:12px;">Критических проблем нет</div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+        СТРАНИЦА: ДОСКА ЗАДАЧ (tasks)
+        ============================================================ -->
+        <section id="page-tasks" class="page">
+            <div class="page-header">
+                <h1>📋 Доска задач</h1>
+                <div class="page-actions">
+                    <button class="btn btn-primary btn-sm" id="addTaskBtn">➕ Новая задача</button>
+                    <button class="btn btn-secondary btn-sm" id="refreshTasksBtn">🔄 Обновить</button>
+                </div>
+            </div>
+
+            <div class="kanban-board" id="kanbanBoard">
+                <div class="kanban-column" data-column="new">
+                    <div class="column-title">
+                        📥 Новые
+                        <span class="count" id="countNew">0</span>
+                    </div>
+                    <div id="columnNew" style="min-height:100px;"></div>
+                </div>
+                <div class="kanban-column" data-column="inprogress">
+                    <div class="column-title">
+                        🔄 В работе
+                        <span class="count" id="countInProgress">0</span>
+                    </div>
+                    <div id="columnInProgress" style="min-height:100px;"></div>
+                </div>
+                <div class="kanban-column" data-column="review">
+                    <div class="column-title">
+                        👀 На проверке
+                        <span class="count" id="countReview">0</span>
+                    </div>
+                    <div id="columnReview" style="min-height:100px;"></div>
+                </div>
+                <div class="kanban-column" data-column="done">
+                    <div class="column-title">
+                        ✅ Готово
+                        <span class="count" id="countDone">0</span>
+                    </div>
+                    <div id="columnDone" style="min-height:100px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+        СТРАНИЦА: НОВОСТИ (news)
+        ============================================================ -->
+        <section id="page-news" class="page">
+            <div class="page-header">
+                <h1>📰 Новости Wildberries</h1>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="refreshNewsBtn">🔄 Обновить</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    📰 Актуальные новости
+                    <span class="tag tag-blue">Обновлено сегодня</span>
+                </div>
+                <div id="newsList">
+                    <div class="text-muted text-center" style="padding:24px;font-size:13px;">Загрузка новостей...</div>
                 </div>
             </div>
         </section>
@@ -2634,8 +2916,8 @@
                                 <div class="faq-answer">Сколько дней требуется для продажи одной единицы товара. Норма — 15-30 дней.</div>
                             </div>
                             <div class="faq-item">
-                                <div style="font-weight:600;">Как запустить рекламную кампанию?</div>
-                                <div class="faq-answer">В разделе "Рекламный отдел" выберите товары, настройте бюджет и нажмите "Запустить".</div>
+                                <div style="font-weight:600;">Что такое юнит-экономика?</div>
+                                <div class="faq-answer">Расчёт маржинальности по каждой единице товара: (цена - себестоимость) / цена × 100%.</div>
                             </div>
                         </div>
                     </div>
@@ -2667,6 +2949,13 @@
                                 </div>
                                 <input type="text" placeholder="Вставьте ссылку на видео..." style="width:100%;margin-top:3px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:10px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
                             </div>
+                            <div style="padding:6px 10px;background:var(--bg-hover);border-radius:var(--radius-sm);">
+                                <div style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                                    <span>▶️</span>
+                                    <span style="font-weight:500;">Юнит-экономика и маржинальность</span>
+                                </div>
+                                <input type="text" placeholder="Вставьте ссылку на видео..." style="width:100%;margin-top:3px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:10px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2686,6 +2975,8 @@
                             <div style="padding:4px 8px;background:var(--bg-hover);border-radius:4px;"><strong>ИРП</strong> <span class="text-muted" style="display:block;font-size:10px;">Индекс распределения продаж</span></div>
                             <div style="padding:4px 8px;background:var(--bg-hover);border-radius:4px;"><strong>СПП</strong> <span class="text-muted" style="display:block;font-size:10px;">Стимулирование продаж</span></div>
                             <div style="padding:4px 8px;background:var(--bg-hover);border-radius:4px;"><strong>Оборачиваемость</strong> <span class="text-muted" style="display:block;font-size:10px;">Дней на продажу</span></div>
+                            <div style="padding:4px 8px;background:var(--bg-hover);border-radius:4px;"><strong>Маржинальность</strong> <span class="text-muted" style="display:block;font-size:10px;">(Цена - Себест.) / Цена × 100%</span></div>
+                            <div style="padding:4px 8px;background:var(--bg-hover);border-radius:4px;"><strong>PNL</strong> <span class="text-muted" style="display:block;font-size:10px;">Прибыли и убытки (Profit & Loss)</span></div>
                         </div>
                     </div>
                 </div>
@@ -2720,6 +3011,10 @@
                             <div style="padding:6px 10px;background:var(--bg-hover);border-radius:var(--radius-sm);border-left:3px solid #EF4444;">
                                 <div style="font-weight:600;">Как избежать штрафов WB</div>
                                 <div class="text-muted" style="font-size:11px;">Следите за сроками поставок, качеством упаковки, соблюдайте правила маркировки.</div>
+                            </div>
+                            <div style="padding:6px 10px;background:var(--bg-hover);border-radius:var(--radius-sm);border-left:3px solid #8B5CF6;">
+                                <div style="font-weight:600;">Как считать юнит-экономику</div>
+                                <div class="text-muted" style="font-size:11px;">Маржинальность = (Цена - Себестоимость - Комиссии - Логистика) / Цена × 100%. Цель — >20%.</div>
                             </div>
                         </div>
                     </div>
@@ -2771,6 +3066,110 @@
     </div>
 
     <!-- ============================================================
+    МОДАЛЬНОЕ ОКНО: ДОБАВЛЕНИЕ КАРТОЧКИ
+    ============================================================ -->
+    <div class="modal-overlay" id="addCardModal">
+        <div class="modal-content">
+            <button class="modal-close" id="addCardModalClose">✕</button>
+            <div style="font-size:17px;font-weight:700;margin-bottom:2px;">➕ Добавить карточку товара</div>
+            <div class="text-muted" style="margin-bottom:10px;font-size:12px;">Введите данные для новой карточки</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+                <div style="grid-column:1/-1;">
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Артикул полный *</label>
+                    <input type="text" id="addCardArticle" placeholder="21_К_Вельвет_голубой_40" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Размер</label>
+                    <input type="text" id="addCardSize" placeholder="40" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Цвет</label>
+                    <input type="text" id="addCardColor" placeholder="голубой" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">База артикула</label>
+                    <input type="text" id="addCardBase" placeholder="21_К_Вельвет" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Категория</label>
+                    <input type="text" id="addCardCategory" placeholder="Костюмы" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">GTIN</label>
+                    <input type="text" id="addCardGtin" placeholder="4704890521374" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Артикул WB</label>
+                    <input type="text" id="addCardWb" placeholder="233070541" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Баркод</label>
+                    <input type="text" id="addCardBarcode" placeholder="2040083311783" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Ткань</label>
+                    <input type="text" id="addCardFabric" placeholder="Вельвет" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Состав</label>
+                    <input type="text" id="addCardComposition" placeholder="Хлопок - 50%, Вискоза - 50%" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">ТН ВЭД</label>
+                    <input type="text" id="addCardTnved" placeholder="6104130000" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+            </div>
+
+            <button class="btn btn-primary w-full" style="margin-top:12px;" id="addCardConfirmBtn">✅ Добавить карточку</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    МОДАЛЬНОЕ ОКНО: ДОБАВЛЕНИЕ ЗАДАЧИ
+    ============================================================ -->
+    <div class="modal-overlay" id="addTaskModal">
+        <div class="modal-content">
+            <button class="modal-close" id="addTaskModalClose">✕</button>
+            <div style="font-size:17px;font-weight:700;margin-bottom:2px;">➕ Новая задача</div>
+            <div class="text-muted" style="margin-bottom:10px;font-size:12px;">Создайте задачу для команды</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+                <div style="grid-column:1/-1;">
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Название задачи *</label>
+                    <input type="text" id="addTaskTitle" placeholder="Проверить поставку 21_К_Вельвет" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Описание</label>
+                    <textarea id="addTaskDesc" placeholder="Описание задачи..." style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);min-height:60px;resize:vertical;"></textarea>
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Исполнитель</label>
+                    <input type="text" id="addTaskAssignee" placeholder="Иванов И." style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Приоритет</label>
+                    <select id="addTaskPriority" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);">
+                        <option value="low">🟢 Низкий</option>
+                        <option value="medium" selected>🟡 Средний</option>
+                        <option value="high">🔴 Высокий</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Дедлайн</label>
+                    <input type="date" id="addTaskDeadline" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Связанный товар</label>
+                    <input type="text" id="addTaskArticle" placeholder="Артикул (опционально)" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+                </div>
+            </div>
+
+            <button class="btn btn-primary w-full" style="margin-top:12px;" id="addTaskConfirmBtn">✅ Создать задачу</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
     МОДАЛЬНОЕ ОКНО: ДЕТАЛИ КАРТОЧКИ
     ============================================================ -->
     <div class="modal-overlay" id="cardModal">
@@ -2816,6 +3215,10 @@
                     <div style="font-size:8px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Ткань / ТН ВЭД</div>
                     <div id="cardModalFabric" style="font-weight:600;">—</div>
                 </div>
+                <div style="padding:4px 8px;background:var(--bg-hover);border-radius:var(--radius-xs);grid-column:1/-1;">
+                    <div style="font-size:8px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Маржинальность</div>
+                    <div id="cardModalMargin" style="font-weight:600;font-size:14px;">—</div>
+                </div>
             </div>
 
             <!-- Воронка продаж -->
@@ -2844,6 +3247,7 @@
                 <button class="btn btn-primary btn-sm" id="cardModalAddToCampaign">📢 Добавить в рекламу</button>
                 <button class="btn btn-secondary btn-sm" id="cardModalCompare">🔍 Сравнить с конкурентами</button>
                 <button class="btn btn-success btn-sm" id="cardModalForecast">📊 Прогноз</button>
+                <button class="btn btn-warning btn-sm" id="cardModalEdit">✏️ Редактировать</button>
             </div>
         </div>
     </div>
@@ -2864,22 +3268,24 @@
         <div class="ai-chat-messages" id="aiMessages">
             <div class="msg ai">
                 <span class="msg-icon">🤖</span>
-                Здравствуйте! Я ваш персональный помощник. Задайте мне вопрос о системе, товарах, поставках или аналитике.
+                Здравствуйте! Я ваш персональный AI-помощник. Я умею анализировать товары, рассчитывать маржинальность, прогнозировать продажи, давать рекомендации по рекламе и поставкам, сравнивать товары и отвечать на любые вопросы по вашему магазину.
             </div>
         </div>
         <div class="ai-quick-actions">
-            <button data-question="Сколько товаров в системе?">📊 Статистика</button>
+            <button data-question="Покажи статистику">📊 Статистика</button>
             <button data-question="Что сегодня нужно сделать?">✅ Чек-лист</button>
             <button data-question="Покажи проблемные товары">🚨 Проблемы</button>
             <button data-question="Как собрать поставку?">📦 Поставка</button>
             <button data-question="Покажи топ-5 товаров">🏆 Топ</button>
+            <button data-question="Покажи маржинальность">💰 Маржа</button>
+            <button data-question="Рассчитай маржу для цены 3500 и себестоимости 1800">🧮 Расчёт</button>
         </div>
         <div class="ai-chat-input">
             <input type="text" id="aiInput" placeholder="Задайте вопрос..." />
             <button id="aiSend">Отправить</button>
         </div>
     </div>
-    <script>
+   <script>
     // ================================================================
     // 1. КОНСТАНТЫ И КОНФИГУРАЦИЯ
     // ================================================================
@@ -2893,7 +3299,10 @@
             warehouse: [],
             supplies: [],
             planning: [],
-            analytics: {}
+            tasks: [],
+            prices: [],
+            tariffs: [],
+            news: []
         },
         settings: {
             darkTheme: false,
@@ -3103,14 +3512,14 @@
     // ================================================================
 
     const DB_NAME = 'BeltaneeDB';
-    const DB_VERSION = 4;
+    const DB_VERSION = 5;
 
     function openDB() {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open(DB_NAME, DB_VERSION);
             req.onupgradeneeded = (e) => {
                 const db = e.target.result;
-                const stores = ['nomenclature', 'orders', 'storage', 'warehouse', 'supplies', 'planning', 'settings', 'history'];
+                const stores = ['nomenclature', 'orders', 'storage', 'warehouse', 'supplies', 'planning', 'settings', 'history', 'tasks', 'prices', 'tariffs', 'news'];
                 stores.forEach(name => {
                     if (!db.objectStoreNames.contains(name)) {
                         db.createObjectStore(name, { keyPath: 'id', autoIncrement: true });
@@ -3178,6 +3587,10 @@
             APP.data.warehouse = await dbGetAll('warehouse');
             APP.data.supplies = await dbGetAll('supplies');
             APP.data.planning = await dbGetAll('planning');
+            APP.data.tasks = await dbGetAll('tasks');
+            APP.data.prices = await dbGetAll('prices');
+            APP.data.tariffs = await dbGetAll('tariffs');
+            APP.data.news = await dbGetAll('news');
 
             const settings = await dbGetAll('settings');
             if (settings.length > 0) {
@@ -3193,7 +3606,11 @@
                 storage: APP.data.storage.length,
                 warehouse: APP.data.warehouse.length,
                 supplies: APP.data.supplies.length,
-                planning: APP.data.planning.length
+                planning: APP.data.planning.length,
+                tasks: APP.data.tasks.length,
+                prices: APP.data.prices.length,
+                tariffs: APP.data.tariffs.length,
+                news: APP.data.news.length
             });
 
             updateStatus('success', 'Готово');
@@ -3414,13 +3831,123 @@
     }
 
     // ================================================================
-    // 6. ЛОГИКА РЕКЛАМНОГО ОТДЕЛА (расширенная)
+    // 6. ЮНИТ-ЭКОНОМИКА (расчёт маржинальности)
+    // ================================================================
+
+    function calculateUnitEconomics() {
+        const nomenclature = APP.data.nomenclature;
+        const orders = APP.data.orders;
+        const storage = APP.data.storage;
+        const prices = APP.data.prices;
+        const tariffs = APP.data.tariffs;
+
+        if (nomenclature.length === 0) return [];
+
+        // Группируем заказы по артикулам
+        const orderStats = {};
+        orders.forEach(o => {
+            if (!o.article) return;
+            if (!orderStats[o.article]) {
+                orderStats[o.article] = { orders: 0, delivered: 0, amount: 0 };
+            }
+            orderStats[o.article].orders += o.orders || 0;
+            orderStats[o.article].delivered += o.delivered || 0;
+            orderStats[o.article].amount += o.amount || 0;
+        });
+
+        // Группируем остатки
+        const stockMap = {};
+        storage.forEach(s => {
+            if (!s.article) return;
+            stockMap[s.article] = (stockMap[s.article] || 0) + (s.available || 0);
+        });
+
+        // Создаём карту цен
+        const priceMap = {};
+        prices.forEach(p => {
+            if (p.article) priceMap[p.article] = p;
+        });
+
+        // Создаём карту тарифов
+        const tariffMap = {};
+        tariffs.forEach(t => {
+            if (t.warehouse) tariffMap[t.warehouse] = t;
+        });
+
+        const result = [];
+
+        for (const nom of nomenclature) {
+            const article = nom.article || nom.modelArticle || '';
+            if (!article) continue;
+
+            const stats = orderStats[article] || { orders: 0, delivered: 0, amount: 0 };
+            const stock = stockMap[article] || 0;
+            const priceData = priceMap[article] || { price: 0, purchasePrice: 0, discount: 0 };
+
+            // Цены (из справочника или из заказов)
+            const marketPrice = priceData.price || (stats.amount > 0 ? Math.round(stats.amount / stats.orders) : 0) || 0;
+            const purchasePrice = priceData.purchasePrice || 0;
+            const discount = priceData.discount || 0;
+
+            // Комиссии и логистика
+            const commission = APP.settings.wbCommission || 15;
+            const logisticsCost = APP.settings.logisticsCost || 50;
+            const ioThreshold = APP.settings.ioThreshold || 0.3;
+
+            // Расчёты
+            const clientPrice = marketPrice - (marketPrice / 100 * discount);
+            const finalPrice = clientPrice - (clientPrice / 100 * commission);
+            const totalCost = purchasePrice + (marketPrice * commission / 100) + logisticsCost * 0.5;
+            const profit = finalPrice - totalCost;
+            const margin = finalPrice > 0 ? Math.round((profit / finalPrice) * 100) : 0;
+
+            // Статус маржинальности
+            let marginStatus = '🟢';
+            let marginLabel = 'Высокая';
+            if (margin < 0) { marginStatus = '🔴'; marginLabel = 'Убыточный'; }
+            else if (margin < 10) { marginStatus = '🟡'; marginLabel = 'Низкая'; }
+            else if (margin < 20) { marginStatus = '🟡'; marginLabel = 'Средняя'; }
+
+            // Категория ABC
+            let abc = 'C';
+            if (stats.orders > 50) abc = 'A';
+            else if (stats.orders > 20) abc = 'B';
+
+            result.push({
+                article: article,
+                category: nom.category || 'Товар',
+                marketPrice: marketPrice,
+                purchasePrice: purchasePrice,
+                finalPrice: Math.round(finalPrice),
+                totalCost: Math.round(totalCost),
+                profit: Math.round(profit),
+                margin: margin,
+                marginStatus: marginStatus,
+                marginLabel: marginLabel,
+                orders: stats.orders,
+                delivered: stats.delivered,
+                stock: stock,
+                abc: abc,
+                size: nom.size || '',
+                color: nom.color || '',
+                baseArticle: nom.baseArticle || getBaseArticle(article)
+            });
+        }
+
+        // Сортируем по маржинальности
+        result.sort((a, b) => b.margin - a.margin);
+        return result;
+    }
+
+    // ================================================================
+    // 7. ЛОГИКА РЕКЛАМНОГО ОТДЕЛА
     // ================================================================
 
     function generateAdvertisingData() {
         const orders = APP.data.orders;
         const storage = APP.data.storage;
         const nomenclature = APP.data.nomenclature;
+        const unitEconomics = calculateUnitEconomics();
 
         if (orders.length === 0) return [];
 
@@ -3448,6 +3975,11 @@
             if (n.baseArticle) nomMap[n.baseArticle] = n;
         });
 
+        const econMap = {};
+        unitEconomics.forEach(e => {
+            if (e.article) econMap[e.article] = e;
+        });
+
         const result = [];
         const maxOrders = Math.max(...Object.values(articleMap).map(a => a.orders), 1);
 
@@ -3456,6 +3988,7 @@
             const colorCat = getColorCategory(color);
             const stock = storageMap[article] || 0;
             const nom = nomMap[article] || {};
+            const econ = econMap[article] || { margin: 0, marginLabel: 'Нет данных' };
 
             let colorPriority = 3;
             if (isSummer() && colorCat === 'светлый') colorPriority = 1;
@@ -3541,7 +4074,7 @@
                 budget = 5000;
             }
 
-            // Расчёт скоринга
+            // Скоринг
             let score = 0;
             if (colorPriority === 1) score += 30;
             else if (colorPriority === 2) score += 15;
@@ -3556,6 +4089,12 @@
             else score -= 10;
             score = Math.max(0, Math.min(100, score));
 
+            // Добавляем бонус за маржинальность
+            if (econ.margin > 30) score += 15;
+            else if (econ.margin > 20) score += 10;
+            else if (econ.margin > 10) score += 5;
+            score = Math.min(100, score);
+
             if (score >= 70) aiAdvice = '🟢 ' + aiAdvice;
             else if (score >= 40) aiAdvice = '🟡 ' + aiAdvice;
             else aiAdvice = '🔴 ' + aiAdvice;
@@ -3564,7 +4103,6 @@
             budget = Math.min(budget, maxBudget);
             budget = Math.round(budget / 100) * 100;
 
-            // Прогноз ROI
             const projectedOrders = Math.round(data.orders * (1 + score / 100));
             const roi = budget > 0 ? Math.round(((projectedOrders - data.orders) * 1500 / budget) * 100) : 0;
 
@@ -3590,6 +4128,8 @@
                 category: nom.category || getCategoryFromName(article),
                 projectedOrders,
                 roi,
+                margin: econ.margin || 0,
+                marginLabel: econ.marginLabel || 'Нет данных',
                 selected: false
             });
         }
@@ -3598,7 +4138,6 @@
         return result;
     }
 
-    // BUDGET_LIMITS для рекламы
     const BUDGET_LIMITS = {
         min: 3000,
         max: 15000,
@@ -3611,14 +4150,15 @@
             'Авто': { min: 3000, max: 12000, default: 12000 }
         }
     };
-            // ================================================================
-    // 7. ОТОБРАЖЕНИЕ: ГЛАВНАЯ
+        // ================================================================
+    // 8. ОТОБРАЖЕНИЕ: ГЛАВНАЯ
     // ================================================================
 
     function updateDashboard() {
         const orders = APP.data.orders;
         const storage = APP.data.storage;
         const nomenclature = APP.data.nomenclature;
+        const unitEconomics = calculateUnitEconomics();
 
         const uniqueArticles = new Set(nomenclature.map(n => n.baseArticle || n.article || '').filter(Boolean));
         setText('kpiArticles', formatNumber(uniqueArticles.size));
@@ -3678,6 +4218,7 @@
         renderTopProducts(advData);
         renderIOWidget(advData);
         renderRedZone(advData);
+        renderNewsWidget();
 
         updateTime();
     }
@@ -3726,6 +4267,7 @@
                     <span class="name" title="${item.article}">${item.article}</span>
                     <span class="value">${formatNumber(item.orders)} зак.</span>
                     <span class="trend ${trend}">${trendText}</span>
+                    <span class="tag ${item.margin > 20 ? 'tag-green' : item.margin > 0 ? 'tag-yellow' : 'tag-red'}" style="font-size:8px;">${item.margin}%</span>
                 </div>
             `;
         });
@@ -3771,7 +4313,8 @@
         const critical = advData.filter(a =>
             a.stock < 5 ||
             (a.fallWeek && parseFloat(a.fallWeek) < -30) ||
-            a.status.includes('Критичный')
+            a.status.includes('Критичный') ||
+            a.margin < 0
         ).slice(0, 3);
 
         if (critical.length === 0) {
@@ -3784,12 +4327,36 @@
             let reason = '';
             if (item.stock < 5) reason = '⚠️ Остаток < 5 шт';
             else if (item.fallWeek && parseFloat(item.fallWeek) < -30) reason = '📉 Падение ' + item.fallWeek;
+            else if (item.margin < 0) reason = '💰 Убыточный';
             else reason = '🔴 ' + item.status;
 
             html += `
                 <div class="red-zone-item" style="padding:4px 8px;font-size:11px;">
                     <span style="font-weight:500;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
                     <span class="reason" style="font-size:9px;">${reason}</span>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function renderNewsWidget() {
+        const container = document.getElementById('newsWidget');
+        if (!container) return;
+
+        const news = APP.data.news || [];
+        if (news.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Новостей пока нет</div>';
+            return;
+        }
+
+        let html = '';
+        news.slice(0, 5).forEach(item => {
+            html += `
+                <div class="news-item" onclick="window.open('${item.link || '#'}', '_blank')">
+                    <span class="news-title">${item.title}</span>
+                    <span class="news-source">${item.source || ''}</span>
+                    <span class="news-date">${item.date || ''}</span>
                 </div>
             `;
         });
@@ -3862,7 +4429,7 @@
     }
 
     // ================================================================
-    // 8. ОТОБРАЖЕНИЕ: ГРАФИК
+    // 9. ОТОБРАЖЕНИЕ: ГРАФИК
     // ================================================================
 
     function renderChart(period) {
@@ -3993,7 +4560,7 @@
     }
 
     // ================================================================
-    // 9. ОТОБРАЖЕНИЕ: РЕКЛАМНЫЙ ОТДЕЛ
+    // 10. ОТОБРАЖЕНИЕ: РЕКЛАМНЫЙ ОТДЕЛ
     // ================================================================
 
     function renderAdvertising(tab) {
@@ -4010,7 +4577,7 @@
             document.getElementById('staleGrid').innerHTML =
                 '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет данных</div>';
             document.getElementById('allProductsBody').innerHTML =
-                '<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Нет данных</td></tr>';
+                '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Нет данных</td></tr>';
             return;
         }
 
@@ -4049,7 +4616,7 @@
 
         const aiText = items.length === 0 ? 'Нет товаров для рекомендации.' :
             `🎯 Выбрано ${items.length} кампаний. Общий бюджет: ${formatNumber(totalBudget)} ₽. ` +
-            `Рекомендуемые типы: ${items.map(a => a.type).filter((v,i,s) => s.indexOf(v) === i).join(', ')}`;
+            `Средняя маржинальность: ${items.length > 0 ? Math.round(items.reduce((s, a) => s + a.margin, 0) / items.length) : 0}%.`;
         setText('recAI', aiText);
 
         if (items.length === 0) {
@@ -4063,6 +4630,7 @@
             const statusShort = getStatusShort(item.status);
             const io = Math.min(1, (item.stock || 0) / ((item.orders || 1) * 30));
             const ioColor = io > 0.5 ? '🟢' : io > 0.2 ? '🟡' : '🔴';
+            const marginColor = item.margin > 20 ? '🟢' : item.margin > 0 ? '🟡' : '🔴';
 
             html += `
                 <div class="campaign-card" style="padding:8px 12px;">
@@ -4075,6 +4643,7 @@
                         <span>⭐ ${item.score}/100</span>
                         <span>${ioColor} ИО: ${Math.round(io * 100)}%</span>
                         <span>📈 ${item.roi}% ROI</span>
+                        <span>💰 ${marginColor} ${item.margin}%</span>
                     </div>
                     <div class="budget-slider-wrap">
                         <span style="font-size:10px;font-weight:500;">Бюджет:</span>
@@ -4141,7 +4710,8 @@
                         `Текущие заказы: ${formatNumber(item.orders)}\n` +
                         `Прогноз при рекламе: ${formatNumber(item.projectedOrders)} (+${Math.round((item.projectedOrders - item.orders) / item.orders * 100)}%)\n` +
                         `Рекомендуемый бюджет: ${formatNumber(item.budget)} ₽\n` +
-                        `Ожидаемый ROI: ${item.roi}%`);
+                        `Ожидаемый ROI: ${item.roi}%\n` +
+                        `Маржинальность: ${item.margin}%`);
                 }
             });
         });
@@ -4178,6 +4748,7 @@
                     <div style="display:flex;gap:10px;font-size:11px;color:var(--text-secondary);">
                         <span>📊 ${formatNumber(item.orders)} зак.</span>
                         <span>⭐ ${item.score}/100</span>
+                        <span>💰 ${item.margin}%</span>
                         <button class="btn btn-primary btn-sm campaign-launch-small" data-article="${item.article}" style="padding:2px 8px;font-size:9px;">🚀</button>
                     </div>
                 </div>
@@ -4209,7 +4780,7 @@
                         <span style="color:#EF4444;font-weight:700;">${item.fallWeek}</span>
                     </div>
                     <div style="font-size:10px;color:var(--text-secondary);">
-                        📦 ${formatNumber(item.stock)} шт · ⭐ ${item.score}/100 · 🤖 ${item.aiAdvice}
+                        📦 ${formatNumber(item.stock)} шт · ⭐ ${item.score}/100 · 💰 ${item.margin}% · 🤖 ${item.aiAdvice}
                     </div>
                     <button class="btn btn-primary btn-sm campaign-launch-small" data-article="${item.article}" style="margin-top:4px;padding:2px 8px;font-size:9px;">🚀 Запустить</button>
                 </div>
@@ -4241,6 +4812,7 @@
                     <div style="display:flex;gap:10px;font-size:11px;color:var(--text-secondary);">
                         <span style="color:${scoreColor};font-weight:700;">⭐ ${item.score}/100</span>
                         <span>📊 ${formatNumber(item.orders)} зак.</span>
+                        <span>💰 ${item.margin}%</span>
                         <button class="btn btn-primary btn-sm campaign-launch-small" data-article="${item.article}" style="padding:2px 8px;font-size:9px;">🚀</button>
                     </div>
                 </div>
@@ -4272,7 +4844,7 @@
                         <span style="color:#F59E0B;font-weight:700;">${formatNumber(item.stock)} шт</span>
                     </div>
                     <div style="font-size:10px;color:var(--text-secondary);">
-                        📊 Заказов: ${formatNumber(item.orders)} · ⭐ ${item.score}/100 · 💡 ${item.aiAdvice}
+                        📊 Заказов: ${formatNumber(item.orders)} · ⭐ ${item.score}/100 · 💰 ${item.margin}% · 💡 ${item.aiAdvice}
                     </div>
                     <div style="margin-top:4px;display:flex;gap:4px;">
                         <button class="btn btn-warning btn-sm stale-discount" data-article="${item.article}" style="padding:2px 8px;font-size:9px;">🏷️ Скидка</button>
@@ -4311,8 +4883,19 @@
             items = items.filter(a => a.article.toLowerCase().includes(q));
         }
 
+        // Сортировка
+        const sortSelect = document.getElementById('allSortSelect');
+        if (sortSelect) {
+            const sortBy = sortSelect.value;
+            if (sortBy === 'score') items.sort((a, b) => b.score - a.score);
+            else if (sortBy === 'orders') items.sort((a, b) => b.orders - a.orders);
+            else if (sortBy === 'stock') items.sort((a, b) => b.stock - a.stock);
+            else if (sortBy === 'fall') items.sort((a, b) => parseFloat(a.fallWeek) - parseFloat(b.fallWeek));
+            else if (sortBy === 'margin') items.sort((a, b) => b.margin - a.margin);
+        }
+
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">' +
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">' +
                 (searchQuery ? 'Ничего не найдено' : 'Нет товаров') + '</td></tr>';
             return;
         }
@@ -4322,6 +4905,7 @@
         display.forEach(item => {
             const statusClass = getStatusClass(item.status);
             const statusShort = getStatusShort(item.status);
+            const marginColor = item.margin > 20 ? 'tag-green' : item.margin > 0 ? 'tag-yellow' : 'tag-red';
             html += `
                 <tr>
                     <td style="padding:4px 6px;"><input type="checkbox" class="campaign-select-all" data-article="${item.article}" /></td>
@@ -4331,13 +4915,14 @@
                     <td style="padding:4px 6px;font-size:11px;">${formatNumber(item.stock)}</td>
                     <td style="padding:4px 6px;"><span class="tag ${statusClass || 'tag-gray'}">${statusShort}</span></td>
                     <td style="padding:4px 6px;font-size:11px;font-weight:600;">${item.score}</td>
+                    <td style="padding:4px 6px;"><span class="tag ${marginColor}" style="font-size:10px;">${item.margin}%</span></td>
                     <td style="padding:4px 6px;font-size:11px;">${item.budget > 0 ? formatNumber(item.budget) + ' ₽' : '—'}</td>
                     <td style="padding:4px 6px;font-size:10px;max-width:140px;">${item.aiAdvice}</td>
                 </tr>
             `;
         });
         if (items.length > 50) {
-            html += `<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:6px;font-size:10px;">Показано 50 из ${items.length}</td></tr>`;
+            html += `<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:6px;font-size:10px;">Показано 50 из ${items.length}</td></tr>`;
         }
         tbody.innerHTML = html;
 
@@ -4390,7 +4975,7 @@
     }
 
     // ================================================================
-    // 10. ОТОБРАЖЕНИЕ: СКЛАД
+    // 11. ОТОБРАЖЕНИЕ: СКЛАД
     // ================================================================
 
     function renderWarehouse(warehouseId) {
@@ -4506,7 +5091,7 @@
     }
 
     // ================================================================
-    // 11. ПОСТАВКИ
+    // 12. ПОСТАВКИ
     // ================================================================
 
     let supplyCart = [];
@@ -4515,6 +5100,7 @@
         renderSupplyRecommendations();
         updateSupplyCart();
         renderSupplyDemandForecast();
+        renderSupplySearch();
     }
 
     function renderSupplyRecommendations() {
@@ -4535,6 +5121,7 @@
                     <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);">
                         <span>📦 Остаток: ${formatNumber(item.stock)} шт</span>
                         <span>⭐ ${item.score}/100</span>
+                        <span>💰 ${item.margin}%</span>
                     </div>
                     <button class="btn btn-primary btn-sm add-to-supply" data-article="${item.article}" style="margin-top:2px;font-size:9px;padding:2px 8px;">➕ Добавить в поставку</button>
                 </div>
@@ -4611,6 +5198,40 @@
         container.innerHTML = html || '<div class="text-muted text-center" style="padding:6px;font-size:10px;">✅ Запасов достаточно</div>';
     }
 
+    function renderSupplySearch() {
+        const input = document.getElementById('supplySearch');
+        const results = document.getElementById('supplySearchResults');
+        if (!input || !results) return;
+
+        input.addEventListener('input', function() {
+            const q = this.value.toLowerCase();
+            if (!q) { results.innerHTML = ''; return; }
+
+            const warehouse = APP.data.warehouse;
+            const found = warehouse.filter(w =>
+                w.article.toLowerCase().includes(q) ||
+                (w.size && w.size.toLowerCase().includes(q)) ||
+                (w.pallet && w.pallet.toLowerCase().includes(q))
+            ).slice(0, 10);
+
+            if (found.length === 0) {
+                results.innerHTML = '<div class="text-muted text-center" style="padding:4px;font-size:10px;">Ничего не найдено</div>';
+                return;
+            }
+
+            let html = '';
+            found.forEach(item => {
+                html += `
+                    <div style="padding:4px 8px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:11px;cursor:pointer;" onclick="addToSupply('${item.article}', '${item.size || ''}', 1, '${item.pallet || ''}')">
+                        <span>${item.article} ${item.size || ''}</span>
+                        <span style="color:var(--text-secondary);font-size:10px;">${item.pallet || ''} x${item.quantity || 1}</span>
+                    </div>
+                `;
+            });
+            results.innerHTML = html;
+        });
+    }
+
     function addToSupply(article, size, qty, pallet) {
         const existing = supplyCart.find(s => s.article === article && s.size === size && s.pallet === pallet);
         if (existing) {
@@ -4619,6 +5240,8 @@
             supplyCart.push({ article, size: size || '', qty: qty || 1, pallet: pallet || '' });
         }
         updateSupplyCart();
+        document.getElementById('supplySearchResults').innerHTML = '';
+        document.getElementById('supplySearch').value = '';
     }
 
     function updateSupplyCart() {
@@ -4659,7 +5282,7 @@
     }
 
     // ================================================================
-    // 12. ЭКСПОРТ ПОСТАВОК В EXCEL
+    // 13. ЭКСПОРТ ПОСТАВОК В EXCEL
     // ================================================================
 
     function exportSupplyToExcel() {
@@ -4668,7 +5291,6 @@
             return;
         }
 
-        // Группируем по паллетам
         const grouped = {};
         supplyCart.forEach(item => {
             const key = item.pallet || 'Без паллеты';
@@ -4691,20 +5313,14 @@
             });
         }
 
-        // Сортируем по паллетам
         data.sort((a, b) => a['Номер паллеты'].localeCompare(b['Номер паллеты']));
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
         XLSX.utils.book_append_sheet(wb, ws, 'Поставка');
 
-        // Автоширина колонок
         const colWidths = [
-            { wch: 25 }, // Артикул
-            { wch: 10 }, // Размер
-            { wch: 12 }, // Количество
-            { wch: 18 }, // Паллета
-            { wch: 15 } // Склад
+            { wch: 25 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 15 }
         ];
         ws['!cols'] = colWidths;
 
@@ -4714,7 +5330,7 @@
     }
 
     // ================================================================
-    // 13. ПЛАНИРОВАНИЕ
+    // 14. ПЛАНИРОВАНИЕ
     // ================================================================
 
     function renderPlanning(filter) {
@@ -4828,8 +5444,8 @@
             });
         });
     }
-            // ================================================================
-    // 14. МОИ КАРТОЧКИ (полная версия с кликабельными размерами и графиком)
+           // ================================================================
+    // 15. МОИ КАРТОЧКИ (полная версия)
     // ================================================================
 
     let cardModalData = null;
@@ -4839,6 +5455,7 @@
         const nomenclature = APP.data.nomenclature;
         const orders = APP.data.orders;
         const storage = APP.data.storage;
+        const unitEconomics = calculateUnitEconomics();
 
         if (nomenclature.length === 0) {
             grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:24px;font-size:13px;">Загрузите номенклатуру через Импорт</div>';
@@ -4885,6 +5502,12 @@
             if (n.wbArticle) groups[base].wbArticle = n.wbArticle;
         });
 
+        // Добавляем маржинальность из юнит-экономики
+        const econMap = {};
+        unitEconomics.forEach(e => {
+            if (e.baseArticle) econMap[e.baseArticle] = e;
+        });
+
         let items = Object.values(groups);
 
         if (searchQuery) {
@@ -4915,13 +5538,15 @@
             const sizeText = [...new Set(item.sizes)].sort().slice(0, 5).join(', ') + (item.sizes.length > 5 ? '...' : '');
             const colorText = [...new Set(item.colors)].slice(0, 3).join(', ') + (item.colors.length > 3 ? '...' : '');
 
-            // Динамика по артикулу
             let totalOrders = 0;
             orders.forEach(o => {
                 if (o.article === item.base || item.variants.includes(o.article)) {
                     totalOrders += o.orders || 0;
                 }
             });
+
+            const econ = econMap[item.base] || { margin: 0, marginLabel: 'Нет данных' };
+            const marginColor = econ.margin > 20 ? '🟢' : econ.margin > 0 ? '🟡' : '🔴';
 
             html += `
                 <div class="card-item" data-base="${item.base}">
@@ -4933,6 +5558,7 @@
                     <div style="margin-top:4px;display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);border-top:1px solid var(--border);padding-top:4px;">
                         <span>📦 ${item.variants.length} вариантов</span>
                         <span>📊 ${formatNumber(totalOrders)} заказов</span>
+                        <span>💰 ${marginColor} ${econ.margin}%</span>
                     </div>
                 </div>
             `;
@@ -4948,13 +5574,18 @@
         });
     }
 
+    // ================================================================
+    // 16. ОТКРЫТИЕ МОДАЛЬНОГО ОКНА КАРТОЧКИ
+    // ================================================================
+
     function openCardModal(data) {
         cardModalData = data;
+        const unitEconomics = calculateUnitEconomics();
+        const econ = unitEconomics.find(e => e.baseArticle === data.base);
 
         setText('cardModalTitle', data.base);
         setText('cardModalSubtitle', data.category + ' · ' + data.variants.length + ' вариантов');
 
-        // Основные данные
         setText('cardModalGtin', data.gtin || '—');
         setText('cardModalWb', data.wbArticle || '—');
         setText('cardModalBarcode', data.barcode || '—');
@@ -4963,7 +5594,16 @@
         setText('cardModalComposition', data.composition || '—');
         setText('cardModalFabric', (data.fabric || '—') + ' · ТН ВЭД: ' + (data.tnved || '—'));
 
-        // Цвета (кликабельные)
+        // Маржинальность
+        const marginEl = document.getElementById('cardModalMargin');
+        if (marginEl && econ) {
+            const color = econ.margin > 20 ? '#10B981' : econ.margin > 0 ? '#F59E0B' : '#EF4444';
+            marginEl.innerHTML = `<span style="color:${color};">${econ.margin}% (${econ.marginLabel})</span>`;
+        } else if (marginEl) {
+            marginEl.textContent = '—';
+        }
+
+        // Цвета
         const colorsContainer = document.getElementById('cardModalColors');
         if (colorsContainer) {
             const colors = [...new Set(data.colors)];
@@ -4976,10 +5616,8 @@
                 colorsContainer.querySelectorAll('.color-select').forEach(btn => {
                     btn.addEventListener('click', function() {
                         const color = this.dataset.color;
-                        // Подсвечиваем выбранный цвет
                         colorsContainer.querySelectorAll('.color-select').forEach(b => b.style.borderColor = 'var(--border)');
                         this.style.borderColor = 'var(--primary)';
-                        // Фильтруем размеры по цвету (если есть данные)
                         updateCardModalSizes(color);
                     });
                 });
@@ -4988,7 +5626,7 @@
             }
         }
 
-        // Размеры (кликабельные)
+        // Размеры
         updateCardModalSizes(null);
 
         // Воронка продаж
@@ -5036,6 +5674,29 @@
             };
         }
 
+        const editBtn = document.getElementById('cardModalEdit');
+        if (editBtn) {
+            editBtn.onclick = function() {
+                const article = prompt('Введите новый артикул (или оставьте пустым для отмены):', data.base);
+                if (article && article.trim()) {
+                    const newBase = getBaseArticle(article.trim());
+                    if (newBase) {
+                        // Обновляем базовый артикул
+                        const nom = APP.data.nomenclature.find(n => n.baseArticle === data.base);
+                        if (nom) {
+                            nom.baseArticle = newBase;
+                            nom.article = article.trim();
+                            dbSave('nomenclature', nom);
+                            loadAllData();
+                            renderCards('');
+                            alert('✅ Карточка обновлена');
+                            document.getElementById('cardModal').classList.remove('active');
+                        }
+                    }
+                }
+            };
+        }
+
         document.getElementById('cardModal').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
@@ -5050,11 +5711,9 @@
             return;
         }
 
-        // Получаем остатки для каждого размера
         const storage = APP.data.storage;
         let sizeHtml = '';
         sizes.forEach(size => {
-            // Ищем остаток для этого размера
             let stock = 0;
             const variant = cardModalData.sizeMap[size] || {};
             storage.forEach(s => {
@@ -5078,14 +5737,11 @@
         container.querySelectorAll('.size-select').forEach(btn => {
             btn.addEventListener('click', function() {
                 const size = this.dataset.size;
-                // Подсвечиваем выбранный размер
                 container.querySelectorAll('.size-select').forEach(b => b.style.borderColor = 'var(--border)');
                 this.style.borderColor = 'var(--primary)';
-                // Показываем детали размера
                 const variant = cardModalData.sizeMap[size] || {};
                 setText('cardModalGtin', variant.gtin || cardModalData.gtin || '—');
                 setText('cardModalBarcode', variant.barcode || cardModalData.barcode || '—');
-                // Обновляем график для этого размера
                 updateCardModalChartForSize(cardModalData, size);
             });
         });
@@ -5098,7 +5754,6 @@
         const orders = APP.data.orders;
         const variants = data.variants || [];
 
-        // Собираем данные по воронке
         let views = 0, cart = 0, ordered = 0, delivered = 0;
 
         variants.forEach(v => {
@@ -5110,7 +5765,6 @@
             });
         });
 
-        // Имитация просмотров и корзины (на основе данных)
         views = ordered * 10 + Math.round(Math.random() * 50);
         cart = ordered * 3 + Math.round(Math.random() * 20);
 
@@ -5147,7 +5801,6 @@
         const orders = APP.data.orders;
         const variants = data.variants || [];
 
-        // Собираем заказы по дням
         const dailyData = {};
         orders.forEach(o => {
             if (variants.includes(o.article) || o.article === data.base) {
@@ -5157,14 +5810,12 @@
             }
         });
 
-        // Сортируем по датам
         const dates = Object.keys(dailyData).sort((a, b) => {
             const da = parseDate(a);
             const db = parseDate(b);
             return da - db;
         });
 
-        // Берём последние N дней
         const days = period || 7;
         const recentDates = dates.slice(-days);
         const values = recentDates.map(d => dailyData[d] || 0);
@@ -5237,7 +5888,6 @@
         const variant = data.sizeMap[size] || {};
         const article = variant.article || '';
 
-        // Собираем заказы по дням для конкретного размера
         const dailyData = {};
         orders.forEach(o => {
             if (o.article === article || (o.article && o.article.includes(data.base + '_' + size))) {
@@ -5387,7 +6037,107 @@
     }
 
     // ================================================================
-    // 15. АНАЛИТИКА ТОВАРОВ
+    // 17. ЮНИТ-ЭКОНОМИКА (полный раздел)
+    // ================================================================
+
+    function renderUnitEconomics() {
+        const data = calculateUnitEconomics();
+
+        if (data.length === 0) {
+            setText('ueAvgMargin', '—');
+            setText('ueHighMargin', '—');
+            setText('ueNegative', '—');
+            setText('ueTotalProfit', '—');
+            document.getElementById('ueHeatmap').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
+            document.getElementById('ueABC').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
+            document.getElementById('ueTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Нет данных</td></tr>';
+            return;
+        }
+
+        // Сводка
+        const avgMargin = Math.round(data.reduce((s, a) => s + a.margin, 0) / data.length);
+        const highMargin = data.filter(a => a.margin > 20).length;
+        const negative = data.filter(a => a.margin < 0).length;
+        const totalProfit = data.reduce((s, a) => s + a.profit, 0);
+
+        setText('ueAvgMargin', avgMargin + '%');
+        setText('ueHighMargin', highMargin);
+        setText('ueNegative', negative);
+        setText('ueTotalProfit', formatNumber(totalProfit) + ' ₽');
+
+        // ABC-анализ
+        const abcData = {
+            A: data.filter(a => a.abc === 'A'),
+            B: data.filter(a => a.abc === 'B'),
+            C: data.filter(a => a.abc === 'C')
+        };
+
+        const abcContainer = document.getElementById('ueABC');
+        if (abcContainer) {
+            let abcHtml = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">';
+            ['A', 'B', 'C'].forEach(cat => {
+                const items = abcData[cat] || [];
+                const total = items.reduce((s, a) => s + a.orders, 0);
+                const colors = { A: '#10B981', B: '#F59E0B', C: '#EF4444' };
+                abcHtml += `
+                    <div style="padding:8px;background:var(--bg-hover);border-radius:var(--radius-xs);text-align:center;border-top:3px solid ${colors[cat]};">
+                        <div style="font-size:20px;font-weight:800;color:${colors[cat]};">${cat}</div>
+                        <div style="font-size:12px;">${items.length} товаров</div>
+                        <div style="font-size:11px;color:var(--text-secondary);">📊 ${formatNumber(total)} заказов</div>
+                    </div>
+                `;
+            });
+            abcHtml += '</div>';
+            abcContainer.innerHTML = abcHtml;
+        }
+
+        // Тепловая карта
+        const heatmapContainer = document.getElementById('ueHeatmap');
+        if (heatmapContainer) {
+            const top10 = data.slice(0, 10);
+            let heatHtml = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;">';
+            top10.forEach(item => {
+                const color = item.margin > 20 ? '#10B981' : item.margin > 0 ? '#F59E0B' : '#EF4444';
+                const intensity = Math.min(Math.abs(item.margin) / 50, 1);
+                const opacity = 0.3 + intensity * 0.7;
+                heatHtml += `
+                    <div style="padding:6px;background:${color};opacity:${opacity};border-radius:var(--radius-xs);text-align:center;font-size:10px;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.article}: ${item.margin}%">
+                        ${item.article}
+                        <div style="font-size:14px;font-weight:700;">${item.margin}%</div>
+                    </div>
+                `;
+            });
+            heatHtml += '</div>';
+            heatmapContainer.innerHTML = heatHtml;
+        }
+
+        // Таблица
+        const tableBody = document.getElementById('ueTableBody');
+        if (tableBody) {
+            let html = '';
+            data.slice(0, 50).forEach(item => {
+                const statusColor = item.margin > 20 ? 'tag-green' : item.margin > 0 ? 'tag-yellow' : 'tag-red';
+                html += `
+                    <tr>
+                        <td style="padding:4px 8px;font-weight:500;font-size:11px;">${item.article}</td>
+                        <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.marketPrice)} ₽</td>
+                        <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.totalCost)} ₽</td>
+                        <td style="padding:4px 8px;font-size:11px;color:${item.profit > 0 ? '#10B981' : '#EF4444'};">${formatNumber(item.profit)} ₽</td>
+                        <td style="padding:4px 8px;font-size:11px;font-weight:600;color:${item.margin > 20 ? '#10B981' : item.margin > 0 ? '#F59E0B' : '#EF4444'};">${item.margin}%</td>
+                        <td style="padding:4px 8px;"><span class="tag ${statusColor}">${item.marginLabel}</span></td>
+                        <td style="padding:4px 8px;font-size:11px;">${item.category}</td>
+                    </tr>
+                `;
+            });
+            if (data.length > 50) {
+                html += `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:6px;font-size:10px;">Показано 50 из ${data.length}</td></tr>`;
+            }
+            tableBody.innerHTML = html;
+        }
+    }
+
+    // ================================================================
+    // 18. АНАЛИТИКА ТОВАРОВ
     // ================================================================
 
     function renderAnalytics(article) {
@@ -5406,6 +6156,8 @@
         const orders = APP.data.orders.filter(o => o.article === article || o.article.includes(article));
         const storage = APP.data.storage.filter(s => s.article === article || s.article.includes(article));
         const nom = APP.data.nomenclature.find(n => n.article === article || n.modelArticle === article || n.baseArticle === article);
+        const unitEconomics = calculateUnitEconomics();
+        const econ = unitEconomics.find(e => e.article === article || e.baseArticle === article);
 
         if (orders.length === 0 && storage.length === 0 && !nom) {
             container.innerHTML = `
@@ -5427,6 +6179,7 @@
         if (totalStock === 0) problems.push('❌ Нулевой остаток');
         if (totalOrders < 5) problems.push('⚠️ Низкие продажи');
         if (conversion < 30 && totalOrders > 0) problems.push('⚠️ Низкая конверсия');
+        if (econ && econ.margin < 0) problems.push('💰 Убыточный товар');
 
         const sorted = orders.sort((a, b) => {
             const da = parseDate(a.date);
@@ -5436,15 +6189,18 @@
         const labels = sorted.map(o => o.date || '');
         const data = sorted.map(o => o.orders || 0);
 
+        const marginDisplay = econ ? `${econ.margin}% (${econ.marginLabel})` : '—';
+
         container.innerHTML = `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div class="card" style="grid-column:1/-1;">
                     <div class="card-title">📊 ${article}</div>
-                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px;font-size:11px;">
-                        <div><div class="text-muted" style="font-size:9px;">Всего заказов</div><div style="font-size:16px;font-weight:700;">${formatNumber(totalOrders)}</div></div>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px;font-size:11px;">
+                        <div><div class="text-muted" style="font-size:9px;">Заказов</div><div style="font-size:16px;font-weight:700;">${formatNumber(totalOrders)}</div></div>
                         <div><div class="text-muted" style="font-size:9px;">Выкупов</div><div style="font-size:16px;font-weight:700;">${formatNumber(totalDelivered)}</div></div>
                         <div><div class="text-muted" style="font-size:9px;">Остаток</div><div style="font-size:16px;font-weight:700;">${formatNumber(totalStock)}</div></div>
                         <div><div class="text-muted" style="font-size:9px;">Конверсия</div><div style="font-size:16px;font-weight:700;">${conversion}%</div></div>
+                        <div><div class="text-muted" style="font-size:9px;">Маржа</div><div style="font-size:16px;font-weight:700;color:${econ && econ.margin > 20 ? '#10B981' : econ && econ.margin > 0 ? '#F59E0B' : '#EF4444'};">${marginDisplay}</div></div>
                     </div>
                     ${problems.length > 0 ? `<div style="margin-top:6px;padding:6px 10px;background:#FEF2F2;border-radius:var(--radius-xs);border-left:4px solid #EF4444;font-size:11px;">
                         <div style="font-weight:600;color:#991B1B;">🚨 Проблемы:</div>
@@ -5511,17 +6267,19 @@
                             <div style="font-weight:600;">${article}</div>
                             <div style="color:var(--primary);">⭐ 4.2</div>
                             <div>📊 ${formatNumber(totalOrders)} заказов</div>
+                            <div>💰 ${marginDisplay}</div>
                         </div>
                         <div>
                             <div class="text-muted" style="font-size:9px;">Конкурент</div>
                             <div style="font-weight:600;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${link.replace(/^https?:\/\//, '').slice(0, 25)}...</div>
                             <div style="color:#F59E0B;">⭐ 3.8</div>
                             <div>📊 ${formatNumber(compOrders)} заказов</div>
+                            <div>💰 ~${formatNumber(Math.round(compOrders * 0.15))}%</div>
                         </div>
                     </div>
                     <div style="margin-top:6px;padding:4px 8px;background:${totalOrders > compOrders ? '#ECFDF5' : '#FEF2F2'};border-radius:4px;font-size:10px;">
                         <strong>${totalOrders > compOrders ? '💪 Сильное место' : '⚠️ Слабое место'}:</strong>
-                        ${totalOrders > compOrders ? 'Вы лидируете по заказам!' : 'Конкурент опережает. Рекомендуется усилить рекламу.'}
+                        ${totalOrders > compOrders ? 'Вы лидируете по заказам и маржинальности!' : 'Конкурент опережает. Рекомендуется усилить рекламу и проверить цену.'}
                     </div>
                 </div>
             `;
@@ -5529,13 +6287,14 @@
     }
 
     // ================================================================
-    // 16. ОТЧЁТЫ
+    // 19. ОТЧЁТЫ
     // ================================================================
 
     function renderReports() {
         const orders = APP.data.orders;
         const storage = APP.data.storage;
         const planning = APP.data.planning || [];
+        const unitEconomics = calculateUnitEconomics();
 
         const totalStock = storage.reduce((s, o) => s + (o.available || 0), 0);
         setText('reportStock', formatNumber(totalStock));
@@ -5616,7 +6375,169 @@
     }
 
     // ================================================================
-    // 17. НАСТРОЙКИ
+    // 20. ДОСКА ЗАДАЧ (KANBAN)
+    // ================================================================
+
+    function renderTasks() {
+        const tasks = APP.data.tasks || [];
+
+        const columns = {
+            new: { el: document.getElementById('columnNew'), title: 'Новые', count: document.getElementById('countNew') },
+            inprogress: { el: document.getElementById('columnInProgress'), title: 'В работе', count: document.getElementById('countInProgress') },
+            review: { el: document.getElementById('columnReview'), title: 'На проверке', count: document.getElementById('countReview') },
+            done: { el: document.getElementById('columnDone'), title: 'Готово', count: document.getElementById('countDone') }
+        };
+
+        const columnMap = {
+            'new': tasks.filter(t => t.status === 'new'),
+            'inprogress': tasks.filter(t => t.status === 'inprogress'),
+            'review': tasks.filter(t => t.status === 'review'),
+            'done': tasks.filter(t => t.status === 'done')
+        };
+
+        for (const [key, col] of Object.entries(columns)) {
+            const items = columnMap[key] || [];
+            if (col.count) col.count.textContent = items.length;
+            if (col.el) {
+                if (items.length === 0) {
+                    col.el.innerHTML = '<div class="text-muted text-center" style="padding:16px;font-size:11px;">Нет задач</div>';
+                } else {
+                    let html = '';
+                    items.forEach(task => {
+                        const priorityClass = task.priority === 'high' ? 'high' : task.priority === 'medium' ? 'medium' : 'low';
+                        const priorityLabel = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
+                        html += `
+                            <div class="kanban-card" draggable="true" data-id="${task.id}">
+                                <div class="task-title">${task.title}</div>
+                                <div class="task-meta">
+                                    <span>👤 ${task.assignee || 'Не назначен'}</span>
+                                    <span>📅 ${task.deadline || '—'}</span>
+                                    <span class="task-priority ${priorityClass}">${priorityLabel} ${task.priority || 'low'}</span>
+                                </div>
+                                ${task.article ? `<div style="font-size:9px;color:var(--text-secondary);margin-top:2px;">📦 ${task.article}</div>` : ''}
+                                <div style="margin-top:4px;display:flex;gap:4px;">
+                                    <button class="btn btn-secondary btn-sm move-task" data-id="${task.id}" data-direction="left" style="font-size:8px;padding:1px 6px;">←</button>
+                                    <button class="btn btn-secondary btn-sm move-task" data-id="${task.id}" data-direction="right" style="font-size:8px;padding:1px 6px;">→</button>
+                                    <button class="btn btn-danger btn-sm delete-task" data-id="${task.id}" style="font-size:8px;padding:1px 6px;">🗑️</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    col.el.innerHTML = html;
+
+                    // Drag and Drop
+                    col.el.querySelectorAll('.kanban-card').forEach(card => {
+                        card.addEventListener('dragstart', function(e) {
+                            e.dataTransfer.setData('text/plain', this.dataset.id);
+                        });
+                    });
+
+                    col.el.addEventListener('dragover', function(e) {
+                        e.preventDefault();
+                    });
+
+                    col.el.addEventListener('drop', async function(e) {
+                        e.preventDefault();
+                        const id = parseInt(e.dataTransfer.getData('text/plain'));
+                        const task = APP.data.tasks.find(t => t.id === id);
+                        if (task && task.status !== key) {
+                            task.status = key;
+                            await dbSave('tasks', task);
+                            APP.data.tasks = await dbGetAll('tasks');
+                            renderTasks();
+                        }
+                    });
+                }
+            }
+        }
+
+        // Обработчики кнопок
+        document.querySelectorAll('.move-task').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = parseInt(this.dataset.id);
+                const direction = this.dataset.direction;
+                const statuses = ['new', 'inprogress', 'review', 'done'];
+                const task = APP.data.tasks.find(t => t.id === id);
+                if (!task) return;
+                const idx = statuses.indexOf(task.status);
+                const newIdx = direction === 'left' ? idx - 1 : idx + 1;
+                if (newIdx < 0 || newIdx >= statuses.length) return;
+                task.status = statuses[newIdx];
+                await dbSave('tasks', task);
+                APP.data.tasks = await dbGetAll('tasks');
+                renderTasks();
+            });
+        });
+
+        document.querySelectorAll('.delete-task').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = parseInt(this.dataset.id);
+                if (!confirm('Удалить задачу?')) return;
+                await dbDelete('tasks', id);
+                APP.data.tasks = await dbGetAll('tasks');
+                renderTasks();
+            });
+        });
+    }
+
+    // ================================================================
+    // 21. НОВОСТИ
+    // ================================================================
+
+    function renderNews() {
+        const container = document.getElementById('newsList');
+        const news = APP.data.news || [];
+
+        if (news.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center" style="padding:24px;font-size:13px;">Новостей пока нет. Нажмите "Обновить".</div>';
+            return;
+        }
+
+        let html = '';
+        news.forEach(item => {
+            html += `
+                <div class="news-item" onclick="window.open('${item.link || '#'}', '_blank')" style="padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:var(--transition);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+                        <span class="news-title" style="font-weight:500;font-size:13px;">${item.title}</span>
+                        <span class="news-source" style="font-size:9px;color:var(--text-secondary);">${item.source || ''}</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">${item.description || ''}</div>
+                    <div style="font-size:9px;color:var(--text-secondary);margin-top:2px;">📅 ${item.date || ''}</div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    async function fetchNews() {
+        // Имитация парсинга новостей из RSS
+        const sources = [
+            { name: 'Ведомости', url: 'https://www.vedomosti.ru/rss/news' },
+            { name: 'РБК', url: 'https://www.rbc.ru/rss/ ' },
+            { name: 'New Retail', url: 'https://new-retail.ru/rss/' }
+        ];
+
+        // В реальном проекте здесь был бы парсинг RSS
+        // Пока добавляем тестовые новости
+        const testNews = [
+            { title: 'Wildberries запустил AI-помощника для продавцов', source: 'Ведомости', date: formatDate(new Date()), link: 'https://www.vedomosti.ru/', description: 'Новый инструмент помогает анализировать продажи и давать рекомендации.' },
+            { title: 'Комиссии WB: что изменилось в 2026 году', source: 'РБК', date: formatDate(new Date()), link: 'https://www.rbc.ru/', description: 'Изменения в тарифах на хранение и логистику.' },
+            { title: 'Wildberries отменил индекс распределения продаж', source: 'New Retail', date: formatDate(new Date()), link: 'https://new-retail.ru/', description: 'Теперь ИРП не влияет на стоимость логистики.' },
+            { title: 'Как селлеру выжить в 2026 году: стратегии и инструменты', source: 'New Retail', date: formatDate(new Date()), link: 'https://new-retail.ru/', description: 'Советы по управлению маржинальностью и рекламой.' },
+            { title: 'WB запустил новую программу лояльности для продавцов', source: 'Ведомости', date: formatDate(new Date()), link: 'https://www.vedomosti.ru/', description: 'Снижение комиссий для топ-продавцов.' }
+        ];
+
+        await dbClear('news');
+        for (const item of testNews) {
+            await dbSave('news', { ...item, id: Date.now() + Math.random() });
+        }
+        APP.data.news = await dbGetAll('news');
+        renderNews();
+        renderNewsWidget();
+    }
+
+    // ================================================================
+    // 22. НАСТРОЙКИ
     // ================================================================
 
     function renderSettings() {
@@ -5667,11 +6588,18 @@
     }
 
     // ================================================================
-    // 18. ОБУЧЕНИЕ
+    // 23. ОБУЧЕНИЕ
     // ================================================================
 
     function renderLearning() {
         renderChecklist();
+        // FAQ клики
+        document.querySelectorAll('.faq-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const answer = this.querySelector('.faq-answer');
+                if (answer) answer.classList.toggle('show');
+            });
+        });
     }
 
     function renderChecklist() {
@@ -5680,6 +6608,7 @@
 
         const planning = APP.data.planning || [];
         const advData = generateAdvertisingData();
+        const unitEconomics = calculateUnitEconomics();
 
         const today = formatDate(new Date());
         const todayTasks = planning.filter(p => p.date === today && p.status !== 'Отгружено' && p.status !== 'Архив');
@@ -5689,6 +6618,7 @@
             const io = Math.min(1, (a.stock || 0) / ((a.orders || 1) * 30));
             return io < 0.2 && a.stock > 0;
         });
+        const negativeMargin = unitEconomics.filter(a => a.margin < 0);
 
         let tasks = [];
         if (todayTasks.length > 0) {
@@ -5699,6 +6629,9 @@
         }
         if (lowIO.length > 0) {
             tasks.push({ text: `⚠️ Низкий ИО: ${lowIO.map(a => a.article).join(', ')}`, type: 'warning' });
+        }
+        if (negativeMargin.length > 0) {
+            tasks.push({ text: `💰 Убыточные товары: ${negativeMargin.map(a => a.article).join(', ')}`, type: 'urgent' });
         }
         if (advData.length > 0 && advData.some(a => a.fallWeek && parseFloat(a.fallWeek) < -30)) {
             const falling = advData.filter(a => a.fallWeek && parseFloat(a.fallWeek) < -30);
@@ -5741,7 +6674,7 @@
     }
 
     // ================================================================
-    // 19. AI-АССИСТЕНТ
+    // 24. AI-АССИСТЕНТ (полная версия)
     // ================================================================
 
     function setupAI() {
@@ -5766,49 +6699,95 @@
 
         function getAIResponse(query) {
             const q = query.toLowerCase();
+            const unitEconomics = calculateUnitEconomics();
+            const advData = generateAdvertisingData();
 
-            if (q.includes('сколько') || q.includes('статистик') || q.includes('товар')) {
+            // ===== СТАТИСТИКА =====
+            if (q.includes('сколько') || q.includes('статистик') || q.includes('товар') || q.includes('покажи статистику')) {
                 const total = APP.data.nomenclature.length;
                 const orders = APP.data.orders.reduce((s, o) => s + (o.orders || 0), 0);
                 const stock = APP.data.storage.reduce((s, o) => s + (o.available || 0), 0);
-                const adv = generateAdvertisingData();
-                const avgScore = adv.length > 0 ? Math.round(adv.reduce((s, a) => s + a.score, 0) / adv.length) : 0;
-                return `📊 Текущая статистика:\n• Товаров: ${formatNumber(total)}\n• Заказов всего: ${formatNumber(orders)}\n• Остаток на складах: ${formatNumber(stock)} шт\n• Средний скоринг: ${avgScore}/100\n• Загружено данных: ${formatDate(new Date())}`;
+                const avgMargin = unitEconomics.length > 0 ? Math.round(unitEconomics.reduce((s, a) => s + a.margin, 0) / unitEconomics.length) : 0;
+                const avgScore = advData.length > 0 ? Math.round(advData.reduce((s, a) => s + a.score, 0) / advData.length) : 0;
+                return `📊 Текущая статистика:\n• Товаров: ${formatNumber(total)}\n• Заказов всего: ${formatNumber(orders)}\n• Остаток на складах: ${formatNumber(stock)} шт\n• Средняя маржинальность: ${avgMargin}%\n• Средний скоринг: ${avgScore}/100\n• Загружено данных: ${formatDate(new Date())}`;
             }
 
-            if (q.includes('чек') || q.includes('сегодня') || q.includes('сделать')) {
+            // ===== ЧЕК-ЛИСТ =====
+            if (q.includes('чек') || q.includes('сегодня') || q.includes('сделать') || q.includes('что сегодня')) {
                 const planning = APP.data.planning || [];
                 const today = formatDate(new Date());
                 const tasks = planning.filter(p => p.date === today && p.status !== 'Отгружено');
-                if (tasks.length === 0) {
-                    const adv = generateAdvertisingData();
-                    const critical = adv.filter(a => a.stock < 5);
-                    if (critical.length > 0) {
-                        return `⚠️ Внимание! Есть товары с критическим остатком: ${critical.map(a => a.article).join(', ')}. Рекомендуется пополнить запасы.`;
-                    }
-                    return '✅ На сегодня задач нет. Отдыхайте!';
-                }
-                return `📋 Чек-лист на сегодня:\n${tasks.map((t, i) => `${i+1}. Поставка #${t.id} — ${t.status}`).join('\n')}`;
-            }
+                const critical = advData.filter(a => a.stock < 5);
+                const negative = unitEconomics.filter(a => a.margin < 0);
 
-            if (q.includes('проблем') || q.includes('критич') || q.includes('красн')) {
-                const adv = generateAdvertisingData();
-                const critical = adv.filter(a => a.stock < 5 && a.orders > 0);
-                const falling = adv.filter(a => a.fallWeek && parseFloat(a.fallWeek) < -30);
-                if (critical.length === 0 && falling.length === 0) return '✅ Критических проблем нет. Все товары в порядке!';
-                let result = '🚨 Проблемные товары:\n';
-                if (critical.length > 0) result += `\n📦 Критический остаток:\n${critical.map(a => `• ${a.article} — ${formatNumber(a.stock)} шт, заказов ${formatNumber(a.orders)}`).join('\n')}`;
-                if (falling.length > 0) result += `\n📉 Сильное падение:\n${falling.map(a => `• ${a.article} — ${a.fallWeek}`).join('\n')}`;
+                let result = '📋 Чек-лист на сегодня:\n';
+                if (tasks.length > 0) {
+                    result += tasks.map((t, i) => `${i+1}. 📦 Поставка #${t.id} — ${t.status}`).join('\n');
+                } else {
+                    result += '✅ Нет запланированных поставок.\n';
+                }
+                if (critical.length > 0) {
+                    result += `\n🚨 Критический остаток: ${critical.map(a => a.article).join(', ')}`;
+                }
+                if (negative.length > 0) {
+                    result += `\n💰 Убыточные товары: ${negative.map(a => a.article).join(', ')}`;
+                }
                 return result;
             }
 
-            if (q.includes('поставк') || q.includes('собрать')) {
+            // ===== ПРОБЛЕМЫ =====
+            if (q.includes('проблем') || q.includes('критич') || q.includes('красн') || q.includes('покажи проблемы')) {
+                const critical = advData.filter(a => a.stock < 5 && a.orders > 0);
+                const falling = advData.filter(a => a.fallWeek && parseFloat(a.fallWeek) < -30);
+                const negative = unitEconomics.filter(a => a.margin < 0);
+
+                if (critical.length === 0 && falling.length === 0 && negative.length === 0) {
+                    return '✅ Критических проблем нет. Все товары в порядке!';
+                }
+                let result = '🚨 Проблемные товары:\n';
+                if (critical.length > 0) {
+                    result += `\n📦 Критический остаток:\n${critical.map(a => `• ${a.article} — ${formatNumber(a.stock)} шт, заказов ${formatNumber(a.orders)}`).join('\n')}`;
+                }
+                if (falling.length > 0) {
+                    result += `\n📉 Сильное падение:\n${falling.map(a => `• ${a.article} — ${a.fallWeek}`).join('\n')}`;
+                }
+                if (negative.length > 0) {
+                    result += `\n💰 Убыточные товары:\n${negative.map(a => `• ${a.article} — ${a.margin}%`).join('\n')}`;
+                }
+                return result;
+            }
+
+            // ===== МАРЖИНАЛЬНОСТЬ =====
+            if (q.includes('маржа') || q.includes('маржинальн') || q.includes('юнит') || q.includes('покажи маржинальность')) {
+                const topMargin = unitEconomics.sort((a, b) => b.margin - a.margin).slice(0, 5);
+                const negative = unitEconomics.filter(a => a.margin < 0);
+                const avgMargin = unitEconomics.length > 0 ? Math.round(unitEconomics.reduce((s, a) => s + a.margin, 0) / unitEconomics.length) : 0;
+
+                let result = `💰 Маржинальность:\n📊 Средняя: ${avgMargin}%\n`;
+                if (topMargin.length > 0) {
+                    result += `\n🏆 Топ по маржинальности:\n${topMargin.map((a, i) => `${i+1}. ${a.article} — ${a.margin}%`).join('\n')}`;
+                }
+                if (negative.length > 0) {
+                    result += `\n\n🔴 Убыточные товары:\n${negative.map(a => `• ${a.article} — ${a.margin}%`).join('\n')}`;
+                }
+                return result;
+            }
+
+            // ===== ТОП =====
+            if (q.includes('топ') || q.includes('лидер') || q.includes('покажи топ')) {
+                const leaders = advData.sort((a, b) => b.orders - a.orders).slice(0, 5);
+                if (leaders.length === 0) return 'Нет данных о лидерах';
+                return `🏆 Топ-5 товаров по заказам:\n${leaders.map((a, i) => `${i+1}. ${a.article} — ${formatNumber(a.orders)} заказов, ⭐ ${a.score}/100, 💰 ${a.margin}%`).join('\n')}`;
+            }
+
+            // ===== ПОСТАВКА =====
+            if (q.includes('поставк') || q.includes('собрать') || q.includes('как собрать')) {
                 return `📦 Как собрать поставку:\n1. Перейдите в раздел "Поставки"\n2. Введите артикул, размер, количество и номер паллеты\n3. Нажмите "➕" для добавления в корзину\n4. Повторите для всех товаров\n5. Нажмите "Сформировать поставку"\n6. Отслеживайте статус в "Планирование"`;
             }
 
-            if (q.includes('ио') || q.includes('индекс остатка')) {
-                const adv = generateAdvertisingData();
-                const lowIO = adv.filter(a => {
+            // ===== ИО =====
+            if (q.includes('ио') || q.includes('индекс остатка') || q.includes('покажи ио')) {
+                const lowIO = advData.filter(a => {
                     const io = Math.min(1, (a.stock || 0) / ((a.orders || 1) * 30));
                     return io < 0.2 && a.stock > 0;
                 }).slice(0, 5);
@@ -5816,14 +6795,23 @@
                 return `⚠️ Товары с низким ИО (<0.2):\n${lowIO.map(a => `• ${a.article} — ИО ${Math.round(Math.min(1, (a.stock || 0) / ((a.orders || 1) * 30)) * 100)}%`).join('\n')}`;
             }
 
-            if (q.includes('топ') || q.includes('лидер')) {
-                const adv = generateAdvertisingData();
-                const leaders = adv.sort((a, b) => b.orders - a.orders).slice(0, 5);
-                if (leaders.length === 0) return 'Нет данных о лидерах';
-                return `🏆 Топ-5 товаров по заказам:\n${leaders.map((a, i) => `${i+1}. ${a.article} — ${formatNumber(a.orders)} заказов, ⭐ ${a.score}/100`).join('\n')}`;
+            // ===== РАСЧЁТ НА ЛЕТУ =====
+            const calcMatch = q.match(/рассчитай маржу для цены (\d+).*себестоимости (\d+)/i);
+            if (calcMatch) {
+                const price = parseInt(calcMatch[1]);
+                const cost = parseInt(calcMatch[2]);
+                const commission = APP.settings.wbCommission || 15;
+                const logistics = APP.settings.logisticsCost || 50;
+                const finalPrice = price - (price / 100 * commission);
+                const totalCost = cost + logistics * 0.5;
+                const profit = finalPrice - totalCost;
+                const margin = finalPrice > 0 ? Math.round((profit / finalPrice) * 100) : 0;
+
+                return `📊 Расчёт маржинальности:\n\nЦена: ${formatNumber(price)} ₽\nСебестоимость: ${formatNumber(cost)} ₽\nКомиссия WB (${commission}%): ${formatNumber(Math.round(price / 100 * commission))} ₽\nЛогистика: ${formatNumber(Math.round(logistics * 0.5))} ₽\nИтого расходы: ${formatNumber(Math.round(totalCost))} ₽\nПрибыль: ${formatNumber(Math.round(profit))} ₽\nМаржинальность: ${margin}% ${margin > 20 ? '🟢' : margin > 0 ? '🟡' : '🔴'}`;
             }
 
-            return `Я вас понял. Вот что я могу:\n• 📊 Показать статистику\n• ✅ Сгенерировать чек-лист\n• 🚨 Найти проблемные товары\n• 📦 Объяснить, как собрать поставку\n• 📊 Показать индекс остатка (ИО)\n• 🏆 Показать топ-5 товаров\n\nЗадайте конкретный вопрос!`;
+            // ===== ОБЩЕЕ =====
+            return `Я вас понял. Вот что я могу:\n• 📊 Показать статистику\n• ✅ Сгенерировать чек-лист\n• 🚨 Найти проблемные товары\n• 📦 Объяснить, как собрать поставку\n• 📊 Показать индекс остатка (ИО)\n• 🏆 Показать топ-5 товаров\n• 💰 Показать маржинальность\n• 🧮 Рассчитать маржу для заданных цены и себестоимости\n\nЗадайте конкретный вопрос!`;
         }
 
         function handleAI() {
@@ -5848,7 +6836,7 @@
     }
 
     // ================================================================
-    // 20. ПОИСК
+    // 25. ПОИСК
     // ================================================================
 
     function setupSearch() {
@@ -5881,7 +6869,7 @@
             const adv = generateAdvertisingData();
             adv.forEach(a => {
                 if (a.article.toLowerCase().includes(q)) {
-                    items.push({ id: a.article, title: a.article, subtitle: '📢 Реклама ⭐' + a.score, page: 'advertising' });
+                    items.push({ id: a.article, title: a.article, subtitle: '📢 Реклама ⭐' + a.score + ' 💰' + a.margin + '%', page: 'advertising' });
                 }
             });
 
@@ -5953,7 +6941,7 @@
     }
 
     // ================================================================
-    // 21. НАВИГАЦИЯ
+    // 26. НАВИГАЦИЯ
     // ================================================================
 
     function setupNavigation() {
@@ -5999,8 +6987,17 @@
             case 'analytics':
                 renderAnalytics('');
                 break;
+            case 'unitEconomics':
+                renderUnitEconomics();
+                break;
             case 'reports':
                 renderReports();
+                break;
+            case 'tasks':
+                renderTasks();
+                break;
+            case 'news':
+                renderNews();
                 break;
             case 'settings':
                 renderSettings();
@@ -6016,7 +7013,33 @@
     }
 
     // ================================================================
-    // 22. НАСТРОЙКА ИМПОРТА
+    // 27. РУЧНОЕ ДОБАВЛЕНИЕ КАРТОЧКИ
+    // ================================================================
+
+    async function addCardManually(data) {
+        const nom = {
+            id: Date.now() + Math.random(),
+            article: data.article,
+            modelArticle: data.article,
+            baseArticle: data.baseArticle || getBaseArticle(data.article),
+            size: data.size || '',
+            color: data.color || '',
+            category: data.category || getCategoryFromName(data.article),
+            gtin: data.gtin || '',
+            wbArticle: data.wbArticle || '',
+            barcode: data.barcode || '',
+            fabric: data.fabric || '',
+            composition: data.composition || '',
+            tnved: data.tnved || ''
+        };
+
+        await dbSave('nomenclature', nom);
+        APP.data.nomenclature = await dbGetAll('nomenclature');
+        renderCards('');
+    }
+
+    // ================================================================
+    // 28. НАСТРОЙКА ИМПОРТА
     // ================================================================
 
     function setupImport() {
@@ -6129,7 +7152,7 @@
     }
 
     // ================================================================
-    // 23. ИНИЦИАЛИЗАЦИЯ
+    // 29. ИНИЦИАЛИЗАЦИЯ
     // ================================================================
 
     async function init() {
@@ -6197,7 +7220,8 @@
             await dbClear('warehouse');
             await dbClear('supplies');
             await dbClear('planning');
-            APP.data = { orders: [], nomenclature: [], storage: [], warehouse: [], supplies: [], planning: [] };
+            await dbClear('tasks');
+            APP.data = { orders: [], nomenclature: [], storage: [], warehouse: [], supplies: [], planning: [], tasks: [] };
             alert('✅ Все данные очищены');
             refreshCurrentPage();
         });
@@ -6290,6 +7314,35 @@
             renderCards('');
         });
 
+        // === ДОБАВЛЕНИЕ КАРТОЧКИ ===
+        safeAddListener('addCardBtn', 'click', () => {
+            document.getElementById('addCardModal').classList.add('active');
+        });
+
+        safeAddListener('addCardModalClose', 'click', () => {
+            document.getElementById('addCardModal').classList.remove('active');
+        });
+
+        safeAddListener('addCardConfirmBtn', 'click', async () => {
+            const data = {
+                article: document.getElementById('addCardArticle')?.value?.trim(),
+                size: document.getElementById('addCardSize')?.value?.trim() || '',
+                color: document.getElementById('addCardColor')?.value?.trim() || '',
+                baseArticle: document.getElementById('addCardBase')?.value?.trim() || '',
+                category: document.getElementById('addCardCategory')?.value?.trim() || '',
+                gtin: document.getElementById('addCardGtin')?.value?.trim() || '',
+                wbArticle: document.getElementById('addCardWb')?.value?.trim() || '',
+                barcode: document.getElementById('addCardBarcode')?.value?.trim() || '',
+                fabric: document.getElementById('addCardFabric')?.value?.trim() || '',
+                composition: document.getElementById('addCardComposition')?.value?.trim() || '',
+                tnved: document.getElementById('addCardTnved')?.value?.trim() || ''
+            };
+            if (!data.article) { alert('Введите артикул'); return; }
+            await addCardManually(data);
+            document.getElementById('addCardModal').classList.remove('active');
+            alert('✅ Карточка добавлена!');
+        });
+
         // === АНАЛИТИКА ===
         safeAddListener('analyticsSearchBtn', 'click', () => {
             const input = document.getElementById('analyticsSearch');
@@ -6305,6 +7358,18 @@
             });
         }
 
+        // === ЮНИТ-ЭКОНОМИКА ===
+        safeAddListener('refreshUnitEconomics', 'click', renderUnitEconomics);
+        safeAddListener('exportUnitEconomics', 'click', () => {
+            const data = calculateUnitEconomics();
+            if (data.length === 0) { alert('Нет данных для экспорта'); return; }
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, 'Юнит-экономика');
+            XLSX.writeFile(wb, `Юнит_экономика_${formatDate(new Date()).replace(/\./g, '_')}.xlsx`);
+            alert('✅ Экспортировано!');
+        });
+
         // === РЕКЛАМА ===
         safeAddListener('refreshAdvBtn', 'click', () => renderAdvertising(APP.ui.currentAdvTab));
         safeQuerySelectorAll('[data-adv-tab]', 'click', function() {
@@ -6313,7 +7378,6 @@
             renderAdvertising(tab);
         });
 
-        // === Запуск выбранных рекламных кампаний ===
         safeAddListener('launchSelectedBtn', 'click', () => {
             const selected = APP.ui.selectedCampaigns;
             if (selected.length === 0) {
@@ -6327,6 +7391,8 @@
             });
             const totalBudget = budgets.reduce((s, b) => s + b, 0);
             alert(`🚀 Запущено ${selected.length} кампаний на общий бюджет ${formatNumber(totalBudget)} ₽!\n\nТовары:\n${selected.join('\n')}`);
+            APP.ui.selectedCampaigns = [];
+            updateSelectedCount();
         });
 
         // === ПОИСК В РЕКЛАМЕ ===
@@ -6363,6 +7429,52 @@
             alert('📤 Функция экспорта в разработке. Будет доступна в следующей версии.');
         });
 
+        // === ДОСКА ЗАДАЧ ===
+        safeAddListener('addTaskBtn', 'click', () => {
+            document.getElementById('addTaskModal').classList.add('active');
+        });
+
+        safeAddListener('addTaskModalClose', 'click', () => {
+            document.getElementById('addTaskModal').classList.remove('active');
+        });
+
+        safeAddListener('addTaskConfirmBtn', 'click', async () => {
+            const title = document.getElementById('addTaskTitle')?.value?.trim();
+            const desc = document.getElementById('addTaskDesc')?.value?.trim() || '';
+            const assignee = document.getElementById('addTaskAssignee')?.value?.trim() || '';
+            const priority = document.getElementById('addTaskPriority')?.value || 'low';
+            const deadline = document.getElementById('addTaskDeadline')?.value || '';
+            const article = document.getElementById('addTaskArticle')?.value?.trim() || '';
+
+            if (!title) { alert('Введите название задачи'); return; }
+
+            const task = {
+                id: Date.now() + Math.random(),
+                title: title,
+                description: desc,
+                assignee: assignee,
+                priority: priority,
+                deadline: deadline,
+                article: article,
+                status: 'new',
+                created: formatDate(new Date())
+            };
+
+            await dbSave('tasks', task);
+            APP.data.tasks = await dbGetAll('tasks');
+            document.getElementById('addTaskModal').classList.remove('active');
+            renderTasks();
+            alert('✅ Задача создана!');
+        });
+
+        safeAddListener('refreshTasksBtn', 'click', renderTasks);
+
+        // === НОВОСТИ ===
+        safeAddListener('refreshNewsBtn', 'click', async () => {
+            await fetchNews();
+            alert('✅ Новости обновлены!');
+        });
+
         // === МОДАЛКИ ===
         safeAddListener('importModalClose', 'click', () => {
             const modal = document.getElementById('importModal');
@@ -6387,8 +7499,8 @@
 
         // === FAQ ===
         document.querySelectorAll('.faq-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const answer = item.querySelector('.faq-answer');
+            item.addEventListener('click', function() {
+                const answer = this.querySelector('.faq-answer');
                 if (answer) answer.classList.toggle('show');
             });
         });
@@ -6441,6 +7553,9 @@
         updateStatus('info', 'Готово');
         refreshCurrentPage();
 
+        // Автообновление новостей
+        await fetchNews();
+
         // Автообновление каждые 5 минут
         setInterval(async () => {
             console.log('🔄 Автообновление...');
@@ -6452,7 +7567,7 @@
     }
 
     // ================================================================
-    // 24. ЗАПУСК
+    // 30. ЗАПУСК
     // ================================================================
 
     document.addEventListener('DOMContentLoaded', init);
