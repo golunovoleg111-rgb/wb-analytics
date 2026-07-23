@@ -3750,43 +3750,106 @@ function calculateUnitEconomicsV2() {
         stockMap[s.article] = (stockMap[s.article] || 0) + (s.available || 0);
     });
 
-    // ============================================================
-    // [FIX] КАРТА ЦЕН — УЛУЧШЕННОЕ СОПОСТАВЛЕНИЕ
-    // ============================================================
-    const priceMap = {};
-    prices.forEach(p => {
-        if (p.article) {
-            // Сохраняем цену по полному артикулу
-            if (!priceMap[p.article] || (p.price || 0) > (priceMap[p.article]?.price || 0)) {
-                priceMap[p.article] = p;
-            }
-            // Также сохраняем по базовому артикулу (без размера)
-            const base = getBaseArticle(p.article);
-            if (base && base !== p.article) {
-                if (!priceMap[base] || (p.price || 0) > (priceMap[base]?.price || 0)) {
-                    priceMap[base] = p;
-                }
-            }
-            // И по артикулу без последнего суффикса (для размеров)
-            const parts = p.article.split('_');
-            if (parts.length > 1) {
-                const withoutLast = parts.slice(0, -1).join('_');
-                if (withoutLast && !priceMap[withoutLast]) {
-                    priceMap[withoutLast] = p;
-                }
+   // ================================================================
+// [FIX] КАРТА ЦЕН — УЛУЧШЕННОЕ СОПОСТАВЛЕНИЕ
+// ================================================================
+
+const priceMap = {};
+prices.forEach(p => {
+    if (p.article) {
+        const article = String(p.article).trim();
+        const price = parseFloat(p.price) || 0;
+        if (price === 0) return;
+        
+        // 1. Сохраняем по полному артикулу
+        if (!priceMap[article] || price > priceMap[article].price) {
+            priceMap[article] = { price, discount: p.discount || 0, discountedPrice: p.discountedPrice || 0 };
+        }
+        
+        // 2. Сохраняем по базовому артикулу (без размера)
+        const base = getBaseArticle(article);
+        if (base && base !== article) {
+            if (!priceMap[base] || price > priceMap[base].price) {
+                priceMap[base] = { price, discount: p.discount || 0, discountedPrice: p.discountedPrice || 0 };
             }
         }
-    });
+        
+        // 3. Сохраняем по артикулу без последнего суффикса
+        const parts = article.split('_');
+        if (parts.length > 1) {
+            const withoutLast = parts.slice(0, -1).join('_');
+            if (withoutLast && !priceMap[withoutLast]) {
+                priceMap[withoutLast] = { price, discount: p.discount || 0, discountedPrice: p.discountedPrice || 0 };
+            }
+        }
+        
+        // 4. Сохраняем по артикулу без номера размера (если есть)
+        const withoutSize = article.replace(/_\d+$/, '');
+        if (withoutSize !== article && !priceMap[withoutSize]) {
+            priceMap[withoutSize] = { price, discount: p.discount || 0, discountedPrice: p.discountedPrice || 0 };
+        }
+    }
+});
+console.log('📊 [Юнит-экономика] Загружено цен в карту:', Object.keys(priceMap).length);
+// Выведем первые 10 для отладки
+console.log('📊 [Юнит-экономика] Примеры цен:', Object.keys(priceMap).slice(0, 10).map(k => k + '=' + priceMap[k].price));
+    
+       // ================================================================
+// [FIX] ПОЛУЧЕНИЕ ЦЕНЫ — РАСШИРЕННЫЙ ПОИСК
+// ================================================================
 
-    console.log('📊 [Юнит-экономика] Загружено цен:', Object.keys(priceMap).length);
+let marketPrice = 0;
+let priceSource = 'не найдена';
 
-    const result = [];
-    const commission = APP.settings.wbCommission || 15;
-    const logisticsCost = APP.settings.logisticsCost || 50;
-    const taxSystem = APP.settings.taxSystem || 'usn6';
-    const patentCost = APP.settings.patentCost || 30000;
+// Функция для поиска цены по разным вариантам артикула
+function findPrice(article) {
+    // Прямое совпадение
+    if (priceMap[article] && priceMap[article].price > 0) {
+        return { price: priceMap[article].price, source: 'прямое совпадение' };
+    }
+    
+    // По базовому артикулу
+    const base = getBaseArticle(article);
+    if (base && priceMap[base] && priceMap[base].price > 0) {
+        return { price: priceMap[base].price, source: 'базовый: ' + base };
+    }
+    
+    // Без последнего суффикса
+    const parts = article.split('_');
+    if (parts.length > 1) {
+        const withoutLast = parts.slice(0, -1).join('_');
+        if (priceMap[withoutLast] && priceMap[withoutLast].price > 0) {
+            return { price: priceMap[withoutLast].price, source: 'без суффикса: ' + withoutLast };
+        }
+    }
+    
+    // Без размера
+    const withoutSize = article.replace(/_\d+$/, '');
+    if (withoutSize !== article && priceMap[withoutSize] && priceMap[withoutSize].price > 0) {
+        return { price: priceMap[withoutSize].price, source: 'без размера: ' + withoutSize };
+    }
+    
+    // Поиск по частичному совпадению
+    const searchTerms = article.split('_');
+    for (let i = searchTerms.length; i > 0; i--) {
+        const term = searchTerms.slice(0, i).join('_');
+        if (term && priceMap[term] && priceMap[term].price > 0) {
+            return { price: priceMap[term].price, source: 'частичное: ' + term };
+        }
+    }
+    
+    return null;
+}
 
-    // Дефолтные цены по категориям
+const found = findPrice(article);
+if (found) {
+    marketPrice = found.price;
+    priceSource = found.source;
+}
+
+// Если цена всё ещё не найдена, используем дефолтную по категории
+if (marketPrice === 0) {
+    const category = nom.category || 'Товар';
     const defaultPrices = {
         'Костюмы': 2500,
         'Платья': 1800,
@@ -3802,83 +3865,15 @@ function calculateUnitEconomicsV2() {
         'Шорты': 900,
         'Товар': 1500
     };
-
-    // Коэффициенты себестоимости по категориям
-    const costRatios = {
-        'Костюмы': 0.35,
-        'Платья': 0.30,
-        'Брюки': 0.30,
-        'Джинсы': 0.35,
-        'Юбки': 0.25,
-        'Блузы/Топы': 0.25,
-        'Верхняя одежда': 0.40,
-        'Купальники': 0.20,
-        'Свитеры': 0.30,
-        'Жакеты': 0.35,
-        'Комбинезоны': 0.30,
-        'Шорты': 0.25,
-        'Товар': 0.35
-    };
-
-    for (const nom of nomenclature) {
-        const article = nom.article || nom.modelArticle || '';
-        if (!article) continue;
-
-        const stats = orderStats[article] || { orders: 0, delivered: 0, amount: 0, count: 0, returns: 0 };
-        const stock = stockMap[article] || 0;
-        const sales30days = sales30Map[article] || 0;
-        const priceData = priceMap[article] || { price: 0, discount: 0, discountedPrice: 0 };
-
-        // ============================================================
-        // [FIX] ПОЛУЧЕНИЕ ЦЕНЫ — ПРАВИЛЬНЫЙ ПРИОРИТЕТ
-        // ============================================================
-        let marketPrice = 0;
-        let priceSource = 'не найдена';
-
-        // 1. Прямое совпадение
-        if (priceMap[article] && priceMap[article].price > 0) {
-            marketPrice = priceMap[article].price;
-            priceSource = 'прямое совпадение';
-        }
-        // 2. По базовому артикулу (без размера)
-        else if (!marketPrice && nom.baseArticle && priceMap[nom.baseArticle] && priceMap[nom.baseArticle].price > 0) {
-            marketPrice = priceMap[nom.baseArticle].price;
-            priceSource = 'базовый артикул: ' + nom.baseArticle;
-        }
-        // 3. По артикулу без последнего суффикса
-        else if (!marketPrice) {
-            const parts = article.split('_');
-            if (parts.length > 1) {
-                const withoutLast = parts.slice(0, -1).join('_');
-                if (priceMap[withoutLast] && priceMap[withoutLast].price > 0) {
-                    marketPrice = priceMap[withoutLast].price;
-                    priceSource = 'без суффикса: ' + withoutLast;
-                }
-            }
-        }
-        // 4. Поиск по частичному совпадению
-        else if (!marketPrice) {
-            const searchTerm = article.replace(/_\d+$/, '');
-            for (const [key, val] of Object.entries(priceMap)) {
-                if (key.includes(searchTerm) && val.price > 0) {
-                    marketPrice = val.price;
-                    priceSource = 'частичное совпадение: ' + key;
-                    break;
-                }
-            }
-        }
-
-        // Если цена всё ещё не найдена, используем дефолтную по категории
-        if (marketPrice === 0) {
-            const category = nom.category || 'Товар';
-            marketPrice = defaultPrices[category] || 1500;
-            priceSource = 'дефолтная (' + category + ')';
-            console.warn(`⚠️ [Юнит-экономика] Для артикула ${article} использована дефолтная цена: ${marketPrice} ₽ (источник: ${priceSource})`);
-        }
-
-        const discount = priceData.discount || 0;
-        const discountedPrice = priceData.discountedPrice || 0;
-        const purchasePrice = priceData.purchasePrice || 0;
+    marketPrice = defaultPrices[category] || 1500;
+    priceSource = 'дефолтная (' + category + ')';
+    // Выводим только первые 10 предупреждений, чтобы не засорять консоль
+    if (!window._priceWarnings) window._priceWarnings = 0;
+    if (window._priceWarnings < 10) {
+        console.warn(`⚠️ [Юнит-экономика] Для артикула ${article} использована дефолтная цена: ${marketPrice} ₽ (источник: ${priceSource})`);
+        window._priceWarnings++;
+    }
+}
 
         // ============================================================
         // [FIX] СЕБЕСТОИМОСТЬ — УЛУЧШЕННОЕ ПОЛУЧЕНИЕ
@@ -5350,6 +5345,169 @@ function generateAdvertisingDataV2() {
                 }
             });
         }
+            // ================================================================
+// [FIX] ФУНКЦИИ ДЛЯ РЕКЛАМНОГО ОТДЕЛА
+// ================================================================
+
+function renderLeaders(items) {
+    const container = document.getElementById('leadersGrid');
+    if (!container) return;
+    
+    if (items.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет данных</div>';
+        return;
+    }
+
+    let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+    items.slice(0, 10).forEach((item, i) => {
+        html += `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;background:var(--bg-hover);border-radius:var(--radius-xs);font-size:12px;border-left:3px solid #3B82F6;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-weight:700;color:#3B82F6;width:24px;">#${i + 1}</span>
+                    <span style="font-weight:500;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
+                </div>
+                <div style="display:flex;gap:8px;font-size:10px;color:var(--text-secondary);">
+                    <span>📊 ${formatNumber(item.orders)} зак.</span>
+                    <span>⭐ ${item.score}/100</span>
+                    <span>💰 ${item.margin}%</span>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderFalling(items) {
+    const container = document.getElementById('fallingGrid');
+    if (!container) return;
+    
+    if (items.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет товаров с падением</div>';
+        return;
+    }
+
+    let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+    items.slice(0, 10).forEach(item => {
+        html += `
+            <div style="padding:6px 10px;background:var(--bg-card);border-radius:var(--radius-xs);border:1px solid var(--border);border-left:4px solid #EF4444;font-size:11px;">
+                <div class="flex-between">
+                    <span style="font-weight:600;font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
+                    <span style="color:#EF4444;font-weight:700;">${item.fallWeek}</span>
+                </div>
+                <div style="font-size:9px;color:var(--text-secondary);">📦 ${formatNumber(item.stock)} шт · ⭐ ${item.score}/100 · 💰 ${item.margin}%</div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderScoring(items) {
+    const container = document.getElementById('scoringGrid');
+    if (!container) return;
+    
+    if (items.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет данных</div>';
+        return;
+    }
+
+    let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+    items.slice(0, 10).forEach(item => {
+        const scoreColor = item.score >= 70 ? '#10B981' : item.score >= 40 ? '#F59E0B' : '#EF4444';
+        html += `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;background:var(--bg-hover);border-radius:var(--radius-xs);font-size:11px;border-left:3px solid ${scoreColor};">
+                <span style="font-weight:500;font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
+                <div style="display:flex;gap:8px;font-size:10px;color:var(--text-secondary);">
+                    <span style="color:${scoreColor};font-weight:700;">⭐ ${item.score}/100</span>
+                    <span>📊 ${formatNumber(item.orders)} зак.</span>
+                    <span>💰 ${item.margin}%</span>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderStale(items) {
+    const container = document.getElementById('staleGrid');
+    if (!container) return;
+    
+    if (items.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет залежалых товаров</div>';
+        return;
+    }
+
+    let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
+    items.slice(0, 10).forEach(item => {
+        html += `
+            <div style="padding:6px 10px;background:var(--bg-card);border-radius:var(--radius-xs);border:1px solid var(--border);border-left:4px solid #F59E0B;font-size:11px;">
+                <div class="flex-between">
+                    <span style="font-weight:600;font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</span>
+                    <span style="color:#F59E0B;font-weight:700;">${formatNumber(item.stock)} шт</span>
+                </div>
+                <div style="font-size:9px;color:var(--text-secondary);">📊 Заказов: ${formatNumber(item.orders)} · ⭐ ${item.score}/100 · 💰 ${item.margin}%</div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderAllProducts(items, searchQuery) {
+    const tbody = document.getElementById('allProductsBody');
+    if (!tbody) return;
+    
+    setText('allProductsCount', items.length + ' шт');
+
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        items = items.filter(a => a.article.toLowerCase().includes(q));
+    }
+
+    const sortSelect = document.getElementById('allSortSelect');
+    if (sortSelect) {
+        const sortBy = sortSelect.value;
+        if (sortBy === 'score') items.sort((a, b) => b.score - a.score);
+        else if (sortBy === 'orders') items.sort((a, b) => b.orders - a.orders);
+        else if (sortBy === 'stock') items.sort((a, b) => b.stock - a.stock);
+        else if (sortBy === 'fall') items.sort((a, b) => parseFloat(a.fallWeek) - parseFloat(b.fallWeek));
+        else if (sortBy === 'margin') items.sort((a, b) => b.margin - a.margin);
+    }
+
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">' +
+            (searchQuery ? 'Ничего не найдено' : 'Нет товаров') + '</td></tr>';
+        return;
+    }
+
+    const display = items.slice(0, 50);
+    let html = '';
+    display.forEach(item => {
+        const statusClass = getStatusClass(item.status);
+        const statusShort = getStatusShort(item.status);
+        const marginColor = item.margin > 20 ? 'tag-green' : item.margin > 0 ? 'tag-yellow' : 'tag-red';
+        html += `
+            <tr>
+                <td style="padding:4px 6px;"><input type="checkbox" class="campaign-select-all" data-article="${item.article}" /></td>
+                <td style="padding:4px 6px;font-weight:500;font-size:10px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.article}</td>
+                <td style="padding:4px 6px;font-size:10px;">${formatNumber(item.orders)}</td>
+                <td style="padding:4px 6px;font-size:10px;${parseFloat(item.fallWeek) < 0 ? 'color:#EF4444;' : 'color:#10B981;'}">${item.fallWeek}</td>
+                <td style="padding:4px 6px;font-size:10px;">${formatNumber(item.stock)}</td>
+                <td style="padding:4px 6px;"><span class="tag ${statusClass || 'tag-gray'}" style="font-size:8px;">${statusShort}</span></td>
+                <td style="padding:4px 6px;font-size:10px;font-weight:600;">${item.score}</td>
+                <td style="padding:4px 6px;"><span class="tag ${marginColor}" style="font-size:8px;">${item.margin}%</span></td>
+                <td style="padding:4px 6px;font-size:10px;">${item.budget > 0 ? formatNumber(item.budget) + ' ₽' : '—'}</td>
+                <td style="padding:4px 6px;font-size:9px;max-width:120px;">${item.aiAdvice}</td>
+            </tr>
+        `;
+    });
+    if (items.length > 50) {
+        html += '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:6px;font-size:9px;">Показано 50 из ' + items.length + '</td></tr>';
+    }
+    tbody.innerHTML = html;
+}
                     // ================================================================
         // [v4.0] 21. ОТОБРАЖЕНИЕ: РЕКЛАМА
         // ================================================================
@@ -5380,8 +5538,27 @@ function generateAdvertisingDataV2() {
             renderStale(stale);
             renderAllProducts(allProducts, '');
 
-            if (tab) switchAdvTab(tab);
-        }
+            // ================================================================
+// [FIX] ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК В РЕКЛАМНОМ ОТДЕЛЕ
+// ================================================================
+
+function switchAdvTab(tab) {
+    // Обновляем активную кнопку
+    document.querySelectorAll('[data-adv-tab]').forEach(b => {
+        b.className = 'btn btn-secondary btn-sm';
+    });
+    const btn = document.querySelector('[data-adv-tab="' + tab + '"]');
+    if (btn) btn.className = 'btn btn-primary btn-sm';
+
+    // Показываем нужную панель
+    document.querySelectorAll('.adv-panel').forEach(p => {
+        p.style.display = 'none';
+    });
+    const panel = document.querySelector('.adv-panel[data-adv-panel="' + tab + '"]');
+    if (panel) panel.style.display = 'block';
+
+    APP.ui.currentAdvTab = tab;
+}
 
         // ================================================================
 // [FIX] РЕКЛАМНЫЙ ОТДЕЛ — НОВОЕ ОТОБРАЖЕНИЕ (ТОЛЬКО СПИСОК)
