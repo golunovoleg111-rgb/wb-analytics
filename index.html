@@ -3658,417 +3658,666 @@
             }
         }
 
-        // ================================================================
-        // 16. ЮНИТ-ЭКОНОМИКА С УЧЁТОМ ВСЕХ ИСПРАВЛЕНИЙ [v4.0]
-        // ================================================================
+       // ================================================================
+// [v4.0] ЮНИТ-ЭКОНОМИКА — ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Исправлено: получение цен из файла цен, себестоимость, маржинальность
+// ================================================================
 
-        function calculateUnitEconomicsV2() {
-            const nomenclature = APP.data.nomenclature;
-            const orders = APP.data.orders;
-            const storage = APP.data.storage;
-            const prices = APP.data.prices;
-            const tariffs = APP.data.tariffs;
+function calculateUnitEconomicsV2() {
+    const nomenclature = APP.data.nomenclature;
+    const orders = APP.data.orders;
+    const storage = APP.data.storage;
+    const prices = APP.data.prices;
+    const tariffs = APP.data.tariffs;
 
-            if (nomenclature.length === 0) return [];
+    console.log('📊 [Юнит-экономика] Начало расчёта...');
+    console.log('📦 Номенклатура:', nomenclature.length, 'товаров');
+    console.log('🛒 Заказы:', orders.length, 'записей');
+    console.log('📦 Остатки:', storage.length, 'записей');
+    console.log('💰 Цены:', prices.length, 'записей');
 
-            const orderStats = {};
-            orders.forEach(o => {
-                if (!o.article) return;
-                if (!orderStats[o.article]) {
-                    orderStats[o.article] = { 
-                        orders: 0, 
-                        delivered: 0, 
-                        amount: 0, 
-                        count: 0, 
-                        returns: 0,
-                        sales30days: 0
-                    };
-                }
-                orderStats[o.article].orders += o.orders || 0;
-                orderStats[o.article].delivered += o.delivered || 0;
-                orderStats[o.article].amount += o.amount || 0;
-                orderStats[o.article].count++;
-                if (o.returns) orderStats[o.article].returns += o.returns || 0;
-            });
+    if (nomenclature.length === 0) {
+        console.warn('⚠️ Нет номенклатуры для расчёта');
+        return [];
+    }
 
-            const now = new Date();
-            const thirtyDaysAgo = new Date(now);
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            
-            const last30Orders = orders.filter(o => {
-                const d = parseDate(o.date);
-                return d && d >= thirtyDaysAgo && d <= now;
-            });
-            
-            const sales30Map = {};
-            last30Orders.forEach(o => {
-                if (!o.article) return;
-                sales30Map[o.article] = (sales30Map[o.article] || 0) + (o.orders || 0);
-            });
-
-            const stockMap = {};
-            storage.forEach(s => {
-                if (!s.article) return;
-                stockMap[s.article] = (stockMap[s.article] || 0) + (s.available || 0);
-            });
-
-            const priceMap = {};
-            prices.forEach(p => {
-                if (p.article) {
-                    if (!priceMap[p.article] || p.price > priceMap[p.article].price) {
-                        priceMap[p.article] = p;
-                    }
-                }
-            });
-
-            const result = [];
-            const commission = APP.settings.wbCommission || 15;
-            const logisticsCost = APP.settings.logisticsCost || 50;
-            const taxSystem = APP.settings.taxSystem || 'usn6';
-            const patentCost = APP.settings.patentCost || 30000;
-
-            for (const nom of nomenclature) {
-                const article = nom.article || nom.modelArticle || '';
-                if (!article) continue;
-
-                const stats = orderStats[article] || { orders: 0, delivered: 0, amount: 0, count: 0, returns: 0 };
-                const stock = stockMap[article] || 0;
-                const sales30days = sales30Map[article] || 0;
-                const priceData = priceMap[article] || { price: 0, discount: 0, discountedPrice: 0 };
-
-                let marketPrice = priceData.price || 0;
-                if (!marketPrice && stats.orders > 0 && stats.amount > 0) {
-                    marketPrice = Math.round(stats.amount / stats.orders);
-                }
-                const discount = priceData.discount || 0;
-                const discountedPrice = priceData.discountedPrice || 0;
-                const purchasePrice = priceData.purchasePrice || 0;
-                const estimatedCost = purchasePrice || Math.round(marketPrice * 0.4);
-
-                const io = calculateIO(article, stock, sales30days);
-                const ioInfo = getIOStatus(io);
-
-                const scheme = getSchemeForArticle(article);
-                const isFBO = scheme === 'FBO';
-                const commissionRate = isFBO ? APP.settings.fboCommission || 15 : APP.settings.fbsCommission || 10;
-
-                const logisticsAmount = isFBO ? Math.round(logisticsCost * 0.5) : Math.round(logisticsCost * 0.8);
-
-                const volumePerUnit = 0.005;
-                const storageResult = calculateStorageCost(stock, volumePerUnit, 30, io);
-                const storageCost = isFBO ? storageResult.cost : 0;
-
-                const returnsMetrics = calculateReturnsMetrics(
-                    stats.orders, 
-                    stats.delivered, 
-                    stats.returns || 0,
-                    logisticsAmount,
-                    commissionRate,
-                    marketPrice
-                );
-
-                const clientPrice = discountedPrice || (marketPrice - (marketPrice / 100 * discount)) || marketPrice;
-                const commissionAmount = Math.round(clientPrice * commissionRate / 100);
-                const finalPrice = clientPrice - commissionAmount;
-                
-                const totalCost = estimatedCost + commissionAmount + logisticsAmount + storageCost + returnsMetrics.totalLoss;
-                const profit = finalPrice - totalCost;
-                const margin = finalPrice > 0 ? parseFloat(((profit / finalPrice) * 100).toFixed(2)) : 0;
-
-                const totalRevenue = clientPrice * stats.orders;
-                const totalExpenses = totalCost * stats.orders;
-                const taxResult = calculateTax(totalRevenue, totalExpenses, taxSystem, patentCost);
-                const netProfit = taxResult.netProfit;
-
-                let marginStatus = '🟢';
-                let marginLabel = 'Высокая';
-                if (margin < 0) { marginStatus = '🔴'; marginLabel = 'Убыточный'; }
-                else if (margin < 10) { marginStatus = '🟡'; marginLabel = 'Низкая'; }
-                else if (margin < 20) { marginStatus = '🟡'; marginLabel = 'Средняя'; }
-
-                let abc = 'C';
-                if (stats.orders > 50 && margin > 15) abc = 'A';
-                else if (stats.orders > 20 && margin > 5) abc = 'B';
-
-                const dailySales = sales30days / 30;
-                const leadTime = 14;
-                const safetyFactor = 1.5;
-                const seasonCoeff = getSeasonCoefficient(nom.category || 'Товар', new Date());
-                const recommendedOrder = Math.max(0, Math.round(
-                    (dailySales * leadTime * safetyFactor * seasonCoeff) - stock
-                ));
-
-                const adBudget = calculateAdBudget(
-                    clientPrice,
-                    estimatedCost,
-                    commissionAmount,
-                    logisticsAmount,
-                    storageCost,
-                    stats.orders || 1,
-                    0.3
-                );
-
-                result.push({
-                    article: article,
-                    category: nom.category || 'Товар',
-                    marketPrice: marketPrice,
-                    purchasePrice: estimatedCost,
-                    discount: discount,
-                    clientPrice: clientPrice,
-                    commissionAmount: commissionAmount,
-                    logisticsAmount: logisticsAmount,
-                    storageCost: storageCost,
-                    finalPrice: finalPrice,
-                    totalCost: totalCost,
-                    profit: profit,
-                    margin: margin,
-                    marginStatus: marginStatus,
-                    marginLabel: marginLabel,
-                    orders: stats.orders,
-                    delivered: stats.delivered,
-                    stock: stock,
-                    sales30days: sales30days,
-                    io: io,
-                    ioStatus: ioInfo.status,
-                    ioColor: ioInfo.color,
-                    ioLevel: ioInfo.level,
-                    abc: abc,
-                    size: nom.size || '',
-                    color: nom.color || '',
-                    baseArticle: nom.baseArticle || getBaseArticle(article),
-                    scheme: scheme,
-                    returnRate: returnsMetrics.returnRate,
-                    returnLoss: returnsMetrics.totalLoss,
-                    tax: taxResult.tax,
-                    netProfit: netProfit,
-                    storageRate: storageResult.rate,
-                    storageVolume: storageResult.volume,
-                    storageIsOverRate: storageResult.isOverRate,
-                    recommendedOrder: recommendedOrder,
-                    dailySales: dailySales,
-                    seasonCoeff: seasonCoeff,
-                    adBudget: adBudget
-                });
-            }
-
-            result.sort((a, b) => b.margin - a.margin);
-            return result;
-        }
-                    // ================================================================
-        // [v4.0] 17. РЕКЛАМНЫЙ ОТДЕЛ С ИСПРАВЛЕННЫМ БЮДЖЕТОМ
-        // ================================================================
-
-        function generateAdvertisingDataV2() {
-            const orders = APP.data.orders;
-            const storage = APP.data.storage;
-            const nomenclature = APP.data.nomenclature;
-            const unitEconomics = calculateUnitEconomicsV2();
-
-            if (orders.length === 0 && storage.length === 0) return [];
-
-            const articleMap = {};
-            orders.forEach(o => {
-                if (!o.article) return;
-                if (!articleMap[o.article]) {
-                    articleMap[o.article] = { orders: 0, delivered: 0, dates: [], amount: 0, returns: 0 };
-                }
-                articleMap[o.article].orders += o.orders || 0;
-                articleMap[o.article].delivered += o.delivered || 0;
-                articleMap[o.article].amount += o.amount || 0;
-                if (o.date) articleMap[o.article].dates.push(o.date);
-                if (o.returns) articleMap[o.article].returns += o.returns || 0;
-            });
-
-            const storageMap = {};
-            storage.forEach(s => {
-                if (s.article) storageMap[s.article] = (storageMap[s.article] || 0) + (s.available || 0);
-            });
-
-            const nomMap = {};
-            nomenclature.forEach(n => {
-                if (n.article) nomMap[n.article] = n;
-                if (n.modelArticle) nomMap[n.modelArticle] = n;
-                if (n.baseArticle) nomMap[n.baseArticle] = n;
-            });
-
-            const econMap = {};
-            unitEconomics.forEach(e => {
-                if (e.article) econMap[e.article] = e;
-            });
-
-            const weights = {
-                season: (APP.settings.weightSeason || 25) / 100,
-                margin: (APP.settings.weightMargin || 25) / 100,
-                speed: (APP.settings.weightSpeed || 20) / 100,
-                trend: (APP.settings.weightTrend || 15) / 100,
-                health: (APP.settings.weightHealth || 10) / 100,
-                competition: (APP.settings.weightCompetition || 5) / 100
+    // Группируем заказы по артикулам
+    const orderStats = {};
+    orders.forEach(o => {
+        if (!o.article) return;
+        if (!orderStats[o.article]) {
+            orderStats[o.article] = { 
+                orders: 0, 
+                delivered: 0, 
+                amount: 0, 
+                count: 0, 
+                returns: 0,
+                sales30days: 0
             };
-
-            const result = [];
-            const allArticles = new Set([...Object.keys(articleMap), ...Object.keys(storageMap)]);
-
-            for (const article of allArticles) {
-                const data = articleMap[article] || { orders: 0, delivered: 0, dates: [], amount: 0, returns: 0 };
-                const stock = storageMap[article] || 0;
-                const nom = nomMap[article] || {};
-                const econ = econMap[article] || { 
-                    margin: 0, 
-                    marginLabel: 'Нет данных', 
-                    io: 0, 
-                    sales30days: 0,
-                    dailySales: 0,
-                    recommendedOrder: 0,
-                    seasonCoeff: 1,
-                    adBudget: 0,
-                    netProfit: 0,
-                    returnRate: 0,
-                    storageCost: 0,
-                    scheme: 'FBO'
-                };
-
-                const color = getColorFromName(article);
-                const colorTemp = getColorTemperature(color);
-                const category = nom.category || getCategoryFromName(article);
-                
-                const seasonCoeff = getSeasonCoefficient(category, new Date());
-                const isSeason = seasonCoeff > 1.2;
-                const isOffSeason = seasonCoeff < 0.6;
-
-                let score = 0;
-                
-                let seasonScore = 0;
-                if (isSeason) seasonScore = 100;
-                else if (isOffSeason) seasonScore = 20;
-                else seasonScore = 60;
-                if (isSummer() && colorTemp === 'холодный') seasonScore += 20;
-                if (isWinter() && colorTemp === 'тёплый') seasonScore += 20;
-                score += seasonScore * weights.season;
-
-                let marginScore = Math.min(Math.max((econ.margin + 50) * 1.2, 0), 100);
-                score += marginScore * weights.margin;
-
-                const salesPerDay = econ.dailySales || 0;
-                let speedScore = Math.min((salesPerDay * 10), 100);
-                score += speedScore * weights.speed;
-
-                const dates = data.dates || [];
-                const recent = dates.slice(-7);
-                const old = dates.slice(-14, -7);
-                let trendScore = 50;
-                if (recent.length > 0 && old.length > 0) {
-                    const change = (recent.length - old.length) / Math.max(1, old.length);
-                    trendScore = 50 + (change * 50);
-                }
-                trendScore = Math.max(0, Math.min(100, trendScore));
-                score += trendScore * weights.trend;
-
-                let healthScore = 50;
-                if (stock === 0) healthScore = 0;
-                else if (econ.io < 0.2) healthScore = 20;
-                else if (econ.io < 0.5) healthScore = 50;
-                else if (econ.io < 1.0) healthScore = 70;
-                else healthScore = 90;
-                score += healthScore * weights.health;
-
-                let competitionScore = 50;
-                score += competitionScore * weights.competition;
-
-                score = Math.max(0, Math.min(100, Math.round(score)));
-
-                const maxBudget = econ.adBudget || 0;
-                
-                let status = '🟢 Стабильно';
-                let aiAdvice = 'Стабильные продажи. Реклама не требуется.';
-                let rt = 'Авто';
-                let budget = maxBudget;
-
-                if (stock === 0) {
-                    status = '📦 Нет остатков';
-                    aiAdvice = 'Товар закончился. Срочно пополните.';
-                    budget = 0;
-                } else if (econ.io < 0.2 && stock > 0) {
-                    status = '⚠️ Критический ИО';
-                    const ioPct = (econ.io * 100).toFixed(1);
-                    aiAdvice = `ИО = ${ioPct}%. Риск блокировки WB. Снизьте цену или вывезите товар.`;
-                    budget = Math.min(maxBudget, 5000);
-                    rt = 'Ручная-Рек';
-                } else if (stock < 5) {
-                    status = '📦 Критический остаток';
-                    aiAdvice = 'Критический остаток! Срочно пополните.';
-                    budget = 0;
-                } else if (trendScore < 30 && stock > 0) {
-                    status = '📉 Сильное падение';
-                    aiAdvice = `Падение продаж. Запустите рекламу или проверьте цену.`;
-                    budget = Math.min(Math.round(maxBudget * 0.8), 10000);
-                    rt = 'Ручная-Поиск';
-                } else if (stock > 200 && data.orders < 5) {
-                    status = '📦 Залежался';
-                    aiAdvice = 'Товар залежался. Рекомендуется запустить рекламу или скидку.';
-                    budget = Math.min(Math.round(maxBudget * 0.6), 8000);
-                    rt = 'Ручная-Поиск';
-                } else if (isSeason && score > 60) {
-                    status = '☀️ Сезонный приоритет';
-                    aiAdvice = 'Сезонный товар. Рекомендуется поддержка рекламой.';
-                    budget = Math.min(Math.round(maxBudget * 0.5), 6000);
-                    rt = 'Авто';
-                } else if (score > 70) {
-                    status = '⭐ Высокий потенциал';
-                    aiAdvice = 'Высокий скоринг. Рекомендуется запустить рекламу для масштабирования.';
-                    budget = Math.min(Math.round(maxBudget * 0.7), 8000);
-                    rt = 'Авто';
-                }
-
-                budget = Math.round(budget / 100) * 100;
-                if (budget < 0) budget = 0;
-
-                const projectedOrders = Math.round(data.orders * (1 + score / 100));
-                const roi = budget > 0 ? Math.round(((projectedOrders - data.orders) * 1500 / budget) * 100) : 0;
-
-                const marginPerUnit = econ.margin || 0;
-                const bep = calculateBEP(budget, marginPerUnit);
-
-                result.push({
-                    article,
-                    orders: data.orders,
-                    delivered: data.delivered,
-                    amount: data.amount,
-                    returns: data.returns || 0,
-                    returnRate: econ.returnRate || 0,
-                    fallWeek: Math.round((trendScore - 50) * 2) + '%',
-                    fallDay: '0%',
-                    status,
-                    stock,
-                    score,
-                    level: score > 70 ? 3 : score > 40 ? 2 : 1,
-                    type: rt,
-                    budget,
-                    maxBudget: maxBudget,
-                    aiAdvice,
-                    color,
-                    colorTemp,
-                    category,
-                    projectedOrders,
-                    roi,
-                    margin: econ.margin || 0,
-                    marginLabel: econ.marginLabel || 'Нет данных',
-                    io: econ.io || 0,
-                    ioStatus: econ.ioStatus || 'Норма',
-                    ioColor: econ.ioColor || '#10B981',
-                    selected: false,
-                    seasonCoeff: econ.seasonCoeff || 1,
-                    isSeason: isSeason,
-                    recommendedOrder: econ.recommendedOrder || 0,
-                    bep: bep,
-                    netProfit: econ.netProfit || 0,
-                    storageCost: econ.storageCost || 0,
-                    scheme: econ.scheme || 'FBO'
-                });
-            }
-
-            result.sort((a, b) => b.score - a.score);
-            return result;
         }
+        orderStats[o.article].orders += o.orders || 0;
+        orderStats[o.article].delivered += o.delivered || 0;
+        orderStats[o.article].amount += o.amount || 0;
+        orderStats[o.article].count++;
+        if (o.returns) orderStats[o.article].returns += o.returns || 0;
+    });
+
+    // Считаем продажи за 30 дней для ИО
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const last30Orders = orders.filter(o => {
+        const d = parseDate(o.date);
+        return d && d >= thirtyDaysAgo && d <= now;
+    });
+    
+    const sales30Map = {};
+    last30Orders.forEach(o => {
+        if (!o.article) return;
+        sales30Map[o.article] = (sales30Map[o.article] || 0) + (o.orders || 0);
+    });
+
+    // Группируем остатки
+    const stockMap = {};
+    storage.forEach(s => {
+        if (!s.article) return;
+        stockMap[s.article] = (stockMap[s.article] || 0) + (s.available || 0);
+    });
+
+    // ============================================================
+    // [FIX] КАРТА ЦЕН — УЛУЧШЕННОЕ СОПОСТАВЛЕНИЕ
+    // ============================================================
+    const priceMap = {};
+    prices.forEach(p => {
+        if (p.article) {
+            // Сохраняем цену по полному артикулу
+            if (!priceMap[p.article] || (p.price || 0) > (priceMap[p.article]?.price || 0)) {
+                priceMap[p.article] = p;
+            }
+            // Также сохраняем по базовому артикулу (без размера)
+            const base = getBaseArticle(p.article);
+            if (base && base !== p.article) {
+                if (!priceMap[base] || (p.price || 0) > (priceMap[base]?.price || 0)) {
+                    priceMap[base] = p;
+                }
+            }
+            // И по артикулу без последнего суффикса (для размеров)
+            const parts = p.article.split('_');
+            if (parts.length > 1) {
+                const withoutLast = parts.slice(0, -1).join('_');
+                if (withoutLast && !priceMap[withoutLast]) {
+                    priceMap[withoutLast] = p;
+                }
+            }
+        }
+    });
+
+    console.log('📊 [Юнит-экономика] Загружено цен:', Object.keys(priceMap).length);
+
+    const result = [];
+    const commission = APP.settings.wbCommission || 15;
+    const logisticsCost = APP.settings.logisticsCost || 50;
+    const taxSystem = APP.settings.taxSystem || 'usn6';
+    const patentCost = APP.settings.patentCost || 30000;
+
+    // Дефолтные цены по категориям
+    const defaultPrices = {
+        'Костюмы': 2500,
+        'Платья': 1800,
+        'Брюки': 1500,
+        'Джинсы': 2000,
+        'Юбки': 1200,
+        'Блузы/Топы': 1000,
+        'Верхняя одежда': 3500,
+        'Купальники': 800,
+        'Свитеры': 1500,
+        'Жакеты': 2200,
+        'Комбинезоны': 2000,
+        'Шорты': 900,
+        'Товар': 1500
+    };
+
+    // Коэффициенты себестоимости по категориям
+    const costRatios = {
+        'Костюмы': 0.35,
+        'Платья': 0.30,
+        'Брюки': 0.30,
+        'Джинсы': 0.35,
+        'Юбки': 0.25,
+        'Блузы/Топы': 0.25,
+        'Верхняя одежда': 0.40,
+        'Купальники': 0.20,
+        'Свитеры': 0.30,
+        'Жакеты': 0.35,
+        'Комбинезоны': 0.30,
+        'Шорты': 0.25,
+        'Товар': 0.35
+    };
+
+    for (const nom of nomenclature) {
+        const article = nom.article || nom.modelArticle || '';
+        if (!article) continue;
+
+        const stats = orderStats[article] || { orders: 0, delivered: 0, amount: 0, count: 0, returns: 0 };
+        const stock = stockMap[article] || 0;
+        const sales30days = sales30Map[article] || 0;
+        const priceData = priceMap[article] || { price: 0, discount: 0, discountedPrice: 0 };
+
+        // ============================================================
+        // [FIX] ПОЛУЧЕНИЕ ЦЕНЫ — ПРАВИЛЬНЫЙ ПРИОРИТЕТ
+        // ============================================================
+        let marketPrice = 0;
+        let priceSource = 'не найдена';
+
+        // 1. Прямое совпадение
+        if (priceMap[article] && priceMap[article].price > 0) {
+            marketPrice = priceMap[article].price;
+            priceSource = 'прямое совпадение';
+        }
+        // 2. По базовому артикулу (без размера)
+        else if (!marketPrice && nom.baseArticle && priceMap[nom.baseArticle] && priceMap[nom.baseArticle].price > 0) {
+            marketPrice = priceMap[nom.baseArticle].price;
+            priceSource = 'базовый артикул: ' + nom.baseArticle;
+        }
+        // 3. По артикулу без последнего суффикса
+        else if (!marketPrice) {
+            const parts = article.split('_');
+            if (parts.length > 1) {
+                const withoutLast = parts.slice(0, -1).join('_');
+                if (priceMap[withoutLast] && priceMap[withoutLast].price > 0) {
+                    marketPrice = priceMap[withoutLast].price;
+                    priceSource = 'без суффикса: ' + withoutLast;
+                }
+            }
+        }
+        // 4. Поиск по частичному совпадению
+        else if (!marketPrice) {
+            const searchTerm = article.replace(/_\d+$/, '');
+            for (const [key, val] of Object.entries(priceMap)) {
+                if (key.includes(searchTerm) && val.price > 0) {
+                    marketPrice = val.price;
+                    priceSource = 'частичное совпадение: ' + key;
+                    break;
+                }
+            }
+        }
+
+        // Если цена всё ещё не найдена, используем дефолтную по категории
+        if (marketPrice === 0) {
+            const category = nom.category || 'Товар';
+            marketPrice = defaultPrices[category] || 1500;
+            priceSource = 'дефолтная (' + category + ')';
+            console.warn(`⚠️ [Юнит-экономика] Для артикула ${article} использована дефолтная цена: ${marketPrice} ₽ (источник: ${priceSource})`);
+        }
+
+        const discount = priceData.discount || 0;
+        const discountedPrice = priceData.discountedPrice || 0;
+        const purchasePrice = priceData.purchasePrice || 0;
+
+        // ============================================================
+        // [FIX] СЕБЕСТОИМОСТЬ — УЛУЧШЕННОЕ ПОЛУЧЕНИЕ
+        // ============================================================
+        let estimatedCost = purchasePrice || 0;
+        if (estimatedCost === 0 && marketPrice > 0) {
+            const category = nom.category || 'Товар';
+            const ratio = costRatios[category] || 0.35;
+            estimatedCost = Math.round(marketPrice * ratio);
+        }
+
+        // ============================================================
+        // [FIX] ИНДЕКС ОСТАТКА (ИО) = stock / sales30days
+        // ============================================================
+        const io = calculateIO(article, stock, sales30days);
+        const ioInfo = getIOStatus(io);
+
+        // ============================================================
+        // [FIX] СХЕМА FBO / FBS
+        // ============================================================
+        const scheme = getSchemeForArticle(article);
+        const isFBO = scheme === 'FBO';
+        const commissionRate = isFBO ? APP.settings.fboCommission || 15 : APP.settings.fbsCommission || 10;
+
+        // Логистика
+        const logisticsAmount = isFBO ? Math.round(logisticsCost * 0.5) : Math.round(logisticsCost * 0.8);
+
+        // Хранение
+        const volumePerUnit = 0.005;
+        const storageResult = calculateStorageCost(stock, volumePerUnit, 30, io);
+        const storageCost = isFBO ? storageResult.cost : 0;
+
+        // Возвраты
+        const returnsMetrics = calculateReturnsMetrics(
+            stats.orders, 
+            stats.delivered, 
+            stats.returns || 0,
+            logisticsAmount,
+            commissionRate,
+            marketPrice
+        );
+
+        const clientPrice = discountedPrice || (marketPrice - (marketPrice / 100 * discount)) || marketPrice;
+        const commissionAmount = Math.round(clientPrice * commissionRate / 100);
+        const finalPrice = clientPrice - commissionAmount;
+        
+        // Итоговая прибыль с учётом возвратов
+        const totalCost = estimatedCost + commissionAmount + logisticsAmount + storageCost + returnsMetrics.totalLoss;
+        const profit = finalPrice - totalCost;
+        const margin = finalPrice > 0 ? parseFloat(((profit / finalPrice) * 100).toFixed(2)) : 0;
+
+        // Налоги
+        const totalRevenue = clientPrice * stats.orders;
+        const totalExpenses = totalCost * stats.orders;
+        const taxResult = calculateTax(totalRevenue, totalExpenses, taxSystem, patentCost);
+        const netProfit = taxResult.netProfit;
+
+        let marginStatus = '🟢';
+        let marginLabel = 'Высокая';
+        if (margin < 0) { marginStatus = '🔴'; marginLabel = 'Убыточный'; }
+        else if (margin < 10) { marginStatus = '🟡'; marginLabel = 'Низкая'; }
+        else if (margin < 20) { marginStatus = '🟡'; marginLabel = 'Средняя'; }
+
+        // ABC-анализ
+        let abc = 'C';
+        if (stats.orders > 50 && margin > 15) abc = 'A';
+        else if (stats.orders > 20 && margin > 5) abc = 'B';
+
+        // Прогноз потребности
+        const dailySales = sales30days / 30;
+        const leadTime = 14;
+        const safetyFactor = 1.5;
+        const seasonCoeff = getSeasonCoefficient(nom.category || 'Товар', new Date());
+        const recommendedOrder = Math.max(0, Math.round(
+            (dailySales * leadTime * safetyFactor * seasonCoeff) - stock
+        ));
+
+        // Бюджет от маржи
+        const adBudget = calculateAdBudget(
+            clientPrice,
+            estimatedCost,
+            commissionAmount,
+            logisticsAmount,
+            storageCost,
+            stats.orders || 1,
+            0.3
+        );
+
+        result.push({
+            article: article,
+            category: nom.category || 'Товар',
+            marketPrice: marketPrice,
+            purchasePrice: estimatedCost,
+            discount: discount,
+            clientPrice: clientPrice,
+            commissionAmount: commissionAmount,
+            logisticsAmount: logisticsAmount,
+            storageCost: storageCost,
+            finalPrice: finalPrice,
+            totalCost: totalCost,
+            profit: profit,
+            margin: margin,
+            marginStatus: marginStatus,
+            marginLabel: marginLabel,
+            orders: stats.orders,
+            delivered: stats.delivered,
+            stock: stock,
+            sales30days: sales30days,
+            io: io,
+            ioStatus: ioInfo.status,
+            ioColor: ioInfo.color,
+            ioLevel: ioInfo.level,
+            abc: abc,
+            size: nom.size || '',
+            color: nom.color || '',
+            baseArticle: nom.baseArticle || getBaseArticle(article),
+            scheme: scheme,
+            returnRate: returnsMetrics.returnRate,
+            returnLoss: returnsMetrics.totalLoss,
+            tax: taxResult.tax,
+            netProfit: netProfit,
+            storageRate: storageResult.rate,
+            storageVolume: storageResult.volume,
+            storageIsOverRate: storageResult.isOverRate,
+            recommendedOrder: recommendedOrder,
+            dailySales: dailySales,
+            seasonCoeff: seasonCoeff,
+            adBudget: adBudget,
+            // [v4.0] Для отладки
+            _priceSource: priceSource
+        });
+    }
+
+    console.log('✅ [Юнит-экономика] Расчёт завершён, получено:', result.length, 'записей');
+    result.sort((a, b) => b.margin - a.margin);
+    return result;
+}
+       // ================================================================
+// [v4.0] РЕКЛАМНЫЙ ОТДЕЛ — ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Новая логика на основе реальных факторов селлеров
+// ================================================================
+
+function generateAdvertisingDataV2() {
+    const orders = APP.data.orders;
+    const storage = APP.data.storage;
+    const nomenclature = APP.data.nomenclature;
+    const unitEconomics = calculateUnitEconomicsV2();
+
+    console.log('📢 [Рекламный отдел] Начало генерации...');
+
+    if (orders.length === 0 && storage.length === 0) {
+        console.warn('⚠️ Нет данных для рекламного отдела');
+        return [];
+    }
+
+    // Группируем заказы по артикулам
+    const articleMap = {};
+    orders.forEach(o => {
+        if (!o.article) return;
+        if (!articleMap[o.article]) {
+            articleMap[o.article] = { 
+                orders: 0, 
+                delivered: 0, 
+                dates: [], 
+                amount: 0, 
+                returns: 0,
+                dailyHistory: {}
+            };
+        }
+        articleMap[o.article].orders += o.orders || 0;
+        articleMap[o.article].delivered += o.delivered || 0;
+        articleMap[o.article].amount += o.amount || 0;
+        if (o.date) {
+            articleMap[o.article].dates.push(o.date);
+            const day = o.date;
+            articleMap[o.article].dailyHistory[day] = (articleMap[o.article].dailyHistory[day] || 0) + (o.orders || 0);
+        }
+        if (o.returns) articleMap[o.article].returns += o.returns || 0;
+    });
+
+    // Группируем остатки
+    const storageMap = {};
+    storage.forEach(s => {
+        if (s.article) storageMap[s.article] = (storageMap[s.article] || 0) + (s.available || 0);
+    });
+
+    // Номенклатура для категорий
+    const nomMap = {};
+    nomenclature.forEach(n => {
+        if (n.article) nomMap[n.article] = n;
+        if (n.modelArticle) nomMap[n.modelArticle] = n;
+        if (n.baseArticle) nomMap[n.baseArticle] = n;
+    });
+
+    // Юнит-экономика
+    const econMap = {};
+    unitEconomics.forEach(e => {
+        if (e.article) econMap[e.article] = e;
+    });
+
+    // Веса скоринга из настроек
+    const weights = {
+        season: (APP.settings.weightSeason || 25) / 100,
+        margin: (APP.settings.weightMargin || 25) / 100,
+        speed: (APP.settings.weightSpeed || 20) / 100,
+        trend: (APP.settings.weightTrend || 15) / 100,
+        health: (APP.settings.weightHealth || 10) / 100,
+        competition: (APP.settings.weightCompetition || 5) / 100
+    };
+
+    const result = [];
+    const allArticles = new Set([...Object.keys(articleMap), ...Object.keys(storageMap)]);
+
+    console.log('📢 [Рекламный отдел] Обрабатывается товаров:', allArticles.size);
+
+    for (const article of allArticles) {
+        const data = articleMap[article] || { 
+            orders: 0, 
+            delivered: 0, 
+            dates: [], 
+            amount: 0, 
+            returns: 0,
+            dailyHistory: {}
+        };
+        const stock = storageMap[article] || 0;
+        const nom = nomMap[article] || {};
+        const econ = econMap[article] || { 
+            margin: 0, 
+            marginLabel: 'Нет данных', 
+            io: 0, 
+            sales30days: 0,
+            dailySales: 0,
+            recommendedOrder: 0,
+            seasonCoeff: 1,
+            adBudget: 0,
+            netProfit: 0,
+            returnRate: 0,
+            storageCost: 0,
+            scheme: 'FBO'
+        };
+
+        const color = getColorFromName(article);
+        const colorTemp = getColorTemperature(color);
+        const category = nom.category || getCategoryFromName(article);
+        
+        // 1. СЕЗОННОСТЬ
+        const seasonCoeff = getSeasonCoefficient(category, new Date());
+        const isSeason = seasonCoeff > 1.2;
+        const isOffSeason = seasonCoeff < 0.6;
+
+        // 2. СКОРОСТЬ ПРОДАЖ
+        const salesPerDay = econ.dailySales || 0;
+        const stockDays = salesPerDay > 0 ? Math.round(stock / salesPerDay) : 999;
+
+        // 3. ТРЕНД (сравнение периодов)
+        const dates = data.dates || [];
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const twoWeeksAgo = new Date(today);
+        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+        let recentSales = 0;
+        let oldSales = 0;
+        dates.forEach(d => {
+            const parsed = parseDate(d);
+            if (!parsed) return;
+            if (parsed >= weekAgo && parsed <= today) {
+                recentSales += data.dailyHistory[d] || 0;
+            } else if (parsed >= twoWeeksAgo && parsed < weekAgo) {
+                oldSales += data.dailyHistory[d] || 0;
+            }
+        });
+
+        let trendScore = 50;
+        let trendPercent = 0;
+        if (oldSales > 0) {
+            trendPercent = ((recentSales - oldSales) / oldSales) * 100;
+            trendScore = 50 + (trendPercent * 0.5);
+        } else if (recentSales > 0) {
+            trendPercent = 100;
+            trendScore = 100;
+        }
+        trendScore = Math.max(0, Math.min(100, trendScore));
+
+        // 4. ЗДОРОВЬЕ ОСТАТКА (ИО)
+        const io = econ.io || 0;
+        let healthScore = 50;
+        if (stock === 0) healthScore = 0;
+        else if (io < 0.2) healthScore = 20;
+        else if (io < 0.5) healthScore = 50;
+        else if (io < 1.0) healthScore = 70;
+        else healthScore = 90;
+
+        // 5. КОНКУРЕНЦИЯ
+        let competitionScore = 50;
+        const competitiveCategories = ['Костюмы', 'Платья', 'Джинсы', 'Брюки'];
+        if (competitiveCategories.includes(category)) {
+            competitionScore = 70;
+        }
+
+        // 6. МАРЖИНАЛЬНОСТЬ
+        let marginScore = Math.min(Math.max((econ.margin + 50) * 1.2, 0), 100);
+
+        // ИТОГОВЫЙ СКОРИНГ
+        let score = 0;
+        score += (isSeason ? 100 : isOffSeason ? 20 : 60) * weights.season;
+        score += marginScore * weights.margin;
+        score += Math.min((salesPerDay * 10), 100) * weights.speed;
+        score += trendScore * weights.trend;
+        score += healthScore * weights.health;
+        score += competitionScore * weights.competition;
+        score = Math.max(0, Math.min(100, Math.round(score)));
+
+        // БЮДЖЕТ ОТ МАРЖИ
+        const maxBudget = econ.adBudget || 0;
+
+        // СТАТУС И РЕКОМЕНДАЦИИ
+        let status = '🟢 Стабильно';
+        let aiAdvice = '';
+        let rt = 'Авто';
+        let budget = maxBudget;
+        let priority = 'low';
+        let priorityLabel = '🟢 Низкий';
+
+        // Приоритет 1: Критический остаток
+        if (stock === 0) {
+            status = '📦 Нет остатков';
+            aiAdvice = 'Товар закончился. Срочно пополните.';
+            budget = 0;
+            priority = 'critical';
+            priorityLabel = '🔴 Критический';
+        } 
+        // Приоритет 2: Критический ИО (риск блокировки)
+        else if (io < 0.2 && stock > 0) {
+            status = '⚠️ Критический ИО';
+            const ioPct = (io * 100).toFixed(1);
+            aiAdvice = `ИО = ${ioPct}%. Риск блокировки WB. Снизьте цену или вывезите товар.`;
+            budget = Math.min(maxBudget, 5000);
+            rt = 'Ручная-Рек';
+            priority = 'high';
+            priorityLabel = '🟡 Высокий';
+        } 
+        // Приоритет 3: Маленький остаток
+        else if (stock < 10 && salesPerDay > 0) {
+            status = '📦 Заканчивается';
+            aiAdvice = `Остаток ${stock} шт, продаётся ${salesPerDay.toFixed(1)} шт/день. Хватит на ${stockDays} дней.`;
+            budget = Math.min(maxBudget, 3000);
+            rt = 'Авто';
+            priority = 'high';
+            priorityLabel = '🟡 Высокий';
+        }
+        // Приоритет 4: Падение продаж
+        else if (trendPercent < -20 && stock > 0) {
+            status = '📉 Падение продаж';
+            aiAdvice = `Падение ${Math.round(trendPercent)}% за неделю. Проверьте карточку и конкурентов.`;
+            budget = Math.min(Math.round(maxBudget * 0.8), 10000);
+            rt = 'Ручная-Поиск';
+            priority = 'medium';
+            priorityLabel = '🟠 Средний';
+        }
+        // Приоритет 5: Залежалый товар
+        else if (stock > 200 && data.orders < 3) {
+            status = '📦 Залежался';
+            aiAdvice = `Товар залежался (${stock} шт, ${data.orders} заказов). Рекомендуется скидка или реклама.`;
+            budget = Math.min(Math.round(maxBudget * 0.5), 8000);
+            rt = 'Ручная-Поиск';
+            priority = 'medium';
+            priorityLabel = '🟠 Средний';
+        }
+        // Приоритет 6: Сезонный товар
+        else if (isSeason && score > 50) {
+            status = '☀️ Сезонный приоритет';
+            aiAdvice = `Сезонный товар (коэф. ${seasonCoeff.toFixed(2)}). Рекомендуется поддержка.`;
+            budget = Math.min(Math.round(maxBudget * 0.5), 6000);
+            rt = 'Авто';
+            priority = 'low';
+            priorityLabel = '🟢 Низкий';
+        }
+        // Приоритет 7: Высокий потенциал
+        else if (score > 65) {
+            status = '⭐ Высокий потенциал';
+            aiAdvice = `Высокий скоринг (${score}/100). Рекомендуется запустить рекламу.`;
+            budget = Math.min(Math.round(maxBudget * 0.6), 8000);
+            rt = 'Авто';
+            priority = 'low';
+            priorityLabel = '🟢 Низкий';
+        }
+        // По умолчанию
+        else {
+            aiAdvice = 'Стабильные продажи. Реклама не требуется.';
+            budget = 0;
+            rt = 'Авто';
+            priority = 'low';
+            priorityLabel = '🟢 Низкий';
+        }
+
+        // Округление бюджета
+        budget = Math.round(budget / 100) * 100;
+        if (budget < 0) budget = 0;
+
+        // Прогноз
+        const projectedOrders = Math.round(data.orders * (1 + score / 100));
+        const roi = budget > 0 ? Math.round(((projectedOrders - data.orders) * 1500 / budget) * 100) : 0;
+
+        // Точка безубыточности
+        const marginPerUnit = econ.margin || 0;
+        const bep = calculateBEP(budget, marginPerUnit);
+
+        result.push({
+            article,
+            orders: data.orders,
+            delivered: data.delivered,
+            amount: data.amount,
+            returns: data.returns || 0,
+            returnRate: econ.returnRate || 0,
+            fallWeek: Math.round(trendPercent) + '%',
+            fallDay: '0%',
+            status,
+            stock,
+            score,
+            level: score > 70 ? 3 : score > 40 ? 2 : 1,
+            type: rt,
+            budget,
+            maxBudget: maxBudget,
+            aiAdvice,
+            color,
+            colorTemp,
+            category,
+            projectedOrders,
+            roi,
+            margin: econ.margin || 0,
+            marginLabel: econ.marginLabel || 'Нет данных',
+            io: econ.io || 0,
+            ioStatus: econ.ioStatus || 'Норма',
+            ioColor: econ.ioColor || '#10B981',
+            selected: false,
+            seasonCoeff: econ.seasonCoeff || 1,
+            isSeason: isSeason,
+            recommendedOrder: econ.recommendedOrder || 0,
+            bep: bep,
+            netProfit: econ.netProfit || 0,
+            storageCost: econ.storageCost || 0,
+            scheme: econ.scheme || 'FBO',
+            priority: priority,
+            stockDays: stockDays,
+            trendPercent: trendPercent,
+            salesPerDay: salesPerDay,
+            priorityLabel: priorityLabel
+        });
+    }
+
+    // Сортировка по приоритету
+    const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    result.sort((a, b) => {
+        const pa = priorityOrder[a.priority] || 3;
+        const pb = priorityOrder[b.priority] || 3;
+        if (pa !== pb) return pa - pb;
+        return b.score - a.score;
+    });
+
+    console.log('✅ [Рекламный отдел] Сгенерировано:', result.length, 'записей');
+    return result;
+}
 
         // ================================================================
         // [v4.0] 18. ИМПОРТ С ЗАЩИТОЙ ОТ ДУБЛИКАТОВ
@@ -8294,18 +8543,38 @@
                 await createBackup();
             }, 3600000);
 
-            // Автообновление данных каждые 5 минут
-            setInterval(async () => {
-                console.log('🔄 Автообновление данных...');
-                await loadAllData();
-                refreshCurrentPage();
-            }, 5 * 60 * 1000);
+           // ================================================================
+// [FIX] ОТКЛЮЧЕНО АВТООБНОВЛЕНИЕ — ТОЛЬКО РУЧНОЕ
+// ================================================================
 
-            // Проверка уведомлений каждые 10 минут
-            setInterval(() => {
-                checkCriticalNotifications();
-            }, 10 * 60 * 1000);
+console.log('🔕 [Система] Автообновление ОТКЛЮЧЕНО. Используйте кнопку Refresh для обновления.');
 
+// ================================================================
+// [FIX] УВЕДОМЛЕНИЯ — ОГРАНИЧЕНИЕ 3-4 В СУТКИ
+// ================================================================
+
+let notificationCount = 0;
+let lastNotificationDate = new Date().toDateString();
+
+setInterval(() => {
+    const today = new Date().toDateString();
+    if (today !== lastNotificationDate) {
+        notificationCount = 0;
+        lastNotificationDate = today;
+        console.log('🔔 [Уведомления] Новый день — сброс счётчика');
+    }
+    
+    if (notificationCount < 4) {
+        const criticalIssues = checkCriticalNotifications();
+        if (criticalIssues) {
+            notificationCount++;
+            console.log(`🔔 [Уведомления] Отправлено уведомление #${notificationCount} из 4 на сегодня`);
+        }
+    } else {
+        console.log('🔕 [Уведомления] Достигнут лимит 4 уведомлений на сегодня');
+    }
+}, 10 * 60 * 1000);
+            
             // Автогенерация задач раз в сутки
             const now = new Date();
             const nextMidnight = new Date(now);
