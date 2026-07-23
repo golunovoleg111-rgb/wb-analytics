@@ -7070,28 +7070,29 @@ if (volumePerUnitEl) volumePerUnitEl.value = APP.settings.volumePerUnit || 5;
         }
 
         async function saveSettings() {
-            const settings = {
-                darkTheme: document.getElementById('settingsDarkTheme')?.checked || false,
-                colorTheme: document.getElementById('settingsColorTheme')?.value || 'default',
-                notifyCritical: document.getElementById('settingsNotifyCritical')?.checked !== false,
-                notifyLow: document.getElementById('settingsNotifyLow')?.checked !== false,
-                notifyIO: document.getElementById('settingsNotifyIO')?.checked !== false,
-                notifyBrowser: document.getElementById('settingsNotifyBrowser')?.checked !== false,
-                wbCommission: parseFloat(document.getElementById('settingsWbCommission')?.value) || 15,
-                logisticsCost: parseFloat(document.getElementById('settingsLogisticsCost')?.value) || 50,
-                ioThreshold: parseFloat(document.getElementById('settingsIoThreshold')?.value) || 0.3,
-                taxSystem: document.getElementById('settingsTaxSystem')?.value || 'usn6',
-                patentCost: parseFloat(document.getElementById('settingsPatentCost')?.value) || 30000,
-                weightSeason: parseFloat(document.getElementById('weightSeason')?.value) || 25,
-                weightMargin: parseFloat(document.getElementById('weightMargin')?.value) || 25,
-                weightSpeed: parseFloat(document.getElementById('weightSpeed')?.value) || 20,
-                weightTrend: parseFloat(document.getElementById('weightTrend')?.value) || 15,
-                weightHealth: parseFloat(document.getElementById('weightHealth')?.value) || 10,
-                weightCompetition: parseFloat(document.getElementById('weightCompetition')?.value) || 5
-                storageRate: parseFloat(document.getElementById('settingsStorageRate')?.value) || 0.07,
-storageOverRate: parseFloat(document.getElementById('settingsStorageOverRate')?.value) || 0.15,
-volumePerUnit: parseFloat(document.getElementById('settingsVolumePerUnit')?.value) || 5,
-            };
+       const settings = {
+    darkTheme: document.getElementById('settingsDarkTheme')?.checked || false,
+    colorTheme: document.getElementById('settingsColorTheme')?.value || 'default',
+    notifyCritical: document.getElementById('settingsNotifyCritical')?.checked !== false,
+    notifyLow: document.getElementById('settingsNotifyLow')?.checked !== false,
+    notifyIO: document.getElementById('settingsNotifyIO')?.checked !== false,
+    notifyBrowser: document.getElementById('settingsNotifyBrowser')?.checked !== false,
+    wbCommission: parseFloat(document.getElementById('settingsWbCommission')?.value) || 15,
+    logisticsCost: parseFloat(document.getElementById('settingsLogisticsCost')?.value) || 50,
+    ioThreshold: parseFloat(document.getElementById('settingsIoThreshold')?.value) || 0.3,
+    taxSystem: document.getElementById('settingsTaxSystem')?.value || 'usn6',
+    patentCost: parseFloat(document.getElementById('settingsPatentCost')?.value) || 30000,
+    weightSeason: parseFloat(document.getElementById('weightSeason')?.value) || 25,
+    weightMargin: parseFloat(document.getElementById('weightMargin')?.value) || 25,
+    weightSpeed: parseFloat(document.getElementById('weightSpeed')?.value) || 20,
+    weightTrend: parseFloat(document.getElementById('weightTrend')?.value) || 15,
+    weightHealth: parseFloat(document.getElementById('weightHealth')?.value) || 10,
+    weightCompetition: parseFloat(document.getElementById('weightCompetition')?.value) || 5,
+    // [FIX] НОВЫЕ НАСТРОЙКИ
+    storageRate: parseFloat(document.getElementById('settingsStorageRate')?.value) || 0.07,
+    storageOverRate: parseFloat(document.getElementById('settingsStorageOverRate')?.value) || 0.15,
+    volumePerUnit: parseFloat(document.getElementById('settingsVolumePerUnit')?.value) || 5
+};
 
             const sum = settings.weightSeason + settings.weightMargin + settings.weightSpeed + 
                        settings.weightTrend + settings.weightHealth + settings.weightCompetition;
