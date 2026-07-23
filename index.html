@@ -7548,7 +7548,7 @@
             const marginDisplay = econ ? econ.margin + '% (' + econ.marginLabel + ')' : '—';
             const priceInfo = prices.length > 0 ? prices[0] : {};
             const priceDisplay = priceInfo.price ? formatNumber(priceInfo.price) + ' ₽' + (priceInfo.discount ? ' (скидка ' + priceInfo.discount + '%)' : '') : '—';
-            const ioDisplay = econ ? (econ.io * 100).toFixed(1) + '% : '—';
+            const ioDisplay = econ ? (econ.io * 100).toFixed(1) + '%' : '—';
 
             container.innerHTML = `
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -9376,7 +9376,364 @@
             refreshCurrentPage();
 
             await fetchNews();
+        // ================================================================
+        // [FIX] ДОБАВЛЕННЫЕ ФУНКЦИИ
+        // ================================================================
 
+        // ================================================================
+        // 41. УПРАВЛЕНИЕ ЦЕНАМИ — ОСНОВНАЯ ФУНКЦИЯ
+        // ================================================================
+
+        let pricesCurrentPage = 1;
+        let pricesPageSize = 25;
+        let pricesFiltered = [];
+        let pricesChanges = {};
+
+        function renderPrices() {
+            const unitEconomics = calculateUnitEconomicsV2();
+            const prices = APP.data.prices;
+            
+            pricesData = unitEconomics.map(econ => {
+                const priceEntry = prices.find(p => p.article === econ.article);
+                const currentPrice = priceEntry ? priceEntry.price : econ.marketPrice || 0;
+                const currentDiscount = priceEntry ? priceEntry.discount || 0 : econ.discount || 0;
+                const recommendedPrice = Math.round(econ.marketPrice * 1.05);
+                
+                return {
+                    article: econ.article,
+                    category: econ.category || 'Товар',
+                    currentPrice: currentPrice,
+                    recommendedPrice: recommendedPrice,
+                    discount: currentDiscount,
+                    newPrice: currentPrice,
+                    cost: econ.purchasePrice || 0,
+                    margin: econ.margin || 0,
+                    marginLabel: econ.marginLabel || 'Нет данных',
+                    orders: econ.orders || 0,
+                    stock: econ.stock || 0,
+                    io: econ.io || 0,
+                    scheme: econ.scheme || 'FBO',
+                    _edited: false,
+                    _originalPrice: currentPrice,
+                    _originalDiscount: currentDiscount
+                };
+            });
+
+            Object.keys(pricesChanges).forEach(article => {
+                const item = pricesData.find(p => p.article === article);
+                if (item) {
+                    const change = pricesChanges[article];
+                    item.newPrice = change.newPrice;
+                    item.discount = change.discount;
+                    item._edited = true;
+                }
+            });
+
+            const avgPrice = pricesData.length > 0 ? Math.round(pricesData.reduce((s, p) => s + p.currentPrice, 0) / pricesData.length) : 0;
+            const avgMargin = pricesData.length > 0 ? parseFloat((pricesData.reduce((s, p) => s + p.margin, 0) / pricesData.length).toFixed(1)) : 0;
+            const totalRevenue = pricesData.reduce((s, p) => s + (p.currentPrice * p.orders), 0);
+
+            setText('pricesAvgPrice', formatMoney(avgPrice));
+            setText('pricesAvgMargin', avgMargin + '%');
+            setText('pricesTotalRevenue', formatMoney(totalRevenue));
+
+            const categories = [...new Set(pricesData.map(p => p.category))];
+            const categoryFilter = document.getElementById('pricesCategoryFilter');
+            if (categoryFilter) {
+                const currentVal = categoryFilter.value;
+                categoryFilter.innerHTML = '<option value="all">Все категории</option>' + 
+                    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+                if (currentVal && categories.includes(currentVal)) categoryFilter.value = currentVal;
+            }
+
+            const searchQuery = document.getElementById('pricesSearch')?.value?.toLowerCase() || '';
+            const category = document.getElementById('pricesCategoryFilter')?.value || 'all';
+            const status = document.getElementById('pricesStatusFilter')?.value || 'all';
+
+            pricesFiltered = pricesData.filter(p => {
+                if (searchQuery && !p.article.toLowerCase().includes(searchQuery)) return false;
+                if (category !== 'all' && p.category !== category) return false;
+                if (status === 'high' && p.margin < 25) return false;
+                if (status === 'medium' && (p.margin < 10 || p.margin >= 25)) return false;
+                if (status === 'low' && (p.margin < 0 || p.margin >= 10)) return false;
+                if (status === 'negative' && p.margin >= 0) return false;
+                return true;
+            });
+
+            setText('pricesTotalCount', pricesFiltered.length);
+            renderPricesTable();
+        }
+
+        function renderPricesTable() {
+            const tbody = document.getElementById('pricesTableBody');
+            if (!tbody) return;
+
+            const totalItems = pricesFiltered.length;
+            const totalPages = Math.ceil(totalItems / pricesPageSize);
+            if (pricesCurrentPage > totalPages) pricesCurrentPage = totalPages || 1;
+
+            const start = (pricesCurrentPage - 1) * pricesPageSize;
+            const end = Math.min(start + pricesPageSize, totalItems);
+            const pageItems = pricesFiltered.slice(start, end);
+
+            document.getElementById('pricesRange').textContent = `Показано ${totalItems > 0 ? start + 1 : 0}-${end} из ${totalItems}`;
+            document.getElementById('pricesPageInfo').textContent = `Стр. ${pricesCurrentPage} из ${totalPages || 1}`;
+            document.getElementById('pricesPrevBtn').disabled = pricesCurrentPage <= 1;
+            document.getElementById('pricesNextBtn').disabled = pricesCurrentPage >= totalPages;
+
+            if (pageItems.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Нет данных</td></tr>';
+                return;
+            }
+
+            let html = '';
+            pageItems.forEach(item => {
+                const isEdited = item._edited;
+                const marginColor = item.margin > 25 ? '#10B981' : item.margin > 10 ? '#F59E0B' : '#EF4444';
+                const statusLabel = item.margin > 25 ? '🟢 Высокая' : item.margin > 10 ? '🟡 Средняя' : item.margin > 0 ? '🔴 Низкая' : '⚫ Убыточный';
+                const priceDiff = item.newPrice - item.currentPrice;
+                const diffColor = priceDiff > 0 ? '#EF4444' : priceDiff < 0 ? '#10B981' : 'var(--text-secondary)';
+                const diffSymbol = priceDiff > 0 ? '▲' : priceDiff < 0 ? '▼' : '=';
+
+                html += `
+                    <tr style="${isEdited ? 'background:rgba(59,130,246,0.05);' : ''} border-bottom:1px solid var(--border);">
+                        <td style="padding:4px 8px;font-weight:500;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.article}">${item.article}</td>
+                        <td style="padding:4px 8px;font-size:10px;color:var(--text-secondary);">${item.category}</td>
+                        <td style="padding:4px 8px;text-align:center;font-weight:500;">${formatMoney(item.currentPrice)}</td>
+                        <td style="padding:4px 8px;text-align:center;font-size:10px;">${formatMoney(item.recommendedPrice)}</td>
+                        <td style="padding:4px 8px;text-align:center;">
+                            <input type="number" class="price-discount-input" data-article="${item.article}" value="${item.discount}" min="0" max="100" step="1" style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:10px;background:var(--bg-card);color:var(--text-primary);${isEdited ? 'border-color:#3B82F6;' : ''}" />
+                            %
+                        </td>
+                        <td style="padding:4px 8px;text-align:center;">
+                            <input type="number" class="price-new-input" data-article="${item.article}" value="${item.newPrice}" step="100" style="width:80px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:10px;font-weight:600;background:var(--bg-card);color:var(--text-primary);${isEdited ? 'border-color:#3B82F6;background:rgba(59,130,246,0.05);' : ''}" />
+                            <span style="font-size:8px;color:${diffColor};display:block;">${diffSymbol} ${Math.abs(priceDiff)} ₽</span>
+                        </td>
+                        <td style="padding:4px 8px;text-align:center;font-size:10px;">${formatMoney(item.cost)}</td>
+                        <td style="padding:4px 8px;text-align:center;font-weight:700;color:${marginColor};">${item.margin}%</td>
+                        <td style="padding:4px 8px;text-align:center;"><span style="font-size:9px;padding:2px 8px;border-radius:12px;background:${marginColor}22;color:${marginColor};">${statusLabel}</span></td>
+                        <td style="padding:4px 8px;text-align:center;">
+                            <button class="btn btn-success btn-sm price-apply-btn" data-article="${item.article}" style="font-size:8px;padding:1px 6px;">✅</button>
+                            <button class="btn btn-secondary btn-sm price-reset-btn" data-article="${item.article}" style="font-size:8px;padding:1px 6px;">↩️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+
+            tbody.querySelectorAll('.price-new-input').forEach(input => {
+                input.addEventListener('change', function() {
+                    const article = this.dataset.article;
+                    const newPrice = parseInt(this.value) || 0;
+                    const item = pricesData.find(p => p.article === article);
+                    if (item) {
+                        if (!pricesChanges[article]) {
+                            pricesChanges[article] = { newPrice: item.currentPrice, discount: item.discount };
+                        }
+                        pricesChanges[article].newPrice = newPrice;
+                        item._edited = true;
+                        renderPricesTable();
+                    }
+                });
+            });
+
+            tbody.querySelectorAll('.price-discount-input').forEach(input => {
+                input.addEventListener('change', function() {
+                    const article = this.dataset.article;
+                    const discount = parseInt(this.value) || 0;
+                    const item = pricesData.find(p => p.article === article);
+                    if (item) {
+                        if (!pricesChanges[article]) {
+                            pricesChanges[article] = { newPrice: item.currentPrice, discount: item.discount };
+                        }
+                        pricesChanges[article].discount = discount;
+                        const newPrice = Math.round(item.currentPrice * (1 - discount / 100));
+                        pricesChanges[article].newPrice = newPrice;
+                        item._edited = true;
+                        renderPricesTable();
+                    }
+                });
+            });
+
+            tbody.querySelectorAll('.price-apply-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const article = this.dataset.article;
+                    const change = pricesChanges[article];
+                    if (!change) { alert('Нет изменений для сохранения'); return; }
+                    
+                    const existingPrice = APP.data.prices.find(p => p.article === article);
+                    if (existingPrice) {
+                        existingPrice.price = change.newPrice;
+                        existingPrice.discount = change.discount;
+                        existingPrice.discountedPrice = Math.round(change.newPrice * (1 - change.discount / 100));
+                        dbSave('prices', existingPrice);
+                    } else {
+                        const newPriceEntry = {
+                            id: Date.now() + Math.random(),
+                            article: article,
+                            price: change.newPrice,
+                            discount: change.discount,
+                            discountedPrice: Math.round(change.newPrice * (1 - change.discount / 100)),
+                            date: formatDate(new Date())
+                        };
+                        dbSave('prices', newPriceEntry);
+                    }
+                    
+                    delete pricesChanges[article];
+                    APP.data.prices = dbGetAll('prices');
+                    alert(`✅ Цена для "${article}" обновлена: ${formatMoney(change.newPrice)}`);
+                    renderPrices();
+                });
+            });
+
+            tbody.querySelectorAll('.price-reset-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const article = this.dataset.article;
+                    delete pricesChanges[article];
+                    renderPrices();
+                });
+            });
+        }
+
+        // ================================================================
+        // 42. ОБРАБОТЧИКИ ДЛЯ УПРАВЛЕНИЯ ЦЕНАМИ
+        // ================================================================
+
+        function setupPricesHandlers() {
+            const searchBtn = document.getElementById('pricesSearchBtn');
+            const searchInput = document.getElementById('pricesSearch');
+            const clearBtn = document.getElementById('pricesClearBtn');
+            const categoryFilter = document.getElementById('pricesCategoryFilter');
+            const statusFilter = document.getElementById('pricesStatusFilter');
+            const pageSizeSelect = document.getElementById('pricesPageSize');
+
+            if (searchBtn) searchBtn.addEventListener('click', () => { pricesCurrentPage = 1; renderPrices(); });
+            if (searchInput) searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { pricesCurrentPage = 1; renderPrices(); } });
+            if (clearBtn) clearBtn.addEventListener('click', () => {
+                if (searchInput) searchInput.value = '';
+                if (categoryFilter) categoryFilter.value = 'all';
+                if (statusFilter) statusFilter.value = 'all';
+                pricesCurrentPage = 1;
+                renderPrices();
+            });
+            if (categoryFilter) categoryFilter.addEventListener('change', () => { pricesCurrentPage = 1; renderPrices(); });
+            if (statusFilter) statusFilter.addEventListener('change', () => { pricesCurrentPage = 1; renderPrices(); });
+            if (pageSizeSelect) pageSizeSelect.addEventListener('change', function() {
+                pricesPageSize = parseInt(this.value);
+                pricesCurrentPage = 1;
+                renderPrices();
+            });
+
+            const prevBtn = document.getElementById('pricesPrevBtn');
+            const nextBtn = document.getElementById('pricesNextBtn');
+            if (prevBtn) prevBtn.addEventListener('click', () => { if (pricesCurrentPage > 1) { pricesCurrentPage--; renderPrices(); } });
+            if (nextBtn) nextBtn.addEventListener('click', () => { 
+                const totalPages = Math.ceil(pricesFiltered.length / pricesPageSize);
+                if (pricesCurrentPage < totalPages) { pricesCurrentPage++; renderPrices(); }
+            });
+
+            const applyAllBtn = document.getElementById('pricesApplyAllBtn');
+            if (applyAllBtn) {
+                applyAllBtn.addEventListener('click', async () => {
+                    const changes = Object.keys(pricesChanges);
+                    if (changes.length === 0) { alert('Нет изменений для сохранения'); return; }
+                    if (!confirm(`Сохранить изменения для ${changes.length} товаров?`)) return;
+                    
+                    for (const article of changes) {
+                        const change = pricesChanges[article];
+                        const existingPrice = APP.data.prices.find(p => p.article === article);
+                        if (existingPrice) {
+                            existingPrice.price = change.newPrice;
+                            existingPrice.discount = change.discount;
+                            existingPrice.discountedPrice = Math.round(change.newPrice * (1 - change.discount / 100));
+                            await dbSave('prices', existingPrice);
+                        } else {
+                            const newPriceEntry = {
+                                id: Date.now() + Math.random(),
+                                article: article,
+                                price: change.newPrice,
+                                discount: change.discount,
+                                discountedPrice: Math.round(change.newPrice * (1 - change.discount / 100)),
+                                date: formatDate(new Date())
+                            };
+                            await dbSave('prices', newPriceEntry);
+                        }
+                    }
+                    
+                    pricesChanges = {};
+                    APP.data.prices = await dbGetAll('prices');
+                    alert(`✅ Применено ${changes.length} изменений`);
+                    renderPrices();
+                });
+            }
+
+            const resetBtn = document.getElementById('pricesResetBtn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    if (Object.keys(pricesChanges).length === 0) { alert('Нет изменений для сброса'); return; }
+                    if (!confirm('Сбросить все несохранённые изменения?')) return;
+                    pricesChanges = {};
+                    renderPrices();
+                });
+            }
+
+            const exportBtn = document.getElementById('exportPricesBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    const data = pricesFiltered.map(p => ({
+                        'Артикул': p.article,
+                        'Категория': p.category,
+                        'Текущая цена': p.currentPrice,
+                        'Рекомендуемая цена': p.recommendedPrice,
+                        'Скидка %': p.discount,
+                        'Новая цена': p.newPrice,
+                        'Себестоимость': p.cost,
+                        'Маржа %': p.margin,
+                        'Статус': p.marginLabel,
+                        'Заказов (30д)': p.orders,
+                        'Остаток': p.stock
+                    }));
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    XLSX.utils.book_append_sheet(wb, ws, 'Цены');
+                    XLSX.writeFile(wb, 'Управление_ценами_' + formatDate(new Date()).replace(/\./g, '_') + '.xlsx');
+                    alert('✅ Экспортировано ' + data.length + ' записей');
+                });
+            }
+        }
+
+        // ================================================================
+        // 43. ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК В СКЛАДЕ
+        // ================================================================
+
+        function setupStorageTabs() {
+            document.querySelectorAll('[data-storage-tab]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('[data-storage-tab]').forEach(b => {
+                        b.className = 'btn btn-secondary btn-sm';
+                    });
+                    this.className = 'btn btn-primary btn-sm';
+                    
+                    const tab = this.dataset.storageTab;
+                    document.querySelectorAll('.storage-panel').forEach(p => {
+                        p.style.display = 'none';
+                    });
+                    const panel = document.querySelector('.storage-panel[data-storage-panel="' + tab + '"]');
+                    if (panel) panel.style.display = 'block';
+                });
+            });
+        }
+
+        // ================================================================
+        // 44. ОБНОВЛЕНИЕ СЧЁТЧИКА ВЫБРАННЫХ КАМПАНИЙ
+        // ================================================================
+
+        function updateSelectedCount() {
+            const count = APP.ui.selectedCampaigns.length;
+            const btn = document.getElementById('launchSelectedBtn');
+            if (btn) btn.textContent = '🚀 Запустить выбранные (' + count + ')';
+        }
             // ============================================================
             // [FIX] ОТКЛЮЧЕНО АВТООБНОВЛЕНИЕ — ТОЛЬКО РУЧНОЕ
             // ============================================================
