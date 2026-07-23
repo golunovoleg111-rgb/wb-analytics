@@ -2315,7 +2315,32 @@
                         </div>
                     </div>
                 </div>
-
+<!-- [FIX] Настройки логистики и хранения -->
+<div class="card" style="border-left:4px solid #F59E0B;">
+    <div class="card-title">🚚 Логистика и хранение</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+        <div>
+            <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Стоимость логистики (₽ за кг)</label>
+            <input type="number" id="settingsLogisticsCost" value="50" step="5" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+            <div style="font-size:9px;color:var(--text-secondary);margin-top:2px;">Используется для расчёта доставки до клиента и обратно при возврате</div>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Ставка хранения FBO (₽/литр/день)</label>
+            <input type="number" id="settingsStorageRate" value="0.07" step="0.01" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+            <div style="font-size:9px;color:var(--text-secondary);margin-top:2px;">Базовая ставка для товаров с ИО &lt; 2.0</div>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Повышенная ставка хранения (₽/литр/день)</label>
+            <input type="number" id="settingsStorageOverRate" value="0.15" step="0.01" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+            <div style="font-size:9px;color:var(--text-secondary);margin-top:2px;">Для товаров с ИО &gt; 2.0</div>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Объём товара (литров на единицу)</label>
+            <input type="number" id="settingsVolumePerUnit" value="5" step="0.5" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);" />
+            <div style="font-size:9px;color:var(--text-secondary);margin-top:2px;">Средний объём одной единицы товара для расчёта хранения</div>
+        </div>
+    </div>
+</div>
                 <!-- [v4.0] Скоринг веса -->
                 <div class="card" style="border-left:4px solid #10B981;">
                     <div class="card-title">📊 Веса скоринга</div>
@@ -5358,301 +5383,116 @@ function generateAdvertisingDataV2() {
             if (tab) switchAdvTab(tab);
         }
 
-        function renderRecommended(items) {
-            const grid = document.getElementById('recommendedGrid');
-            const totalBudget = items.reduce((sum, a) => sum + (a.budget || 0), 0);
+        // ================================================================
+// [FIX] РЕКЛАМНЫЙ ОТДЕЛ — НОВОЕ ОТОБРАЖЕНИЕ (ТОЛЬКО СПИСОК)
+// ================================================================
 
-            const countEl = document.getElementById('recCount');
-            if (countEl) countEl.textContent = items.length + ' кампаний';
+function renderRecommended(items) {
+    const grid = document.getElementById('recommendedGrid');
+    const totalBudget = items.reduce((sum, a) => sum + (a.budget || 0), 0);
 
-            setText('recBudget', formatNumber(totalBudget) + ' ₽');
-            setText('recDate', formatDate(new Date()));
+    const countEl = document.getElementById('recCount');
+    if (countEl) countEl.textContent = items.length + ' кампаний';
 
-            const aiText = items.length === 0 ? 'Нет товаров для рекомендации.' :
-                `🎯 Выбрано ${items.length} кампаний. Общий бюджет: ${formatNumber(totalBudget)} ₽. ` +
-                `Средняя маржинальность: ${items.length > 0 ? Math.round(items.reduce((s, a) => s + a.margin, 0) / items.length) : 0}%.`;
-            setText('recAI', aiText);
+    setText('recBudget', formatNumber(totalBudget) + ' ₽');
+    setText('recDate', formatDate(new Date()));
 
-            if (items.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:12px;font-size:13px;">Нет товаров</div>';
-                return;
-            }
+    // [FIX] Простой AI-совет без лишней информации
+    const aiText = items.length === 0 ? 'Нет товаров для рекомендации.' :
+        `🎯 Найдено ${items.length} товаров. Общий бюджет: ${formatNumber(totalBudget)} ₽.`;
+    setText('recAI', aiText);
 
-            let html = '';
-            items.forEach((item) => {
-                const statusClass = getStatusClass(item.status);
-                const statusShort = getStatusShort(item.status);
-                const io = item.io || 0;
-                const ioColor = io > 0.5 ? '🟢' : io > 0.2 ? '🟡' : '🔴';
-                const marginColor = item.margin > 20 ? '🟢' : item.margin > 0 ? '🟡' : '🔴';
-                const bep = item.bep || { units: 0 };
+    if (items.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:20px;font-size:13px;">Нет товаров для отображения</div>';
+        return;
+    }
 
-                html += `
-                    <div class="campaign-card" style="padding:8px 12px;">
-                        <div class="campaign-top">
-                            <span class="campaign-article">${item.article}</span>
-                            <span class="campaign-status-tag ${statusClass || 'tag-gray'}">${statusShort}</span>
-                        </div>
-                        <div class="campaign-metrics">
-                            <span>📦 ${formatNumber(item.stock)} шт</span>
-                            <span>⭐ ${item.score}/100</span>
-                            <span>${ioColor} ИО: ${(io * 100).toFixed(1)}%</span>
-                            <span>📈 ${item.roi}% ROI</span>
-                            <span>💰 ${marginColor} ${item.margin}%</span>
-                            <span>📊 BEP: ${bep.units} шт</span>
-                            <span>${item.isSeason ? '☀️ Сезон' : ''}</span>
-                            <span>${item.scheme || 'FBO'}</span>
-                        </div>
-                        <div class="budget-slider-wrap">
-                            <span style="font-size:10px;font-weight:500;">Бюджет:</span>
-                            <input type="range" min="0" max="15000" step="500" value="${item.budget}" class="budget-slider" data-article="${item.article}" />
-                            <span class="budget-value" style="font-weight:700;font-size:12px;min-width:55px;text-align:right;">${formatNumber(item.budget)} ₽</span>
-                        </div>
-                        <div style="font-size:10px;color:var(--text-secondary);">🤖 ${item.aiAdvice}</div>
-                        <div class="campaign-actions">
-                            <button class="btn btn-primary btn-sm campaign-launch" data-article="${item.article}">🚀 Запустить</button>
-                            <button class="btn btn-secondary btn-sm campaign-forecast" data-article="${item.article}">📊 Прогноз</button>
-                            <button class="btn btn-info btn-sm campaign-bep" data-article="${item.article}">📊 BEP</button>
-                            <label style="display:flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;">
-                                <input type="checkbox" class="campaign-select" data-article="${item.article}" ${item.selected ? 'checked' : ''} /> Выбрать
-                            </label>
-                        </div>
-                    </div>
-                `;
-            });
-            grid.innerHTML = html;
-
-            grid.querySelectorAll('.budget-slider').forEach(slider => {
-                slider.addEventListener('input', function() {
-                    const val = parseInt(this.value);
-                    const container = this.closest('.campaign-card');
-                    const display = container.querySelector('.budget-value');
-                    if (display) display.textContent = formatNumber(val) + ' ₽';
-                    recalcBudget();
-                });
-            });
-
-            grid.querySelectorAll('.campaign-select').forEach(cb => {
-                cb.addEventListener('change', function() {
-                    const article = this.dataset.article;
-                    if (this.checked) {
-                        if (!APP.ui.selectedCampaigns.includes(article)) APP.ui.selectedCampaigns.push(article);
-                    } else {
-                        APP.ui.selectedCampaigns = APP.ui.selectedCampaigns.filter(a => a !== article);
-                    }
-                    updateSelectedCount();
-                });
-            });
-
-            grid.querySelectorAll('.campaign-launch').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const article = this.dataset.article;
-                    const container = this.closest('.campaign-card');
-                    const slider = container.querySelector('.budget-slider');
-                    const budget = slider ? parseInt(slider.value) : 5000;
-                    alert(`🚀 Кампания для "${article}" запущена с бюджетом ${formatNumber(budget)} ₽!`);
-                });
-            });
-
-            grid.querySelectorAll('.campaign-forecast').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const article = this.dataset.article;
-                    const item = items.find(a => a.article === article);
-                    if (item) {
-                        alert(`📊 Прогноз для "${article}":\nТекущие заказы: ${formatNumber(item.orders)}\nПрогноз при рекламе: ${formatNumber(item.projectedOrders)} (+${Math.round((item.projectedOrders - item.orders) / Math.max(1, item.orders) * 100)}%)\nРекомендуемый бюджет: ${formatNumber(item.budget)} ₽\nОжидаемый ROI: ${item.roi}%\nМаржинальность: ${item.margin}%\nТочка безубыточности: ${item.bep.units} шт`);
-                    }
-                });
-            });
-
-            grid.querySelectorAll('.campaign-bep').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const article = this.dataset.article;
-                    const item = items.find(a => a.article === article);
-                    if (item) {
-                        const bep = item.bep;
-                        alert(`📊 Точка безубыточности для "${article}":\n\nБюджет рекламы: ${formatNumber(item.budget)} ₽\nМаржинальная прибыль с ед.: ${item.margin} ₽\nДля окупаемости нужно продать: ${bep.units} шт\nВыручка для окупаемости: ${formatMoney(bep.revenue)}\n\n💡 ${bep.units > 0 ? 'Рекомендуется запускать рекламу, если прогноз продаж > ' + bep.units : 'Расчёт невозможен'}`);
-                    }
-                });
-            });
-        }
-
-        function recalcBudget() {
-            const sliders = document.querySelectorAll('.budget-slider');
-            let total = 0;
-            sliders.forEach(s => { total += parseInt(s.value) || 0; });
-            setText('recBudget', formatNumber(total) + ' ₽');
-        }
-
-        function updateSelectedCount() {
-            const count = APP.ui.selectedCampaigns.length;
-            const btn = document.getElementById('launchSelectedBtn');
-            if (btn) btn.textContent = '🚀 Запустить выбранные (' + count + ')';
-        }
-
-        function renderLeaders(items) {
-            const container = document.getElementById('leadersGrid');
-            if (items.length === 0) {
-                container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет данных</div>';
-                return;
-            }
-
-            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
-            items.forEach((item, i) => {
-                html += `
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;background:var(--bg-hover);border-radius:var(--radius-xs);font-size:12px;border-left:3px solid #3B82F6;">
-                        <div style="display:flex;align-items:center;gap:6px;">
-                            <span style="font-weight:700;color:#3B82F6;width:24px;">#${i + 1}</span>
-                            <span style="font-weight:500;">${item.article}</span>
-                        </div>
-                        <div style="display:flex;gap:10px;font-size:11px;color:var(--text-secondary);">
-                            <span>📊 ${formatNumber(item.orders)} зак.</span>
-                            <span>⭐ ${item.score}/100</span>
-                            <span>💰 ${item.margin}%</span>
-                            <span>${item.scheme || 'FBO'}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            container.innerHTML = html;
-        }
-
-        function renderFalling(items) {
-            const container = document.getElementById('fallingGrid');
-            if (items.length === 0) {
-                container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет товаров с падением</div>';
-                return;
-            }
-
-            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
-            items.forEach(item => {
-                html += `
-                    <div style="padding:6px 10px;background:var(--bg-card);border-radius:var(--radius-xs);border:1px solid var(--border);border-left:4px solid #EF4444;font-size:12px;">
-                        <div class="flex-between">
-                            <span style="font-weight:600;">${item.article}</span>
-                            <span style="color:#EF4444;font-weight:700;">${item.fallWeek}</span>
-                        </div>
-                        <div style="font-size:10px;color:var(--text-secondary);">📦 ${formatNumber(item.stock)} шт · ⭐ ${item.score}/100 · 💰 ${item.margin}% · 🤖 ${item.aiAdvice}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            container.innerHTML = html;
-        }
-
-        function renderScoring(items) {
-            const container = document.getElementById('scoringGrid');
-            if (items.length === 0) {
-                container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет данных</div>';
-                return;
-            }
-
-            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
-            items.forEach(item => {
-                const scoreColor = item.score >= 70 ? '#10B981' : item.score >= 40 ? '#F59E0B' : '#EF4444';
-                html += `
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;background:var(--bg-hover);border-radius:var(--radius-xs);font-size:12px;border-left:3px solid ${scoreColor};">
-                        <span style="font-weight:500;">${item.article}</span>
-                        <div style="display:flex;gap:10px;font-size:11px;color:var(--text-secondary);">
-                            <span style="color:${scoreColor};font-weight:700;">⭐ ${item.score}/100</span>
-                            <span>📊 ${formatNumber(item.orders)} зак.</span>
-                            <span>💰 ${item.margin}%</span>
-                            <span>${item.isSeason ? '☀️' : ''}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            container.innerHTML = html;
-        }
-
-        function renderStale(items) {
-            const container = document.getElementById('staleGrid');
-            if (items.length === 0) {
-                container.innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:13px;">Нет залежалых товаров</div>';
-                return;
-            }
-
-            let html = '<div style="display:flex;flex-direction:column;gap:4px;">';
-            items.forEach(item => {
-                html += `
-                    <div style="padding:6px 10px;background:var(--bg-card);border-radius:var(--radius-xs);border:1px solid var(--border);border-left:4px solid #F59E0B;font-size:12px;">
-                        <div class="flex-between">
-                            <span style="font-weight:600;">${item.article}</span>
-                            <span style="color:#F59E0B;font-weight:700;">${formatNumber(item.stock)} шт</span>
-                        </div>
-                        <div style="font-size:10px;color:var(--text-secondary);">📊 Заказов: ${formatNumber(item.orders)} · ⭐ ${item.score}/100 · 💰 ${item.margin}% · 💡 ${item.aiAdvice}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            container.innerHTML = html;
-        }
-
-        function renderAllProducts(items, searchQuery) {
-            const tbody = document.getElementById('allProductsBody');
-            setText('allProductsCount', items.length + ' шт');
-
-            if (searchQuery) {
-                const q = searchQuery.toLowerCase();
-                items = items.filter(a => a.article.toLowerCase().includes(q));
-            }
-
-            const sortSelect = document.getElementById('allSortSelect');
-            if (sortSelect) {
-                const sortBy = sortSelect.value;
-                if (sortBy === 'score') items.sort((a, b) => b.score - a.score);
-                else if (sortBy === 'orders') items.sort((a, b) => b.orders - a.orders);
-                else if (sortBy === 'stock') items.sort((a, b) => b.stock - a.stock);
-                else if (sortBy === 'fall') items.sort((a, b) => parseFloat(a.fallWeek) - parseFloat(b.fallWeek));
-                else if (sortBy === 'margin') items.sort((a, b) => b.margin - a.margin);
-            }
-
-            if (items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">' +
-                    (searchQuery ? 'Ничего не найдено' : 'Нет товаров') + '</td></tr>';
-                return;
-            }
-
-            const display = items.slice(0, 50);
-            let html = '';
-            display.forEach(item => {
-                const statusClass = getStatusClass(item.status);
-                const statusShort = getStatusShort(item.status);
-                const marginColor = item.margin > 20 ? 'tag-green' : item.margin > 0 ? 'tag-yellow' : 'tag-red';
-                const ioColor = item.io > 0.5 ? '🟢' : item.io > 0.2 ? '🟡' : '🔴';
-                html += `
-                    <tr>
-                        <td style="padding:4px 6px;"><input type="checkbox" class="campaign-select-all" data-article="${item.article}" /></td>
-                        <td style="padding:4px 6px;font-weight:500;font-size:11px;">${item.article}</td>
-                        <td style="padding:4px 6px;font-size:11px;">${formatNumber(item.orders)}</td>
-                        <td style="padding:4px 6px;font-size:11px;${parseFloat(item.fallWeek) < 0 ? 'color:#EF4444;' : 'color:#10B981;'}">${item.fallWeek}</td>
-                        <td style="padding:4px 6px;font-size:11px;">${formatNumber(item.stock)}</td>
-                        <td style="padding:4px 6px;"><span class="tag ${statusClass || 'tag-gray'}">${statusShort}</span></td>
-                        <td style="padding:4px 6px;font-size:11px;font-weight:600;">${item.score}</td>
-                        <td style="padding:4px 6px;"><span class="tag ${marginColor}" style="font-size:10px;">${item.margin}%</span></td>
-                        <td style="padding:4px 6px;font-size:11px;">${item.budget > 0 ? formatNumber(item.budget) + ' ₽' : '—'}</td>
-                        <td style="padding:4px 6px;font-size:10px;max-width:140px;">${item.aiAdvice}</td>
+    // [FIX] Табличное отображение вместо карточек
+    let html = `
+        <div style="overflow-x:auto;margin-top:8px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--bg-card);border-radius:var(--radius-sm);overflow:hidden;">
+                <thead>
+                    <tr style="background:var(--bg-hover);">
+                        <th style="padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">№</th>
+                        <th style="padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Артикул</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Приоритет</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Остаток</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">ИО</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Маржа</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Скоринг</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Бюджет</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Рекомендация</th>
+                        <th style="padding:6px 8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--text-secondary);font-weight:600;">Действие</th>
                     </tr>
-                `;
-            });
-            if (items.length > 50) {
-                html += '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:6px;font-size:10px;">Показано 50 из ' + items.length + '</td></tr>';
+                </thead>
+                <tbody>
+    `;
+
+    items.forEach((item, index) => {
+        const priorityColor = item.priority === 'critical' ? '#EF4444' : 
+                             item.priority === 'high' ? '#F59E0B' : 
+                             item.priority === 'medium' ? '#F97316' : '#10B981';
+        
+        const ioColor = item.io > 0.5 ? '#10B981' : item.io > 0.2 ? '#F59E0B' : '#EF4444';
+        const marginColor = item.margin > 20 ? '#10B981' : item.margin > 0 ? '#F59E0B' : '#EF4444';
+        const budgetDisplay = item.budget > 0 ? formatNumber(item.budget) + ' ₽' : '—';
+
+        // Короткая рекомендация
+        let shortAdvice = item.aiAdvice || 'Нет рекомендаций';
+        if (shortAdvice.length > 60) shortAdvice = shortAdvice.slice(0, 60) + '...';
+
+        html += `
+            <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 8px;font-weight:600;color:var(--text-secondary);">${index + 1}</td>
+                <td style="padding:6px 8px;font-weight:500;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.article}">${item.article}</td>
+                <td style="padding:6px 8px;text-align:center;">
+                    <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:9px;font-weight:600;background:${priorityColor}22;color:${priorityColor};">
+                        ${item.priorityLabel || '🟢 Низкий'}
+                    </span>
+                </td>
+                <td style="padding:6px 8px;text-align:center;font-weight:500;">${formatNumber(item.stock)}</td>
+                <td style="padding:6px 8px;text-align:center;font-weight:600;color:${ioColor};">${(item.io * 100).toFixed(1)}%</td>
+                <td style="padding:6px 8px;text-align:center;font-weight:600;color:${marginColor};">${item.margin}%</td>
+                <td style="padding:6px 8px;text-align:center;font-weight:600;">${item.score}/100</td>
+                <td style="padding:6px 8px;text-align:center;font-weight:600;">${budgetDisplay}</td>
+                <td style="padding:6px 8px;font-size:10px;color:var(--text-secondary);max-width:180px;">${shortAdvice}</td>
+                <td style="padding:6px 8px;text-align:center;">
+                    <button class="btn btn-primary btn-sm campaign-launch" data-article="${item.article}" style="font-size:9px;padding:2px 8px;">🚀</button>
+                    <button class="btn btn-secondary btn-sm campaign-forecast" data-article="${item.article}" style="font-size:9px;padding:2px 8px;">📊</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+            <div style="padding:6px 8px;font-size:10px;color:var(--text-secondary);text-align:right;">
+                Показано ${items.length} товаров
+            </div>
+        </div>
+    `;
+
+    grid.innerHTML = html;
+
+    // Обработчики кнопок
+    grid.querySelectorAll('.campaign-launch').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const article = this.dataset.article;
+            alert(`🚀 Кампания для "${article}" запущена!`);
+        });
+    });
+
+    grid.querySelectorAll('.campaign-forecast').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const article = this.dataset.article;
+            const item = items.find(a => a.article === article);
+            if (item) {
+                alert(`📊 Прогноз для "${article}":\nТекущие заказы: ${formatNumber(item.orders)}\nПрогноз: ${formatNumber(item.projectedOrders)}\nРек. бюджет: ${formatNumber(item.budget)} ₽\nROI: ${item.roi}%\nМаржа: ${item.margin}%`);
             }
-            tbody.innerHTML = html;
-        }
-
-        function switchAdvTab(tab) {
-            document.querySelectorAll('[data-adv-tab]').forEach(b => b.className = 'btn btn-secondary btn-sm');
-            const btn = document.querySelector('[data-adv-tab="' + tab + '"]');
-            if (btn) btn.className = 'btn btn-primary btn-sm';
-
-            document.querySelectorAll('.adv-panel').forEach(p => p.style.display = 'none');
-            const panel = document.querySelector('.adv-panel[data-adv-panel="' + tab + '"]');
-            if (panel) panel.style.display = 'block';
-
-            APP.ui.currentAdvTab = tab;
-        }
+        });
+    });
+}
 
         // ================================================================
         // [v4.0] 22. ОТОБРАЖЕНИЕ: СКЛАД
@@ -6511,133 +6351,249 @@ function generateAdvertisingDataV2() {
             if (APP.charts.cardModal) { APP.charts.cardModal.destroy(); APP.charts.cardModal = null; }
             cardModalData = null;
         }
-                    // ================================================================
-        // [v4.0] 27. ЮНИТ-ЭКОНОМИКА — ОТОБРАЖЕНИЕ
-        // ================================================================
+           // ================================================================
+// [FIX] ЮНИТ-ЭКОНОМИКА — С ПАГИНАЦИЕЙ И ПОИСКОМ
+// ================================================================
 
-        function renderUnitEconomics() {
-            const data = calculateUnitEconomicsV2();
+let ueCurrentPage = 1;
+let uePageSize = 25;
+let ueFilteredData = [];
 
-            if (data.length === 0) {
-                setText('ueAvgMargin', '—'); setText('ueHighMargin', '—'); setText('ueNegative', '—'); setText('ueTotalProfit', '—');
-                document.getElementById('ueHeatmap').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
-                document.getElementById('ueABC').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
-                document.getElementById('returnsAnalysis').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
-                document.getElementById('taxAnalysis').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Настройте систему налогообложения</div>';
-                document.getElementById('ueTableBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Нет данных</td></tr>';
-                return;
-            }
+function renderUnitEconomics() {
+    const data = calculateUnitEconomicsV2();
+    ueFilteredData = data;
 
-            const avgMargin = parseFloat((data.reduce((s, a) => s + a.margin, 0) / data.length).toFixed(2));
-            const highMargin = data.filter(a => a.margin > 20).length;
-            const negative = data.filter(a => a.margin < 0).length;
-            const totalProfit = data.reduce((s, a) => s + a.profit * a.orders, 0);
+    if (data.length === 0) {
+        setText('ueAvgMargin', '—'); 
+        setText('ueHighMargin', '—'); 
+        setText('ueNegative', '—'); 
+        setText('ueTotalProfit', '—');
+        document.getElementById('ueHeatmap').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
+        document.getElementById('ueABC').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
+        document.getElementById('returnsAnalysis').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Нет данных</div>';
+        document.getElementById('taxAnalysis').innerHTML = '<div class="text-muted text-center" style="padding:12px;font-size:12px;">Настройте систему налогообложения</div>';
+        document.getElementById('ueTableBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Нет данных</td></tr>';
+        return;
+    }
 
-            setText('ueAvgMargin', avgMargin + '%');
-            setText('ueHighMargin', formatNumber(highMargin));
-            setText('ueNegative', formatNumber(negative));
-            setText('ueTotalProfit', formatMoney(totalProfit));
+    // [FIX] Сводка по маржинальности
+    const avgMargin = parseFloat((data.reduce((s, a) => s + a.margin, 0) / data.length).toFixed(2));
+    const highMargin = data.filter(a => a.margin > 20).length;
+    const negative = data.filter(a => a.margin < 0).length;
+    const totalProfit = data.reduce((s, a) => s + (a.profit * (a.orders || 1)), 0);
 
-            // ABC-анализ
-            const abcData = { A: data.filter(a => a.abc === 'A'), B: data.filter(a => a.abc === 'B'), C: data.filter(a => a.abc === 'C') };
-            const abcContainer = document.getElementById('ueABC');
-            if (abcContainer) {
-                let abcHtml = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">';
-                ['A', 'B', 'C'].forEach(cat => {
-                    const items = abcData[cat] || [];
-                    const total = items.reduce((s, a) => s + a.orders, 0);
-                    const colors = { A: '#10B981', B: '#F59E0B', C: '#EF4444' };
-                    abcHtml += '<div style="padding:8px;background:var(--bg-hover);border-radius:var(--radius-xs);text-align:center;border-top:3px solid ' + colors[cat] + ';"><div style="font-size:20px;font-weight:800;color:' + colors[cat] + ';">' + cat + '</div><div style="font-size:12px;">' + items.length + ' товаров</div><div style="font-size:11px;color:var(--text-secondary);">📊 ' + formatNumber(total) + ' заказов</div></div>';
-                });
-                abcHtml += '</div>';
-                abcContainer.innerHTML = abcHtml;
-            }
+    setText('ueAvgMargin', avgMargin + '%');
+    setText('ueHighMargin', formatNumber(highMargin) + ' из ' + data.length);
+    setText('ueNegative', formatNumber(negative));
+    setText('ueTotalProfit', formatMoney(totalProfit));
 
-            // Тепловая карта
-            const heatmapContainer = document.getElementById('ueHeatmap');
-            if (heatmapContainer) {
-                const top10 = data.slice(0, 10);
-                let heatHtml = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;">';
-                top10.forEach(item => {
-                    const color = item.margin > 20 ? '#10B981' : item.margin > 0 ? '#F59E0B' : '#EF4444';
-                    const opacity = (0.3 + Math.min(Math.abs(item.margin) / 50, 1) * 0.7).toFixed(2);
-                    heatHtml += '<div style="padding:6px;background:' + color + ';opacity:' + opacity + ';border-radius:var(--radius-xs);text-align:center;font-size:10px;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + item.article + ': ' + item.margin + '%">' + item.article + '<div style="font-size:14px;font-weight:700;">' + item.margin + '%</div></div>';
-                });
-                heatHtml += '</div>';
-                heatmapContainer.innerHTML = heatHtml;
-            }
+    // [FIX] ABC-анализ
+    const abcData = { A: data.filter(a => a.abc === 'A'), B: data.filter(a => a.abc === 'B'), C: data.filter(a => a.abc === 'C') };
+    const abcContainer = document.getElementById('ueABC');
+    if (abcContainer) {
+        let abcHtml = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">';
+        ['A', 'B', 'C'].forEach(cat => {
+            const items = abcData[cat] || [];
+            const total = items.reduce((s, a) => s + (a.orders || 0), 0);
+            const colors = { A: '#10B981', B: '#F59E0B', C: '#EF4444' };
+            abcHtml += `<div style="padding:8px;background:var(--bg-hover);border-radius:var(--radius-xs);text-align:center;border-top:3px solid ${colors[cat]};">
+                <div style="font-size:20px;font-weight:800;color:${colors[cat]};">${cat}</div>
+                <div style="font-size:12px;">${items.length} товаров</div>
+                <div style="font-size:11px;color:var(--text-secondary);">📊 ${formatNumber(total)} заказов</div>
+            </div>`;
+        });
+        abcHtml += '</div>';
+        abcContainer.innerHTML = abcHtml;
+    }
 
-            // Анализ возвратов
-            const returnsContainer = document.getElementById('returnsAnalysis');
-            if (returnsContainer) {
-                const withReturns = data.filter(a => a.returnRate > 0);
-                if (withReturns.length === 0) {
-                    returnsContainer.innerHTML = '<div class="text-muted text-center" style="padding:8px;font-size:11px;">✅ Возвратов не зафиксировано</div>';
-                } else {
-                    let retHtml = '<div style="display:flex;flex-direction:column;gap:3px;font-size:11px;">';
-                    withReturns.slice(0, 5).forEach(item => {
-                        retHtml += `<div style="display:flex;justify-content:space-between;padding:3px 6px;background:var(--bg-hover);border-radius:var(--radius-xs);">
-                            <span>${item.article}</span>
-                            <span>🔄 ${(item.returnRate * 100).toFixed(1)}%</span>
-                            <span style="color:#EF4444;">Потери: ${formatMoney(item.returnLoss)}</span>
-                        </div>`;
-                    });
-                    retHtml += '</div>';
-                    returnsContainer.innerHTML = retHtml;
-                }
-            }
+    // [FIX] Тепловая карта — показываем реальные проценты
+    const heatmapContainer = document.getElementById('ueHeatmap');
+    if (heatmapContainer) {
+        const top20 = data.slice(0, 20);
+        let heatHtml = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;">';
+        top20.forEach(item => {
+            const color = item.margin > 20 ? '#10B981' : item.margin > 0 ? '#F59E0B' : '#EF4444';
+            const opacity = Math.min(0.3 + (Math.abs(item.margin) / 100) * 0.7, 1);
+            heatHtml += `<div style="padding:6px;background:${color};opacity:${opacity};border-radius:var(--radius-xs);text-align:center;font-size:9px;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.article}: ${item.margin}%">
+                <div style="font-size:8px;">${item.article}</div>
+                <div style="font-size:12px;font-weight:700;">${item.margin}%</div>
+                <div style="font-size:7px;opacity:0.7;">${formatNumber(item.marketPrice)} ₽</div>
+            </div>`;
+        });
+        heatHtml += '</div>';
+        heatmapContainer.innerHTML = heatHtml;
+    }
 
-            // Налоговый учёт
-            const taxContainer = document.getElementById('taxAnalysis');
-            if (taxContainer) {
-                const taxSystem = APP.settings.taxSystem || 'usn6';
-                const taxLabels = {
-                    'usn6': 'УСН 6% (доходы)',
-                    'usn15': 'УСН 15% (доходы минус расходы)',
-                    'patent': 'Патент'
-                };
-                const totalRevenue = data.reduce((s, a) => s + a.clientPrice * a.orders, 0);
-                const totalCosts = data.reduce((s, a) => s + a.totalCost * a.orders, 0);
-                let tax = 0;
-                if (taxSystem === 'usn6') tax = Math.round(totalRevenue * 0.06);
-                else if (taxSystem === 'usn15') tax = Math.round((totalRevenue - totalCosts) * 0.15);
-                else if (taxSystem === 'patent') tax = Math.round(APP.settings.patentCost / 12);
-
-                taxContainer.innerHTML = `
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
-                        <div><span class="text-muted" style="font-size:9px;">Система</span><div style="font-weight:600;">${taxLabels[taxSystem] || 'Не выбрана'}</div></div>
-                        <div><span class="text-muted" style="font-size:9px;">Налог за месяц</span><div style="font-weight:600;color:#8B5CF6;">${formatMoney(tax)}</div></div>
-                        <div><span class="text-muted" style="font-size:9px;">Выручка</span><div style="font-weight:600;">${formatMoney(totalRevenue)}</div></div>
-                        <div><span class="text-muted" style="font-size:9px;">Расходы</span><div style="font-weight:600;">${formatMoney(totalCosts)}</div></div>
-                    </div>
-                `;
-            }
-
-            // Таблица юнит-экономики
-            const tableBody = document.getElementById('ueTableBody');
-            if (tableBody) {
-                let html = '';
-                data.slice(0, 50).forEach(item => {
-                    const statusColor = item.margin > 20 ? 'tag-green' : item.margin > 0 ? 'tag-yellow' : 'tag-red';
-                    const netProfit = item.netProfit || 0;
-                    html += `<tr>
-                        <td style="padding:4px 8px;font-weight:500;font-size:11px;">${item.article}</td>
-                        <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.marketPrice)} ₽</td>
-                        <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.purchasePrice)} ₽</td>
-                        <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.commissionAmount)} ₽</td>
-                        <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.logisticsAmount)} ₽</td>
-                        <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.storageCost)} ₽</td>
-                        <td style="padding:4px 8px;font-size:11px;color:${netProfit > 0 ? '#10B981' : '#EF4444'};">${formatNumber(netProfit)} ₽</td>
-                        <td style="padding:4px 8px;font-size:11px;font-weight:600;color:${item.margin > 20 ? '#10B981' : item.margin > 0 ? '#F59E0B' : '#EF4444'};">${item.margin}%</td>
-                        <td style="padding:4px 8px;"><span class="tag ${statusColor}">${item.marginLabel}</span></td>
-                        <td style="padding:4px 8px;font-size:11px;">${item.category}</td>
-                    </tr>`;
-                });
-                if (data.length > 50) html += '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:6px;font-size:10px;">Показано 50 из ' + data.length + '</td></tr>';
-                tableBody.innerHTML = html;
-            }
+    // [FIX] Анализ возвратов
+    const returnsContainer = document.getElementById('returnsAnalysis');
+    if (returnsContainer) {
+        const withReturns = data.filter(a => a.returnRate > 0);
+        if (withReturns.length === 0) {
+            returnsContainer.innerHTML = '<div class="text-muted text-center" style="padding:8px;font-size:11px;">✅ Возвратов не зафиксировано</div>';
+        } else {
+            let retHtml = '<div style="display:flex;flex-direction:column;gap:3px;font-size:11px;max-height:120px;overflow-y:auto;">';
+            withReturns.slice(0, 5).forEach(item => {
+                retHtml += `<div style="display:flex;justify-content:space-between;padding:3px 6px;background:var(--bg-hover);border-radius:var(--radius-xs);">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;">${item.article}</span>
+                    <span>🔄 ${(item.returnRate * 100).toFixed(1)}%</span>
+                    <span style="color:#EF4444;">-${formatMoney(item.returnLoss || 0)}</span>
+                </div>`;
+            });
+            retHtml += '</div>';
+            returnsContainer.innerHTML = retHtml;
         }
+    }
 
+    // [FIX] Налоговый учёт
+    const taxContainer = document.getElementById('taxAnalysis');
+    if (taxContainer) {
+        const taxSystem = APP.settings.taxSystem || 'usn6';
+        const taxLabels = {
+            'usn6': 'УСН 6% (доходы)',
+            'usn15': 'УСН 15% (доходы минус расходы)',
+            'patent': 'Патент'
+        };
+        const totalRevenue = data.reduce((s, a) => s + (a.clientPrice || 0) * (a.orders || 1), 0);
+        const totalCosts = data.reduce((s, a) => s + ((a.totalCost || 0) * (a.orders || 1)), 0);
+        let tax = 0;
+        if (taxSystem === 'usn6') tax = Math.round(totalRevenue * 0.06);
+        else if (taxSystem === 'usn15') tax = Math.round(Math.max(0, totalRevenue - totalCosts) * 0.15);
+        else if (taxSystem === 'patent') tax = Math.round(APP.settings.patentCost / 12);
+
+        taxContainer.innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
+                <div><span class="text-muted" style="font-size:9px;">Система</span><div style="font-weight:600;">${taxLabels[taxSystem] || 'Не выбрана'}</div></div>
+                <div><span class="text-muted" style="font-size:9px;">Налог за месяц</span><div style="font-weight:600;color:#8B5CF6;">${formatMoney(tax)}</div></div>
+                <div><span class="text-muted" style="font-size:9px;">Выручка</span><div style="font-weight:600;">${formatMoney(totalRevenue)}</div></div>
+                <div><span class="text-muted" style="font-size:9px;">Расходы</span><div style="font-weight:600;">${formatMoney(totalCosts)}</div></div>
+            </div>
+        `;
+    }
+
+    // [FIX] Таблица с пагинацией
+    renderUETable(data);
+}
+
+// ================================================================
+// [FIX] ОТДЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ТАБЛИЦЫ С ПАГИНАЦИЕЙ
+// ================================================================
+
+function renderUETable(data, searchTerm) {
+    const tableBody = document.getElementById('ueTableBody');
+    if (!tableBody) return;
+
+    let filtered = data;
+    if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        filtered = data.filter(a => a.article.toLowerCase().includes(q));
+    }
+
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / uePageSize);
+    if (ueCurrentPage > totalPages) ueCurrentPage = totalPages || 1;
+
+    const start = (ueCurrentPage - 1) * uePageSize;
+    const end = Math.min(start + uePageSize, totalItems);
+    const pageItems = filtered.slice(start, end);
+
+    if (pageItems.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:12px;font-size:11px;">Нет данных</td></tr>';
+        return;
+    }
+
+    let html = '';
+    pageItems.forEach(item => {
+        const statusColor = item.margin > 20 ? 'tag-green' : item.margin > 0 ? 'tag-yellow' : 'tag-red';
+        const netProfit = item.netProfit || 0;
+        const profitColor = netProfit > 0 ? '#10B981' : '#EF4444';
+        const marginColor = item.margin > 20 ? '#10B981' : item.margin > 0 ? '#F59E0B' : '#EF4444';
+        
+        html += `<tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:4px 8px;font-weight:500;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.article}">${item.article}</td>
+            <td style="padding:4px 8px;font-size:11px;font-weight:500;">${formatNumber(item.marketPrice || 0)} ₽</td>
+            <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.purchasePrice || 0)} ₽</td>
+            <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.commissionAmount || 0)} ₽</td>
+            <td style="padding:4px 8px;font-size:11px;">${formatNumber(item.logisticsAmount || 0)} ₽</td>
+            <td style="padding:4px 8px;font-size:11px;color:${item.storageCost > 0 ? '#F59E0B' : 'var(--text-secondary)'};">${formatNumber(item.storageCost || 0)} ₽</td>
+            <td style="padding:4px 8px;font-size:11px;font-weight:600;color:${profitColor};">${formatNumber(netProfit)} ₽</td>
+            <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${marginColor};">${item.margin}%</td>
+            <td style="padding:4px 8px;"><span class="tag ${statusColor}" style="font-size:9px;">${item.marginLabel}</span></td>
+            <td style="padding:4px 8px;font-size:10px;color:var(--text-secondary);">${item.category || 'Товар'}</td>
+        </tr>`;
+    });
+
+    // [FIX] Пагинация
+    html += `
+        <tr>
+            <td colspan="10" style="padding:8px 4px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;font-size:11px;">
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <span class="text-muted">Показано ${start + 1}-${end} из ${totalItems}</span>
+                        <input type="text" id="ueSearchInput" placeholder="🔍 Поиск по артикулу..." style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:10px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);width:140px;" />
+                        <button class="btn btn-primary btn-sm" id="ueSearchBtn" style="font-size:9px;padding:2px 8px;">Найти</button>
+                        <button class="btn btn-secondary btn-sm" id="ueClearBtn" style="font-size:9px;padding:2px 8px;">Сбросить</button>
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <button class="btn btn-secondary btn-sm" id="uePrevBtn" style="font-size:9px;padding:2px 8px;" ${ueCurrentPage <= 1 ? 'disabled' : ''}>◀</button>
+                        <span style="font-size:10px;color:var(--text-secondary);">Стр. ${ueCurrentPage} из ${totalPages || 1}</span>
+                        <button class="btn btn-secondary btn-sm" id="ueNextBtn" style="font-size:9px;padding:2px 8px;" ${ueCurrentPage >= totalPages ? 'disabled' : ''}>▶</button>
+                        <select id="uePageSizeSelect" style="padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:9px;background:var(--bg-card);color:var(--text-primary);">
+                            <option value="15" ${uePageSize === 15 ? 'selected' : ''}>15</option>
+                            <option value="25" ${uePageSize === 25 ? 'selected' : ''}>25</option>
+                            <option value="50" ${uePageSize === 50 ? 'selected' : ''}>50</option>
+                            <option value="100" ${uePageSize === 100 ? 'selected' : ''}>100</option>
+                        </select>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+
+    tableBody.innerHTML = html;
+
+    // [FIX] Обработчики пагинации
+    const prevBtn = document.getElementById('uePrevBtn');
+    const nextBtn = document.getElementById('ueNextBtn');
+    const pageSizeSelect = document.getElementById('uePageSizeSelect');
+    const searchInput = document.getElementById('ueSearchInput');
+    const searchBtn = document.getElementById('ueSearchBtn');
+    const clearBtn = document.getElementById('ueClearBtn');
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (ueCurrentPage > 1) { ueCurrentPage--; renderUETable(ueFilteredData); }
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(ueFilteredData.length / uePageSize);
+            if (ueCurrentPage < totalPages) { ueCurrentPage++; renderUETable(ueFilteredData); }
+        });
+    }
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', function() {
+            uePageSize = parseInt(this.value);
+            ueCurrentPage = 1;
+            renderUETable(ueFilteredData);
+        });
+    }
+    if (searchBtn && searchInput) {
+        searchBtn.addEventListener('click', () => {
+            ueCurrentPage = 1;
+            renderUETable(ueFilteredData, searchInput.value);
+        });
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { searchBtn.click(); }
+        });
+    }
+    if (clearBtn && searchInput) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            ueCurrentPage = 1;
+            renderUETable(ueFilteredData);
+        });
+    }
+}
         // ================================================================
         // [v4.0] 28. АНАЛИТИКА ТОВАРОВ
         // ================================================================
@@ -7066,7 +7022,13 @@ function generateAdvertisingDataV2() {
             const ioThresholdEl = document.getElementById('settingsIoThreshold');
             const taxSystemEl = document.getElementById('settingsTaxSystem');
             const patentCostEl = document.getElementById('settingsPatentCost');
+const storageRateEl = document.getElementById('settingsStorageRate');
+const storageOverRateEl = document.getElementById('settingsStorageOverRate');
+const volumePerUnitEl = document.getElementById('settingsVolumePerUnit');
 
+if (storageRateEl) storageRateEl.value = APP.settings.storageRate || 0.07;
+if (storageOverRateEl) storageOverRateEl.value = APP.settings.storageOverRate || 0.15;
+if (volumePerUnitEl) volumePerUnitEl.value = APP.settings.volumePerUnit || 5;
             if (darkThemeEl) darkThemeEl.checked = APP.settings.darkTheme || false;
             if (colorThemeEl) colorThemeEl.value = APP.settings.colorTheme || 'default';
             if (notifyCriticalEl) notifyCriticalEl.checked = APP.settings.notifyCritical !== false;
@@ -7126,6 +7088,9 @@ function generateAdvertisingDataV2() {
                 weightTrend: parseFloat(document.getElementById('weightTrend')?.value) || 15,
                 weightHealth: parseFloat(document.getElementById('weightHealth')?.value) || 10,
                 weightCompetition: parseFloat(document.getElementById('weightCompetition')?.value) || 5
+                storageRate: parseFloat(document.getElementById('settingsStorageRate')?.value) || 0.07,
+storageOverRate: parseFloat(document.getElementById('settingsStorageOverRate')?.value) || 0.15,
+volumePerUnit: parseFloat(document.getElementById('settingsVolumePerUnit')?.value) || 5,
             };
 
             const sum = settings.weightSeason + settings.weightMargin + settings.weightSpeed + 
