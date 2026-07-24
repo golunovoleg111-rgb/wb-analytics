@@ -30,6 +30,7 @@
     </nav>
 
     <main class="content">
+        <!-- ГЛАВНАЯ -->
         <section id="page-dashboard" class="page active">
             <div class="page-header">
                 <h1>📊 Главная</h1>
@@ -37,6 +38,7 @@
             <div class="placeholder-text">Нет данных. Загрузите отчёты WB через импорт.</div>
         </section>
 
+        <!-- ТОВАРЫ -->
         <section id="page-products" class="page">
             <div class="page-header">
                 <h1>📦 Товары</h1>
@@ -44,11 +46,83 @@
             <div class="placeholder-text">Нет данных. Загрузите отчёты WB через импорт.</div>
         </section>
 
+        <!-- НАСТРОЙКИ -->
         <section id="page-settings" class="page">
             <div class="page-header">
                 <h1>⚙️ Настройки</h1>
             </div>
-            <div class="placeholder-text">Нет данных</div>
+
+            <!-- Диагностика базы данных -->
+            <div class="card" style="margin-bottom: 14px;">
+                <div class="card-title">Состояние системы</div>
+                <div id="dbStatus">Проверка базы данных...</div>
+            </div>
+
+            <!-- Тарифы WB -->
+            <div class="card">
+                <div class="card-title">📦 Тарифы Wildberries</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
+                            Комиссия FBO (%)
+                        </label>
+                        <input type="number" id="fboCommission" value="15" min="1" max="50" step="1" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
+                            Комиссия FBS (%)
+                        </label>
+                        <input type="number" id="fbsCommission" value="10" min="1" max="50" step="1" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
+                            Ставка хранения базовая (₽/литр/день)
+                        </label>
+                        <input type="number" id="storageBaseRate" value="0.07" min="0.01" max="1" step="0.01" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
+                            Ставка хранения повышенная (₽/литр/день)
+                        </label>
+                        <input type="number" id="storageOverRate" value="0.15" min="0.01" max="1" step="0.01" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
+                            Объём единицы товара (литров)
+                        </label>
+                        <input type="number" id="volumePerUnit" value="5" min="0.5" max="100" step="0.5" style="width: 100%;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Налоги -->
+            <div class="card">
+                <div class="card-title">🧾 Налоги</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
+                            Система налогообложения
+                        </label>
+                        <select id="taxSystem" style="width: 100%;">
+                            <option value="usn6">УСН 6% (доходы)</option>
+                            <option value="usn15">УСН 15% (доходы − расходы)</option>
+                            <option value="patent">Патент</option>
+                        </select>
+                    </div>
+                    <div id="patentBlock" style="display: none;">
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
+                            Стоимость патента в год (₽)
+                        </label>
+                        <input type="number" id="patentCost" value="30000" min="1000" max="10000000" step="1000" style="width: 100%;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопка сохранения -->
+            <button class="btn btn-primary" id="saveSettingsBtn" style="width: 100%; padding: 10px; font-size: 14px;">
+                💾 Сохранить настройки
+            </button>
+            <div id="saveStatus" style="text-align: center; margin-top: 8px; font-size: 12px;"></div>
         </section>
     </main>
 
