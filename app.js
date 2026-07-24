@@ -34,7 +34,7 @@ function navigateTo(pageName) {
 // БАЗА ДАННЫХ (IndexedDB)
 // ============================================================
 
-var DB_NAME = 'BeltaneeDB';
+var DB_NAME = 'BeltaneeDB_v5';
 var DB_VERSION = 1;
 var STORES = ['sales', 'stock', 'settings'];
 
@@ -60,6 +60,10 @@ function openDB() {
 
         request.onerror = function(event) {
             reject(event.target.error);
+        };
+
+        request.onblocked = function() {
+            reject(new Error('База данных заблокирована. Закройте другие вкладки BELTANEE.'));
         };
     });
 }
@@ -138,10 +142,13 @@ function checkDatabase() {
     var statusEl = document.getElementById('dbStatus');
     if (!statusEl) return;
 
-    openDB().then(function() {
-        statusEl.innerHTML = '<span style="color: #10B981;">✅ База данных работает</span>';
+    statusEl.innerHTML = 'Проверка базы данных...';
+
+    openDB().then(function(db) {
+        db.close();
+        statusEl.innerHTML = '<span style="color: #10B981;">✅ База данных готова</span>';
     }).catch(function(error) {
-        statusEl.innerHTML = '<span style="color: #EF4444;">❌ Ошибка базы данных: ' + error.message + '</span>';
+        statusEl.innerHTML = '<span style="color: #EF4444;">❌ Ошибка подключения: ' + error.message + '</span>';
     });
 }
 
@@ -182,13 +189,15 @@ function saveSettings() {
         });
 
         Promise.all(promises).then(function() {
-            document.getElementById('saveStatus').innerHTML = '<span style="color: #10B981;">✅ Настройки сохранены</span>';
+            document.getElementById('saveStatus').innerHTML = '<span style="color: #10B981;">✅ Настройки успешно сохранены</span>';
             setTimeout(function() {
                 document.getElementById('saveStatus').innerHTML = '';
             }, 3000);
         }).catch(function(error) {
             document.getElementById('saveStatus').innerHTML = '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
         });
+    }).catch(function(error) {
+        document.getElementById('saveStatus').innerHTML = '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
     });
 }
 
@@ -204,7 +213,6 @@ function togglePatentField() {
 // ТЕСТОВЫЕ ДАННЫЕ
 // ============================================================
 
-// Товары для тестовых данных
 var TEST_PRODUCTS = [
     { article: '21_К_Вельвет_голубой_40', baseArticle: '21_К_Вельвет', category: 'Костюмы', price: 3200, cost: 960 },
     { article: '27_К_Платье_чёрный_44', baseArticle: '27_К_Платье', category: 'Платья', price: 2100, cost: 2300 },
@@ -213,14 +221,12 @@ var TEST_PRODUCTS = [
     { article: '15_К_Свитер_бежевый_46', baseArticle: '15_К_Свитер', category: 'Свитеры', price: 2800, cost: 1200 }
 ];
 
-// Генерация случайных продаж за последние 30 дней
 function generateTestSales() {
     var sales = [];
     var today = new Date();
 
     TEST_PRODUCTS.forEach(function(product) {
-        // Каждый товар продаётся с разной интенсивностью
-        var baseSales = Math.floor(Math.random() * 5) + 1; // 1-5 заказов в день в среднем
+        var baseSales = Math.floor(Math.random() * 5) + 1;
 
         for (var i = 29; i >= 0; i--) {
             var date = new Date(today);
@@ -229,11 +235,10 @@ function generateTestSales() {
                           String(date.getMonth() + 1).padStart(2, '0') + '.' +
                           date.getFullYear();
 
-            // Случайное количество заказов вокруг базового
             var orders = Math.max(0, baseSales + Math.floor(Math.random() * 3) - 1);
-            if (orders === 0) continue; // пропускаем дни без продаж
+            if (orders === 0) continue;
 
-            var delivered = Math.floor(orders * (0.7 + Math.random() * 0.25)); // 70-95% выкуп
+            var delivered = Math.floor(orders * (0.7 + Math.random() * 0.25));
             var returns = orders - delivered;
             var amount = orders * product.price;
 
@@ -252,15 +257,11 @@ function generateTestSales() {
     return sales;
 }
 
-// Генерация тестовых остатков
 function generateTestStock() {
     var stock = [];
+    var quantities = [3, 45, 120, 67, 8];
 
-    TEST_PRODUCTS.forEach(function(product) {
-        // Разные остатки для демонстрации проблем
-        var quantities = [3, 45, 120, 67, 8]; // по порядку товаров
-        var index = TEST_PRODUCTS.indexOf(product);
-
+    TEST_PRODUCTS.forEach(function(product, index) {
         stock.push({
             id: Date.now() + Math.random(),
             article: product.article,
@@ -275,23 +276,19 @@ function generateTestStock() {
     return stock;
 }
 
-// Загрузка тестовых данных
 function loadTestData() {
     var sales = generateTestSales();
     var stock = generateTestStock();
 
-    // Очищаем старые данные
     Promise.all([
         dbClear('sales'),
         dbClear('stock')
     ]).then(function() {
-        // Сохраняем продажи
         var salesPromises = sales.map(function(s) {
             return dbSave('sales', s);
         });
 
         return Promise.all(salesPromises).then(function() {
-            // Сохраняем остатки
             var stockPromises = stock.map(function(s) {
                 return dbSave('stock', s);
             });
@@ -308,8 +305,6 @@ function loadTestData() {
 // РАСЧЁТНЫЕ ФУНКЦИИ
 // ============================================================
 
-// Индекс остатка (ИО)
-// Формула: ИО = остаток / продажи за 30 дней
 function calculateIO(stock, sales30days) {
     if (sales30days === 0) {
         return stock > 0 ? 999 : 0;
@@ -317,7 +312,6 @@ function calculateIO(stock, sales30days) {
     return parseFloat((stock / sales30days).toFixed(4));
 }
 
-// Статус ИО
 function getIOStatus(io) {
     if (io < 0.2) return { status: 'Дефицит', color: '#EF4444', level: 'critical' };
     if (io < 0.5) return { status: 'Недостаток', color: '#F59E0B', level: 'warning' };
@@ -326,21 +320,17 @@ function getIOStatus(io) {
     return { status: 'Сильный избыток', color: '#8B5CF6', level: 'excess' };
 }
 
-// Прогноз дней до обнуления остатка
 function calculateDaysLeft(stock, sales30days) {
     var dailySales = sales30days / 30;
     if (dailySales === 0) return 999;
     return Math.round(stock / dailySales);
 }
 
-// Расчёт маржинальности (упрощённый, без логистики и хранения)
-// Полная версия будет в карточке товара
 function calculateMargin(price, cost) {
     if (price === 0) return 0;
     return parseFloat(((price - cost) / price * 100).toFixed(2));
 }
 
-// Получение настроек из БД (синхронно не получится, поэтому загружаем заранее)
 var appSettings = {
     fboCommission: 15,
     fbsCommission: 10,
@@ -366,7 +356,6 @@ function loadAppSettings() {
 // ============================================================
 
 function updateDashboard() {
-    // Загружаем настройки, затем данные
     loadAppSettings().then(function() {
         return Promise.all([
             dbGetAll('sales'),
@@ -376,18 +365,15 @@ function updateDashboard() {
         var sales = results[0];
         var stock = results[1];
 
-        // Если данных нет — показываем заглушку
         if (sales.length === 0 && stock.length === 0) {
             document.getElementById('dashboardEmpty').style.display = 'block';
             document.getElementById('dashboardContent').style.display = 'none';
             return;
         }
 
-        // Данные есть — показываем сводку
         document.getElementById('dashboardEmpty').style.display = 'none';
         document.getElementById('dashboardContent').style.display = 'block';
 
-        // Собираем статистику
         var stats = collectStats(sales, stock);
         renderKPIs(stats);
         renderAttentionBlock(stats);
@@ -396,16 +382,13 @@ function updateDashboard() {
     });
 }
 
-// Сбор статистики по продажам и остаткам
 function collectStats(sales, stock) {
     var yesterday = getYesterdayStr();
 
-    // Продажи за вчера
     var yesterdayOrders = 0;
     var yesterdayDelivered = 0;
     var yesterdayAmount = 0;
 
-    // Продажи за 30 дней по товарам
     var sales30Map = {};
 
     sales.forEach(function(s) {
@@ -421,13 +404,11 @@ function collectStats(sales, stock) {
         sales30Map[s.article] += s.orders || 0;
     });
 
-    // Уникальные товары
     var articles = [];
     TEST_PRODUCTS.forEach(function(p) {
         articles.push(p.article);
     });
 
-    // Расчёт ИО и маржи для каждого товара
     var products = [];
     articles.forEach(function(article) {
         var productInfo = null;
@@ -474,10 +455,8 @@ function collectStats(sales, stock) {
     };
 }
 
-// Отображение KPI-карточек
 function renderKPIs(stats) {
     document.getElementById('kpiProducts').textContent = stats.productsCount;
-
     document.getElementById('kpiOrders').textContent = stats.yesterdayOrders;
     document.getElementById('kpiDelivered').textContent = stats.yesterdayDelivered;
 
@@ -490,11 +469,9 @@ function renderKPIs(stats) {
     document.getElementById('kpiAvgMargin').textContent = avgMargin + '%';
 }
 
-// Отображение блока "Внимание"
 function renderAttentionBlock(stats) {
     var container = document.getElementById('attentionBlock');
 
-    // Ищем проблемы
     var problems = [];
 
     stats.products.forEach(function(p) {
