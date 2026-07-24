@@ -35,7 +35,84 @@
             <div class="page-header">
                 <h1>📊 Главная</h1>
             </div>
-            <div class="placeholder-text">Нет данных. Загрузите отчёты WB через импорт.</div>
+
+            <!-- Заглушка: нет данных -->
+            <div id="dashboardEmpty" class="card" style="text-align: center;">
+                <div style="font-size: 36px; margin-bottom: 10px;">📥</div>
+                <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">Нет данных</div>
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+                    Загрузите тестовые данные или импортируйте отчёты WB
+                </div>
+                <button class="btn btn-primary" id="loadTestDataBtn" style="font-size: 13px;">
+                    🧪 Загрузить тестовые данные
+                </button>
+            </div>
+
+            <!-- Сводка (скрыта, пока нет данных) -->
+            <div id="dashboardContent" style="display: none;">
+
+                <!-- KPI карточки -->
+                <div class="grid-4" style="margin-bottom: 16px;">
+                    <div class="kpi-card">
+                        <div class="kpi-icon">📦</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Товаров в базе</span>
+                            <span class="kpi-value" id="kpiProducts">—</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">🛒</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Заказы (вчера)</span>
+                            <span class="kpi-value" id="kpiOrders">—</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">✅</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Выкупы (вчера)</span>
+                            <span class="kpi-value" id="kpiDelivered">—</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">💰</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Средняя маржа</span>
+                            <span class="kpi-value" id="kpiAvgMargin">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Блок "Внимание" -->
+                <div class="card" style="border-left: 4px solid #EF4444; margin-bottom: 16px;">
+                    <div class="card-title">⚠️ Требует внимания</div>
+                    <div id="attentionBlock">
+                        <div style="color: var(--text-secondary); font-size: 13px;">Проверка товаров...</div>
+                    </div>
+                </div>
+
+                <!-- Быстрые ссылки -->
+                <div class="grid-3">
+                    <div class="card" style="cursor: pointer;" onclick="navigateTo('products')">
+                        <div class="card-title">📦 Товары</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">
+                            Перейти к списку товаров
+                        </div>
+                    </div>
+                    <div class="card" style="cursor: pointer;" onclick="navigateTo('settings')">
+                        <div class="card-title">⚙️ Настройки</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">
+                            Тарифы, себестоимость, налоги
+                        </div>
+                    </div>
+                    <div class="card" style="cursor: pointer;">
+                        <div class="card-title">📥 Импорт</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">
+                            Загрузить отчёты WB (скоро)
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- ТОВАРЫ -->
@@ -52,13 +129,11 @@
                 <h1>⚙️ Настройки</h1>
             </div>
 
-            <!-- Диагностика базы данных -->
             <div class="card" style="margin-bottom: 14px;">
                 <div class="card-title">Состояние системы</div>
                 <div id="dbStatus">Проверка базы данных...</div>
             </div>
 
-            <!-- Тарифы WB -->
             <div class="card">
                 <div class="card-title">📦 Тарифы Wildberries</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -95,7 +170,6 @@
                 </div>
             </div>
 
-            <!-- Налоги -->
             <div class="card">
                 <div class="card-title">🧾 Налоги</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -118,7 +192,6 @@
                 </div>
             </div>
 
-            <!-- Кнопка сохранения -->
             <button class="btn btn-primary" id="saveSettingsBtn" style="width: 100%; padding: 10px; font-size: 14px;">
                 💾 Сохранить настройки
             </button>
