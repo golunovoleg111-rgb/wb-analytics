@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BELTANEE v5.0</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <nav class="sidebar" id="sidebar">
@@ -109,7 +110,6 @@
                 <h1>📦 Товары</h1>
             </div>
 
-            <!-- Заглушка: нет данных -->
             <div id="productsEmpty" class="card" style="text-align: center;">
                 <div style="font-size: 36px; margin-bottom: 10px;">📥</div>
                 <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">Нет данных</div>
@@ -118,9 +118,7 @@
                 </div>
             </div>
 
-            <!-- Список товаров (скрыт, пока нет данных) -->
             <div id="productsContent" style="display: none;">
-                <!-- Поиск и фильтры -->
                 <div class="card" style="margin-bottom: 14px;">
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <input type="text" id="productSearch" placeholder="🔍 Поиск по артикулу..." style="flex: 1; min-width: 180px;">
@@ -135,7 +133,6 @@
                     </div>
                 </div>
 
-                <!-- Таблица товаров -->
                 <div class="card">
                     <div style="overflow-x: auto;">
                         <table id="productsTable">
@@ -159,6 +156,123 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- КАРТОЧКА ТОВАРА -->
+        <section id="page-product-card" class="page">
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-ghost" id="backToProductsBtn" style="font-size: 13px;">
+                    ← Назад к списку
+                </button>
+            </div>
+
+            <!-- Шапка -->
+            <div id="cardHeader" style="margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                    <span id="cardCategoryIcon" style="font-size: 28px;">👔</span>
+                    <div>
+                        <div id="cardTitle" style="font-size: 20px; font-weight: 700; color: #F0F0FF;">Загрузка...</div>
+                        <div id="cardSubtitle" style="font-size: 12px; color: #9CA3AF;">—</div>
+                    </div>
+                    <span id="cardStatusBadge" style="margin-left: auto; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">—</span>
+                </div>
+            </div>
+
+            <!-- KPI блоки -->
+            <div class="card-kpi-grid" style="margin-bottom: 20px;">
+                <div class="card-kpi-item">
+                    <div class="card-kpi-label">Цена</div>
+                    <div class="card-kpi-value" id="cardKpiPrice">—</div>
+                    <div class="card-kpi-sub" id="cardKpiPriceSub"></div>
+                </div>
+                <div class="card-kpi-item">
+                    <div class="card-kpi-label">Маржа</div>
+                    <div class="card-kpi-value" id="cardKpiMargin">—</div>
+                    <div class="card-kpi-sub" id="cardKpiMarginSub"></div>
+                </div>
+                <div class="card-kpi-item">
+                    <div class="card-kpi-label">Остаток</div>
+                    <div class="card-kpi-value" id="cardKpiStock">—</div>
+                    <div class="card-kpi-sub" id="cardKpiStockSub"></div>
+                </div>
+                <div class="card-kpi-item">
+                    <div class="card-kpi-label">ИО</div>
+                    <div class="card-kpi-value" id="cardKpiIO">—</div>
+                    <div class="card-kpi-sub" id="cardKpiIOSub"></div>
+                </div>
+            </div>
+
+            <!-- График -->
+            <div class="card card-dark" style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-weight: 600; font-size: 14px; color: #F0F0FF;">📈 График продаж</span>
+                    <div style="display: flex; gap: 4px; background: #2A2A42; padding: 3px; border-radius: 8px;">
+                        <button class="card-chart-btn active" data-card-period="7">7 дн</button>
+                        <button class="card-chart-btn" data-card-period="14">14 дн</button>
+                        <button class="card-chart-btn" data-card-period="30">30 дн</button>
+                    </div>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="cardSalesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Вкладки -->
+            <div class="card card-dark">
+                <div style="display: flex; gap: 0; border-bottom: 1px solid #2A2A42; margin-bottom: 16px;">
+                    <button class="card-tab active" data-card-tab="sales">Продажи</button>
+                    <button class="card-tab" data-card-tab="stock">Остатки</button>
+                    <button class="card-tab" data-card-tab="economics">Экономика</button>
+                </div>
+
+                <!-- Вкладка: Продажи -->
+                <div id="cardTabSales" class="card-tab-content active">
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Заказы</th>
+                                    <th>Выкупы</th>
+                                    <th>Возвраты</th>
+                                    <th>Конверсия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cardSalesHistory">
+                                <tr><td colspan="5" style="text-align: center; padding: 20px;">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="cardSalesCompare" style="margin-top: 12px; font-size: 12px; color: #9CA3AF;"></div>
+                </div>
+
+                <!-- Вкладка: Остатки -->
+                <div id="cardTabStock" class="card-tab-content" style="display: none;">
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Склад</th>
+                                    <th>Остаток</th>
+                                    <th>В пути</th>
+                                    <th>Возвраты</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cardStockTable">
+                                <tr><td colspan="5" style="text-align: center; padding: 20px;">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="cardStockForecast" style="margin-top: 12px; padding: 12px; background: #1A1A2E; border-radius: 8px; border-left: 3px solid #F59E0B;"></div>
+                </div>
+
+                <!-- Вкладка: Экономика -->
+                <div id="cardTabEconomics" class="card-tab-content" style="display: none;">
+                    <div id="cardEconomicsBreakdown"></div>
+                    <div id="cardEconomicsTotal" style="margin-top: 16px; padding: 12px; background: #1A1A2E; border-radius: 8px;"></div>
                 </div>
             </div>
         </section>
