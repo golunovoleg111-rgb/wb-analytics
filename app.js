@@ -1,4 +1,16 @@
 // ============================================================
+// КОНСТАНТЫ ПРИЛОЖЕНИЯ
+// ============================================================
+
+var APP_VERSION = '5.0.0';
+var APP_STAGE = 'Alpha';
+
+// База данных
+var DB_NAME = 'BeltaneeDB_v5';
+var DB_VERSION = 1;
+var STORES = ['sales', 'stock', 'settings'];
+
+// ============================================================
 // НАВИГАЦИЯ
 // ============================================================
 
@@ -34,16 +46,17 @@ function navigateTo(pageName) {
 // БАЗА ДАННЫХ (IndexedDB)
 // ============================================================
 
-var DB_NAME = 'BeltaneeDB_v5';
-var DB_VERSION = 1;
-var STORES = ['sales', 'stock', 'settings'];
-
 function openDB() {
     return new Promise(function(resolve, reject) {
         var request = indexedDB.open(DB_NAME, DB_VERSION);
 
+        // Создание или обновление схемы БД
         request.onupgradeneeded = function(event) {
             var db = event.target.result;
+            var oldVersion = event.oldVersion;
+
+            // Если это новая база (oldVersion = 0) — создаём все хранилища
+            // Если это миграция — добавляем только отсутствующие
             STORES.forEach(function(storeName) {
                 if (!db.objectStoreNames.contains(storeName)) {
                     db.createObjectStore(storeName, {
@@ -63,7 +76,10 @@ function openDB() {
         };
 
         request.onblocked = function() {
-            reject(new Error('База данных заблокирована. Закройте другие вкладки BELTANEE.'));
+            reject(new Error(
+                'База данных заблокирована. ' +
+                'Закройте другие вкладки BELTANEE и обновите страницу.'
+            ));
         };
     });
 }
@@ -146,7 +162,7 @@ function checkDatabase() {
 
     openDB().then(function(db) {
         db.close();
-        statusEl.innerHTML = '<span style="color: #10B981;">✅ База данных готова</span>';
+        statusEl.innerHTML = '<span style="color: #10B981;">✅ База данных готова (v.' + DB_VERSION + ')</span>';
     }).catch(function(error) {
         statusEl.innerHTML = '<span style="color: #EF4444;">❌ Ошибка подключения: ' + error.message + '</span>';
     });
@@ -189,15 +205,18 @@ function saveSettings() {
         });
 
         Promise.all(promises).then(function() {
-            document.getElementById('saveStatus').innerHTML = '<span style="color: #10B981;">✅ Настройки успешно сохранены</span>';
+            document.getElementById('saveStatus').innerHTML =
+                '<span style="color: #10B981;">✅ Настройки успешно сохранены</span>';
             setTimeout(function() {
                 document.getElementById('saveStatus').innerHTML = '';
             }, 3000);
         }).catch(function(error) {
-            document.getElementById('saveStatus').innerHTML = '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
+            document.getElementById('saveStatus').innerHTML =
+                '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
         });
     }).catch(function(error) {
-        document.getElementById('saveStatus').innerHTML = '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
+        document.getElementById('saveStatus').innerHTML =
+            '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
     });
 }
 
@@ -540,6 +559,12 @@ function getYesterdayStr() {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Версия в сайдбаре
+    var versionEl = document.querySelector('.sidebar-version');
+    if (versionEl) {
+        versionEl.textContent = 'BELTANEE v' + APP_VERSION + ' (' + APP_STAGE + ')';
+    }
+
     // Навигация
     document.querySelectorAll('.menu-item').forEach(function(item) {
         item.addEventListener('click', function() {
