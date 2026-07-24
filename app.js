@@ -313,6 +313,7 @@ function loadTestData() {
         });
     }).then(function() {
         updateDashboard();
+        updateProductList();
     }).catch(function(error) {
         alert('Ошибка загрузки тестовых данных: ' + error.message);
     });
@@ -516,7 +517,6 @@ function updateProductList() {
         document.getElementById('productsEmpty').style.display = 'none';
         document.getElementById('productsContent').style.display = 'block';
 
-        // Собираем данные по товарам
         var products = buildProductList(sales, stock);
         renderProductTable(products);
     }).catch(function(error) {
@@ -565,14 +565,11 @@ function renderProductTable(products) {
     var searchQuery = document.getElementById('productSearch').value.toLowerCase();
     var filter = document.getElementById('productFilter').value;
 
-    // Фильтрация
     var filtered = products.filter(function(p) {
-        // Поиск по артикулу
         if (searchQuery && p.article.toLowerCase().indexOf(searchQuery) === -1) {
             return false;
         }
 
-        // Фильтр
         if (filter === 'profitable' && p.margin <= 20) return false;
         if (filter === 'lowMargin' && (p.margin <= 0 || p.margin > 20)) return false;
         if (filter === 'unprofitable' && p.margin >= 0) return false;
@@ -707,28 +704,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Страница товаров: поиск и фильтры
     document.getElementById('productSearch').addEventListener('input', function() {
-        Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
-            var products = buildProductList(results[0], results[1]);
-            renderProductTable(products);
-        });
+        refreshProductTable();
     });
 
     document.getElementById('productFilter').addEventListener('change', function() {
-        Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
-            var products = buildProductList(results[0], results[1]);
-            renderProductTable(products);
-        });
+        refreshProductTable();
     });
 
     document.getElementById('clearFilterBtn').addEventListener('click', function() {
         document.getElementById('productSearch').value = '';
         document.getElementById('productFilter').value = 'all';
-        Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
-            var products = buildProductList(results[0], results[1]);
-            renderProductTable(products);
-        });
+        refreshProductTable();
     });
 
     // Обновляем главную при старте
     updateDashboard();
 });
+
+// Вспомогательная функция для обновления таблицы товаров
+function refreshProductTable() {
+    Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
+        var products = buildProductList(results[0], results[1]);
+        renderProductTable(products);
+    });
+}
