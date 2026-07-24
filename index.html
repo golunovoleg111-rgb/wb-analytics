@@ -36,7 +36,6 @@
                 <h1>📊 Главная</h1>
             </div>
 
-            <!-- Заглушка: нет данных -->
             <div id="dashboardEmpty" class="card" style="text-align: center;">
                 <div style="font-size: 36px; margin-bottom: 10px;">📥</div>
                 <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">Нет данных</div>
@@ -48,10 +47,7 @@
                 </button>
             </div>
 
-            <!-- Сводка (скрыта, пока нет данных) -->
             <div id="dashboardContent" style="display: none;">
-
-                <!-- KPI карточки -->
                 <div class="grid-4" style="margin-bottom: 16px;">
                     <div class="kpi-card">
                         <div class="kpi-icon">📦</div>
@@ -83,7 +79,6 @@
                     </div>
                 </div>
 
-                <!-- Блок "Внимание" -->
                 <div class="card" style="border-left: 4px solid #EF4444; margin-bottom: 16px;">
                     <div class="card-title">⚠️ Требует внимания</div>
                     <div id="attentionBlock">
@@ -91,25 +86,18 @@
                     </div>
                 </div>
 
-                <!-- Быстрые ссылки -->
                 <div class="grid-3">
                     <div class="card" style="cursor: pointer;" onclick="navigateTo('products')">
                         <div class="card-title">📦 Товары</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">
-                            Перейти к списку товаров
-                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Перейти к списку товаров</div>
                     </div>
                     <div class="card" style="cursor: pointer;" onclick="navigateTo('settings')">
                         <div class="card-title">⚙️ Настройки</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">
-                            Тарифы, себестоимость, налоги
-                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Тарифы, себестоимость, налоги</div>
                     </div>
-                    <div class="card" style="cursor: pointer;">
+                    <div class="card">
                         <div class="card-title">📥 Импорт</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">
-                            Загрузить отчёты WB (скоро)
-                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Загрузить отчёты WB (скоро)</div>
                     </div>
                 </div>
             </div>
@@ -120,7 +108,59 @@
             <div class="page-header">
                 <h1>📦 Товары</h1>
             </div>
-            <div class="placeholder-text">Нет данных. Загрузите отчёты WB через импорт.</div>
+
+            <!-- Заглушка: нет данных -->
+            <div id="productsEmpty" class="card" style="text-align: center;">
+                <div style="font-size: 36px; margin-bottom: 10px;">📥</div>
+                <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">Нет данных</div>
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    Загрузите тестовые данные на Главной или импортируйте отчёты WB
+                </div>
+            </div>
+
+            <!-- Список товаров (скрыт, пока нет данных) -->
+            <div id="productsContent" style="display: none;">
+                <!-- Поиск и фильтры -->
+                <div class="card" style="margin-bottom: 14px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="productSearch" placeholder="🔍 Поиск по артикулу..." style="flex: 1; min-width: 180px;">
+                        <select id="productFilter" style="min-width: 140px;">
+                            <option value="all">Все товары</option>
+                            <option value="profitable">🟢 Прибыльные (маржа > 20%)</option>
+                            <option value="lowMargin">🟡 Низкая маржа (0–20%)</option>
+                            <option value="unprofitable">🔴 Убыточные (маржа < 0%)</option>
+                            <option value="deficit">⚠️ Дефицит (ИО < 0.2)</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm" id="clearFilterBtn">Сбросить</button>
+                    </div>
+                </div>
+
+                <!-- Таблица товаров -->
+                <div class="card">
+                    <div style="overflow-x: auto;">
+                        <table id="productsTable">
+                            <thead>
+                                <tr>
+                                    <th>Артикул</th>
+                                    <th>Цена</th>
+                                    <th>Маржа</th>
+                                    <th>Остаток</th>
+                                    <th>ИО</th>
+                                    <th>Заказы (30 дн)</th>
+                                    <th>Дней запаса</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                                        Загрузка...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- НАСТРОЙКИ -->
