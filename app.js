@@ -588,12 +588,15 @@ function renderProductTable(products) {
         var marginColor = p.margin > 20 ? '#10B981' : p.margin > 0 ? '#F59E0B' : '#EF4444';
         var stockColor = p.stock < 5 ? '#EF4444' : p.stock < 20 ? '#F59E0B' : '#10B981';
 
+        // ИО выводится как десятичная дробь (0.02, 0.45, 1.20), а не процент
+        var ioDisplay = p.io.toFixed(2);
+
         html += '<tr style="cursor: pointer;" onclick="alert(\'Карточка товара «' + p.article + '» будет доступна в следующей версии.\')">';
         html += '<td style="font-weight: 500;">' + p.article + '</td>';
         html += '<td>' + p.price.toLocaleString('ru-RU') + ' ₽</td>';
         html += '<td style="color: ' + marginColor + '; font-weight: 600;">' + p.margin + '%</td>';
         html += '<td style="color: ' + stockColor + '; font-weight: 600;">' + p.stock + ' шт</td>';
-        html += '<td style="color: ' + p.ioColor + '; font-weight: 600;">' + (p.io * 100).toFixed(1) + '%</td>';
+        html += '<td style="color: ' + p.ioColor + '; font-weight: 600;">' + ioDisplay + '</td>';
         html += '<td>' + p.sales30 + '</td>';
         html += '<td>' + (p.daysLeft === 999 ? '—' : p.daysLeft) + '</td>';
         html += '</tr>';
