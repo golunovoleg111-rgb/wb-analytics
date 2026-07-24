@@ -3,15 +3,13 @@
 // ============================================================
 
 var APP_VERSION = '5.0.0';
-var APP_STAGE = 'Alpha';
+var APP_STAGE = 'Beta';
 
 var DB_NAME = 'BeltaneeDB_v5';
 var DB_VERSION = 1;
 var STORES = ['sales', 'stock', 'settings'];
 
-// Текущий открытый товар в карточке
 var currentCardArticle = null;
-// Объект графика карточки
 var cardChart = null;
 
 // ============================================================
@@ -39,6 +37,7 @@ function navigateTo(pageName) {
 
     if (pageName === 'settings') {
         loadSettings();
+        updateDBStats();
     }
 
     if (pageName === 'dashboard') {
@@ -154,6 +153,21 @@ function dbClear(storeName) {
 }
 
 // ============================================================
+// TOAST УВЕДОМЛЕНИЯ
+// ============================================================
+
+function showToast(message, type) {
+    var toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = 'toast ' + (type || 'success') + ' show';
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(function() {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// ============================================================
 // ПРОВЕРКА БАЗЫ ДАННЫХ
 // ============================================================
 
@@ -168,6 +182,21 @@ function checkDatabase() {
         statusEl.innerHTML = '<span style="color: #10B981;">✅ База данных готова (v.' + DB_VERSION + ')</span>';
     }).catch(function(error) {
         statusEl.innerHTML = '<span style="color: #EF4444;">❌ Ошибка подключения: ' + error.message + '</span>';
+    });
+}
+
+function updateDBStats() {
+    var statsEl = document.getElementById('dbStats');
+    if (!statsEl) return;
+
+    Promise.all([
+        dbGetAll('sales'),
+        dbGetAll('stock'),
+        dbGetAll('settings')
+    ]).then(function(results) {
+        statsEl.textContent = 'Продаж: ' + results[0].length + ' записей, Остатков: ' + results[1].length + ' записей, Настроек: ' + results[2].length;
+    }).catch(function() {
+        statsEl.textContent = '';
     });
 }
 
@@ -208,18 +237,12 @@ function saveSettings() {
         });
 
         Promise.all(promises).then(function() {
-            document.getElementById('saveStatus').innerHTML =
-                '<span style="color: #10B981;">✅ Настройки успешно сохранены</span>';
-            setTimeout(function() {
-                document.getElementById('saveStatus').innerHTML = '';
-            }, 3000);
+            showToast('✅ Настройки успешно сохранены', 'success');
         }).catch(function(error) {
-            document.getElementById('saveStatus').innerHTML =
-                '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
+            showToast('❌ Ошибка: ' + error.message, 'error');
         });
     }).catch(function(error) {
-        document.getElementById('saveStatus').innerHTML =
-            '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
+        showToast('❌ Ошибка: ' + error.message, 'error');
     });
 }
 
@@ -320,7 +343,22 @@ function loadTestData() {
         updateDashboard();
         updateProductList();
     }).catch(function(error) {
-        alert('Ошибка загрузки тестовых данных: ' + error.message);
+        showToast('❌ Ошибка: ' + error.message, 'error');
+    });
+}
+
+function clearAllData() {
+    if (!confirm('Удалить все данные? Это действие необратимо.')) return;
+
+    Promise.all([
+        dbClear('sales'),
+        dbClear('stock')
+    ]).then(function() {
+        updateDashboard();
+        updateProductList();
+        showToast('✅ Данные очищены', 'success');
+    }).catch(function(error) {
+        showToast('❌ Ошибка: ' + error.message, 'error');
     });
 }
 
@@ -428,8 +466,12 @@ function collectStats(sales, stock) {
     });
 
     var articles = [];
-    TEST_PRODUCTS.forEach(function(p) {
-        articles.push(p.article);
+    var articleSet = {};
+    sales.forEach(function(s) {
+        if (!articleSet[s.article]) {
+            articleSet[s.article] = true;
+            articles.push(s.article);
+        }
     });
 
     var products = [];
@@ -502,7 +544,7 @@ function renderAttentionBlock(stats) {
 }
 
 // ============================================================
-// СТРАНИЦА ТОВАРОВ
+// СТРАНИЦА ТОВАРОВ (ГРУППИРОВКА)
 // ============================================================
 
 function updateProductList() {
@@ -523,7 +565,7 @@ function updateProductList() {
         document.getElementById('productsContent').style.display = 'block';
 
         var products = buildProductList(sales, stock);
-        renderProductTable(products);
+        renderGroupedProducts(products);
     }).catch(function(error) {
         console.error('Ошибка загрузки товаров:', error);
     });
@@ -539,74 +581,163 @@ function buildProductList(sales, stock) {
     });
 
     var products = [];
-    TEST_PRODUCTS.forEach(function(p) {
-        var totalStock = getTotalStock(p.article, stock);
-        var sales30 = sales30Map[p.article] || 0;
-        var io = calculateIO(totalStock, sales30);
-        var ioInfo = getIOStatus(io);
-        var margin = calculateMargin(p.price, p.cost);
-        var daysLeft = calculateDaysLeft(totalStock, sales30);
+    var seen = {};
+    sales.forEach(function(s) {
+        if (!seen[s.article]) {
+            seen[s.article] = true;
+            var productInfo = getProductInfo(s.article);
+            var totalStock = getTotalStock(s.article, stock);
+            var sales30 = sales30Map[s.article] || 0;
+            var io = calculateIO(totalStock, sales30);
+            var ioInfo = getIOStatus(io);
+            var margin = productInfo ? calculateMargin(productInfo.price, productInfo.cost) : 0;
+            var daysLeft = calculateDaysLeft(totalStock, sales30);
+            var baseArticle = productInfo ? productInfo.baseArticle : s.article.split('_').slice(0, -2).join('_');
 
-        products.push({
-            article: p.article,
-            price: p.price,
-            cost: p.cost,
-            category: p.category,
-            margin: margin,
-            stock: totalStock,
-            io: io,
-            ioStatus: ioInfo.status,
-            ioColor: ioInfo.color,
-            ioLevel: ioInfo.level,
-            sales30: sales30,
-            daysLeft: daysLeft
-        });
+            products.push({
+                article: s.article,
+                baseArticle: baseArticle,
+                price: productInfo ? productInfo.price : 0,
+                cost: productInfo ? productInfo.cost : 0,
+                category: productInfo ? productInfo.category : 'Товар',
+                margin: margin,
+                stock: totalStock,
+                io: io,
+                ioStatus: ioInfo.status,
+                ioColor: ioInfo.color,
+                ioLevel: ioInfo.level,
+                sales30: sales30,
+                daysLeft: daysLeft
+            });
+        }
     });
 
     return products;
 }
 
-function renderProductTable(products) {
-    var tbody = document.getElementById('productsTableBody');
+function renderGroupedProducts(products) {
+    var container = document.getElementById('productsGroupedList');
     var searchQuery = document.getElementById('productSearch').value.toLowerCase();
     var filter = document.getElementById('productFilter').value;
 
-    var filtered = products.filter(function(p) {
-        if (searchQuery && p.article.toLowerCase().indexOf(searchQuery) === -1) {
-            return false;
+    // Группируем по базовому артикулу
+    var groups = {};
+    products.forEach(function(p) {
+        var base = p.baseArticle || p.article;
+        if (!groups[base]) {
+            groups[base] = {
+                baseArticle: base,
+                category: p.category,
+                items: [],
+                totalStock: 0,
+                totalSales30: 0
+            };
+        }
+        groups[base].items.push(p);
+        groups[base].totalStock += p.stock;
+        groups[base].totalSales30 += p.sales30;
+    });
+
+    // Фильтрация групп
+    var groupKeys = Object.keys(groups);
+    var filteredGroups = groupKeys.filter(function(key) {
+        var group = groups[key];
+        if (searchQuery) {
+            var found = group.items.some(function(p) {
+                return p.article.toLowerCase().indexOf(searchQuery) !== -1;
+            });
+            if (!found) return false;
         }
 
-        if (filter === 'profitable' && p.margin <= 20) return false;
-        if (filter === 'lowMargin' && (p.margin <= 0 || p.margin > 20)) return false;
-        if (filter === 'unprofitable' && p.margin >= 0) return false;
-        if (filter === 'deficit' && p.io >= 0.2) return false;
-
+        if (filter === 'profitable') {
+            return group.items.some(function(p) { return p.margin > 20; });
+        }
+        if (filter === 'unprofitable') {
+            return group.items.some(function(p) { return p.margin < 0; });
+        }
+        if (filter === 'deficit') {
+            return group.items.some(function(p) { return p.io < 0.2; });
+        }
+        if (filter === 'lowMargin') {
+            return group.items.some(function(p) { return p.margin > 0 && p.margin <= 20; });
+        }
         return true;
     });
 
-    if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 20px;">Ничего не найдено</td></tr>';
+    if (filteredGroups.length === 0) {
+        container.innerHTML = '<div class="card" style="text-align: center; padding: 20px; color: var(--text-secondary);">Ничего не найдено</div>';
         return;
     }
 
-    var html = '';
-    filtered.forEach(function(p) {
-        var marginColor = p.margin > 20 ? '#10B981' : p.margin > 0 ? '#F59E0B' : '#EF4444';
-        var stockColor = p.stock < 5 ? '#EF4444' : p.stock < 20 ? '#F59E0B' : '#10B981';
-        var ioDisplay = p.io.toFixed(2);
+    var categoryIcons = {
+        'Костюмы': '👔', 'Платья': '👗', 'Жакеты': '🧥',
+        'Брюки': '👖', 'Свитеры': '🧶', 'Товар': '📦'
+    };
 
-        html += '<tr style="cursor: pointer;" onclick="openProductCard(\'' + p.article + '\')">';
-        html += '<td style="font-weight: 500;">' + p.article + '</td>';
-        html += '<td>' + p.price.toLocaleString('ru-RU') + ' ₽</td>';
-        html += '<td style="color: ' + marginColor + '; font-weight: 600;">' + p.margin + '%</td>';
-        html += '<td style="color: ' + stockColor + '; font-weight: 600;">' + p.stock + ' шт</td>';
-        html += '<td style="color: ' + p.ioColor + '; font-weight: 600;">' + ioDisplay + '</td>';
-        html += '<td>' + p.sales30 + '</td>';
-        html += '<td>' + (p.daysLeft === 999 ? '—' : p.daysLeft) + '</td>';
-        html += '</tr>';
+    var html = '';
+    filteredGroups.forEach(function(key) {
+        var group = groups[key];
+        var icon = categoryIcons[group.category] || '📦';
+        var avgMargin = 0;
+        var margins = group.items.map(function(p) { return p.margin; });
+        var sum = margins.reduce(function(a, b) { return a + b; }, 0);
+        avgMargin = parseFloat((sum / margins.length).toFixed(1));
+
+        var totalIO = calculateIO(group.totalStock, group.totalSales30);
+        var ioInfo = getIOStatus(totalIO);
+        var hasProblem = group.items.some(function(p) {
+            return p.ioLevel === 'critical' || p.stock < 5 || p.margin < 0;
+        });
+
+        var marginColor = avgMargin > 20 ? '#10B981' : avgMargin > 0 ? '#F59E0B' : '#EF4444';
+        var stockColor = group.totalStock < 10 ? '#EF4444' : '#10B981';
+
+        html += '<div class="product-group">';
+        html += '<div class="product-group-header" onclick="toggleGroup(this)">';
+        html += '<span class="product-group-icon">' + icon + '</span>';
+        html += '<div class="product-group-info">';
+        html += '<div class="product-group-name">' + group.baseArticle + (hasProblem ? ' ⚠️' : '') + '</div>';
+        html += '<div class="product-group-category">' + group.category + ' · ' + group.items.length + ' вар.</div>';
+        html += '</div>';
+        html += '<div class="product-group-metrics">';
+        html += '<div class="product-group-metric"><div class="product-group-metric-label">Маржа</div><div class="product-group-metric-value" style="color: ' + marginColor + ';">' + avgMargin + '%</div></div>';
+        html += '<div class="product-group-metric"><div class="product-group-metric-label">Остаток</div><div class="product-group-metric-value" style="color: ' + stockColor + ';">' + group.totalStock + '</div></div>';
+        html += '<div class="product-group-metric"><div class="product-group-metric-label">ИО</div><div class="product-group-metric-value" style="color: ' + ioInfo.color + ';">' + totalIO.toFixed(2) + '</div></div>';
+        html += '</div>';
+        html += '<span class="product-group-arrow">▶</span>';
+        html += '</div>';
+
+        html += '<div class="product-group-items">';
+        group.items.forEach(function(p) {
+            var mColor = p.margin > 20 ? '#10B981' : p.margin > 0 ? '#F59E0B' : '#EF4444';
+            var sColor = p.stock < 5 ? '#EF4444' : p.stock < 20 ? '#F59E0B' : '#10B981';
+            var statusIcon = p.ioLevel === 'critical' || p.stock < 5 ? '🔴' : p.margin < 0 ? '🟡' : '';
+            html += '<div class="product-group-item" onclick="openProductCard(\'' + p.article + '\')">';
+            html += '<span class="product-group-item-name">' + p.article + '</span>';
+            html += '<span class="product-group-item-price">' + (p.price > 0 ? p.price.toLocaleString('ru-RU') + ' ₽' : '—') + '</span>';
+            html += '<span class="product-group-item-margin" style="color: ' + mColor + ';">' + p.margin + '%</span>';
+            html += '<span class="product-group-item-stock" style="color: ' + sColor + ';">' + p.stock + ' шт</span>';
+            html += '<span class="product-group-item-io" style="color: ' + p.ioColor + ';">' + p.io.toFixed(2) + '</span>';
+            html += '<span class="product-group-item-status">' + statusIcon + '</span>';
+            html += '</div>';
+        });
+        html += '</div>';
+        html += '</div>';
     });
 
-    tbody.innerHTML = html;
+    container.innerHTML = html;
+}
+
+function toggleGroup(header) {
+    var arrow = header.querySelector('.product-group-arrow');
+    var items = header.nextElementSibling;
+    if (items.classList.contains('open')) {
+        items.classList.remove('open');
+        arrow.classList.remove('open');
+    } else {
+        items.classList.add('open');
+        arrow.classList.add('open');
+    }
 }
 
 // ============================================================
@@ -616,13 +747,11 @@ function renderProductTable(products) {
 function openProductCard(article) {
     currentCardArticle = article;
 
-    // Скрываем все страницы, показываем карточку
     document.querySelectorAll('.page').forEach(function(p) {
         p.classList.remove('active');
     });
     document.getElementById('page-product-card').classList.add('active');
 
-    // Загружаем данные
     Promise.all([
         dbGetAll('sales'),
         dbGetAll('stock'),
@@ -649,7 +778,6 @@ function openProductCard(article) {
         var margin = calculateMargin(productInfo.price, productInfo.cost);
         var daysLeft = calculateDaysLeft(totalStock, sales30);
 
-        // Шапка
         var categoryIcons = {
             'Костюмы': '👔', 'Платья': '👗', 'Жакеты': '🧥',
             'Брюки': '👖', 'Свитеры': '🧶', 'Товар': '📦'
@@ -658,7 +786,6 @@ function openProductCard(article) {
         document.getElementById('cardTitle').textContent = article;
         document.getElementById('cardSubtitle').textContent = productInfo.category + ' · FBO';
 
-        // Статус
         var statusText = '🟢 Стабильно';
         var statusBg = 'rgba(16, 185, 129, 0.15)';
         var statusColor = '#10B981';
@@ -676,7 +803,6 @@ function openProductCard(article) {
         badge.style.background = statusBg;
         badge.style.color = statusColor;
 
-        // KPI
         document.getElementById('cardKpiPrice').textContent = productInfo.price.toLocaleString('ru-RU') + ' ₽';
         document.getElementById('cardKpiPriceSub').textContent = '';
 
@@ -695,16 +821,9 @@ function openProductCard(article) {
         ioEl.style.color = ioInfo.color;
         document.getElementById('cardKpiIOSub').textContent = ioInfo.status;
 
-        // График
         renderCardChart(articleSales, 7);
-
-        // Вкладка Продажи
         renderCardSalesTab(articleSales);
-
-        // Вкладка Остатки
         renderCardStockTab(articleStock, totalStock, daysLeft, sales30);
-
-        // Вкладка Экономика
         renderCardEconomicsTab(productInfo, totalStock, sales30);
     });
 }
@@ -718,7 +837,6 @@ function closeProductCard() {
     navigateTo('products');
 }
 
-// График в карточке
 function renderCardChart(sales, days) {
     var canvas = document.getElementById('cardSalesChart');
     if (!canvas) return;
@@ -728,7 +846,6 @@ function renderCardChart(sales, days) {
         cardChart = null;
     }
 
-    // Готовим данные за последние N дней
     var today = new Date();
     var labels = [];
     var ordersData = [];
@@ -812,9 +929,7 @@ function renderCardChart(sales, days) {
     });
 }
 
-// Вкладка Продажи
 function renderCardSalesTab(sales) {
-    // Таблица истории
     var sorted = sales.slice().sort(function(a, b) {
         return b.date.localeCompare(a.date);
     });
@@ -837,7 +952,6 @@ function renderCardSalesTab(sales) {
         tbody.innerHTML = html;
     }
 
-    // Сравнение недель
     var today = new Date();
     var weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -868,7 +982,6 @@ function renderCardSalesTab(sales) {
     }
 }
 
-// Вкладка Остатки
 function renderCardStockTab(stock, totalStock, daysLeft, sales30) {
     var tbody = document.getElementById('cardStockTable');
     if (stock.length === 0) {
@@ -888,7 +1001,6 @@ function renderCardStockTab(stock, totalStock, daysLeft, sales30) {
         tbody.innerHTML = html;
     }
 
-    // Прогноз
     var forecastEl = document.getElementById('cardStockForecast');
     var dailySales = sales30 / 30;
     if (totalStock === 0) {
@@ -902,7 +1014,6 @@ function renderCardStockTab(stock, totalStock, daysLeft, sales30) {
     }
 }
 
-// Вкладка Экономика
 function renderCardEconomicsTab(productInfo, totalStock, sales30) {
     var price = productInfo.price;
     var cost = productInfo.cost;
@@ -926,7 +1037,7 @@ function renderCardEconomicsTab(productInfo, totalStock, sales30) {
         { label: 'Налог (УСН 6%)', value: tax, cls: 'tax' }
     ];
 
-    var html = '<div style="font-size: 16px; font-weight: 700; color: #F0F0FF; margin-bottom: 12px;">Цена продажи: ' + price.toLocaleString('ru-RU') + ' ₽</div>';
+    var html = '<div style="font-size: 16px; font-weight: 600; color: #F0F0FF; margin-bottom: 12px;">Цена продажи: ' + price.toLocaleString('ru-RU') + ' ₽</div>';
     html += '<div style="border-top: 1px solid #2A2A42; margin-bottom: 8px;"></div>';
 
     bars.forEach(function(bar) {
@@ -940,29 +1051,245 @@ function renderCardEconomicsTab(productInfo, totalStock, sales30) {
 
     html += '<div style="border-top: 1px solid #2A2A42; margin: 8px 0;"></div>';
     html += '<div class="econ-bar">';
-    html += '<span class="econ-bar-label" style="font-weight: 700;">Прибыль с единицы</span>';
+    html += '<span class="econ-bar-label" style="font-weight: 600;">Прибыль с единицы</span>';
     html += '<div class="econ-bar-track"></div>';
     html += '<span class="econ-bar-value" style="color: #10B981; font-size: 14px;">' + profit.toLocaleString('ru-RU') + ' ₽</span>';
     html += '</div>';
     html += '<div class="econ-bar">';
-    html += '<span class="econ-bar-label" style="font-weight: 700;">ЧИСТАЯ ПРИБЫЛЬ</span>';
+    html += '<span class="econ-bar-label" style="font-weight: 600;">ЧИСТАЯ ПРИБЫЛЬ</span>';
     html += '<div class="econ-bar-track"></div>';
-    html += '<span class="econ-bar-value" style="color: #10B981; font-size: 16px; font-weight: 700;">' + netProfit.toLocaleString('ru-RU') + ' ₽</span>';
+    html += '<span class="econ-bar-value" style="color: #10B981; font-size: 16px; font-weight: 600;">' + netProfit.toLocaleString('ru-RU') + ' ₽</span>';
     html += '</div>';
-    html += '<div style="font-size: 13px; color: #9CA3AF; margin-top: 4px;">Маржинальность: <span style="color: ' + (totalMargin > 20 ? '#10B981' : '#F59E0B') + '; font-weight: 700;">' + totalMargin + '%</span></div>';
+    html += '<div style="font-size: 13px; color: #9CA3AF; margin-top: 4px;">Маржинальность: <span style="color: ' + (totalMargin > 20 ? '#10B981' : '#F59E0B') + '; font-weight: 600;">' + totalMargin + '%</span></div>';
     breakdownEl.innerHTML = html;
 
-    // Итого за 30 дней
     var monthlyRevenue = sales30 * price;
     var monthlyCosts = sales30 * (commission + logistics + storageCost + cost + returnsLoss + tax);
     var monthlyProfit = monthlyRevenue - monthlyCosts;
     document.getElementById('cardEconomicsTotal').innerHTML =
         '<div style="font-size: 12px; color: #9CA3AF;">📊 Итого за 30 дней</div>' +
         '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 6px;">' +
-        '<div><span style="color: #9CA3AF; font-size: 10px;">Продано</span><div style="font-weight: 700; color: #F0F0FF;">' + sales30 + ' шт</div></div>' +
-        '<div><span style="color: #9CA3AF; font-size: 10px;">Выручка</span><div style="font-weight: 700; color: #F0F0FF;">' + monthlyRevenue.toLocaleString('ru-RU') + ' ₽</div></div>' +
-        '<div><span style="color: #9CA3AF; font-size: 10px;">Чистая прибыль</span><div style="font-weight: 700; color: #10B981;">' + monthlyProfit.toLocaleString('ru-RU') + ' ₽</div></div>' +
+        '<div><span style="color: #9CA3AF; font-size: 10px;">Продано</span><div style="font-weight: 600; color: #F0F0FF;">' + sales30 + ' шт</div></div>' +
+        '<div><span style="color: #9CA3AF; font-size: 10px;">Выручка</span><div style="font-weight: 600; color: #F0F0FF;">' + monthlyRevenue.toLocaleString('ru-RU') + ' ₽</div></div>' +
+        '<div><span style="color: #9CA3AF; font-size: 10px;">Чистая прибыль</span><div style="font-weight: 600; color: #10B981;">' + monthlyProfit.toLocaleString('ru-RU') + ' ₽</div></div>' +
         '</div>';
+}
+
+// ============================================================
+// ИМПОРТ ДАННЫХ
+// ============================================================
+
+function downloadTemplate(type) {
+    var headers, example, fileName;
+
+    if (type === 'sales') {
+        headers = ['Артикул продавца', 'Дата', 'Заказано', 'Выкуплено', 'Сумма заказов', 'Возвраты'];
+        example = ['21_К_Вельвет_голубой_40', '23.07.2026', '5', '4', '16000', '0'];
+        fileName = 'BELTANEE_Шаблон_Продажи.xlsx';
+    } else if (type === 'stock') {
+        headers = ['Артикул продавца', 'Размер', 'Склад', 'Всего на складе', 'В пути', 'Возвраты'];
+        example = ['21_К_Вельвет_голубой_40', '40', 'Коледино', '50', '10', '2'];
+        fileName = 'BELTANEE_Шаблон_Остатки.xlsx';
+    } else {
+        return;
+    }
+
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.aoa_to_sheet([headers, example]);
+    var colWidths = headers.map(function() { return { wch: 20 }; });
+    ws['!cols'] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws, 'Шаблон');
+    XLSX.writeFile(wb, fileName);
+}
+
+function setupImportDropZone(dropZoneId, fileInputId, type) {
+    var dropZone = document.getElementById(dropZoneId);
+    var fileInput = document.getElementById(fileInputId);
+    if (!dropZone || !fileInput) return;
+
+    dropZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', function() {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            processImportFile(e.dataTransfer.files[0], type);
+        }
+    });
+
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+            processImportFile(fileInput.files[0], type);
+            fileInput.value = '';
+        }
+    });
+}
+
+function processImportFile(file, type) {
+    var statusEl = document.getElementById(type === 'sales' ? 'salesImportStatus' : 'stockImportStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span style="color: #F59E0B;">⏳ Обработка файла...</span>';
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var workbook = XLSX.read(e.target.result, { type: 'array' });
+            var sheetName = workbook.SheetNames[0];
+            var sheet = workbook.Sheets[sheetName];
+            var data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+            if (data.length === 0) {
+                if (statusEl) statusEl.innerHTML = '<span style="color: #EF4444;">❌ Файл пуст</span>';
+                return;
+            }
+
+            var mapped = [];
+            var errors = [];
+
+            if (type === 'sales') {
+                mapped = mapSalesData(data, errors);
+            } else if (type === 'stock') {
+                mapped = mapStockData(data, errors);
+            }
+
+            if (mapped.length === 0) {
+                if (statusEl) statusEl.innerHTML = '<span style="color: #EF4444;">❌ Нет данных для импорта. Ошибок: ' + errors.length + '</span>';
+                return;
+            }
+
+            var storeName = type === 'sales' ? 'sales' : 'stock';
+            dbClear(storeName).then(function() {
+                var promises = mapped.map(function(item) {
+                    return dbSave(storeName, item);
+                });
+                return Promise.all(promises);
+            }).then(function() {
+                var message = '✅ Импортировано ' + mapped.length + ' записей';
+                if (errors.length > 0) {
+                    message += ' (пропущено строк с ошибками: ' + errors.length + ')';
+                }
+                if (statusEl) statusEl.innerHTML = '<span style="color: #10B981;">' + message + '</span>';
+                showToast(message, errors.length > 0 ? 'error' : 'success');
+                updateDashboard();
+                updateProductList();
+            }).catch(function(error) {
+                if (statusEl) statusEl.innerHTML = '<span style="color: #EF4444;">❌ Ошибка: ' + error.message + '</span>';
+                showToast('❌ Ошибка импорта: ' + error.message, 'error');
+            });
+
+        } catch (error) {
+            if (statusEl) statusEl.innerHTML = '<span style="color: #EF4444;">❌ Ошибка чтения файла: ' + error.message + '</span>';
+            showToast('❌ Ошибка чтения файла', 'error');
+        }
+    };
+
+    reader.onerror = function() {
+        if (statusEl) statusEl.innerHTML = '<span style="color: #EF4444;">❌ Ошибка чтения файла</span>';
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function mapSalesData(data, errors) {
+    var keys = Object.keys(data[0]);
+    var getKey = function(patterns) {
+        return keys.find(function(k) {
+            return patterns.some(function(p) { return k.toLowerCase().indexOf(p) !== -1; });
+        });
+    };
+
+    var kArticle = getKey(['артикул', 'article']) || keys[0];
+    var kDate = getKey(['дата', 'date', 'день']) || keys[1];
+    var kOrders = getKey(['заказано', 'заказ', 'orders', 'ordered']) || keys[2];
+    var kDelivered = getKey(['выкуплено', 'выкуп', 'delivered']) || keys[3];
+    var kAmount = getKey(['сумма', 'amount', 'итого']) || keys[4];
+    var kReturns = getKey(['возврат', 'returns', 'return']) || keys[5];
+
+    var mapped = [];
+    data.forEach(function(row, index) {
+        var article = String(row[kArticle] || '').trim();
+        if (!article) {
+            errors.push({ row: index + 1, error: 'Пустой артикул' });
+            return;
+        }
+
+        var dateStr = String(row[kDate] || '').trim();
+        if (!dateStr) {
+            dateStr = getYesterdayStr();
+        }
+
+        var orders = parseInt(row[kOrders]) || 0;
+        var delivered = parseInt(row[kDelivered]) || 0;
+        var amount = parseFloat(String(row[kAmount] || '0').replace(',', '.').replace(/\s/g, '')) || 0;
+        var returns = parseInt(row[kReturns]) || 0;
+
+        mapped.push({
+            id: Date.now() + Math.random(),
+            article: article,
+            date: dateStr,
+            orders: orders,
+            delivered: delivered,
+            returns: returns,
+            amount: amount
+        });
+    });
+
+    return mapped;
+}
+
+function mapStockData(data, errors) {
+    var keys = Object.keys(data[0]);
+    var getKey = function(patterns) {
+        return keys.find(function(k) {
+            return patterns.some(function(p) { return k.toLowerCase().indexOf(p) !== -1; });
+        });
+    };
+
+    var kArticle = getKey(['артикул', 'article']) || keys[0];
+    var kSize = getKey(['размер', 'size']) || keys[1];
+    var kWarehouse = getKey(['склад', 'warehouse']) || keys[2];
+    var kAvailable = getKey(['всего', 'available', 'остаток']) || keys[3];
+    var kInTransit = getKey(['пути', 'transit']) || keys[4];
+    var kReturns = getKey(['возврат', 'returns']) || keys[5];
+
+    var mapped = [];
+    data.forEach(function(row, index) {
+        var article = String(row[kArticle] || '').trim();
+        if (!article) {
+            errors.push({ row: index + 1, error: 'Пустой артикул' });
+            return;
+        }
+
+        var size = String(row[kSize] || '').trim();
+        var warehouse = String(row[kWarehouse] || 'Склад').trim();
+        var available = parseInt(row[kAvailable]) || 0;
+        var inTransit = parseInt(row[kInTransit]) || 0;
+        var returns = parseInt(row[kReturns]) || 0;
+
+        mapped.push({
+            id: Date.now() + Math.random(),
+            article: article,
+            size: size,
+            warehouse: warehouse,
+            available: available,
+            inTransit: inTransit,
+            returns: returns
+        });
+    });
+
+    return mapped;
 }
 
 // ============================================================
@@ -976,6 +1303,15 @@ function getProductInfo(article) {
             result = p;
         }
     });
+    if (!result) {
+        result = {
+            article: article,
+            baseArticle: article.split('_').slice(0, -2).join('_'),
+            category: 'Товар',
+            price: 0,
+            cost: 0
+        };
+    }
     return result;
 }
 
@@ -1046,7 +1382,6 @@ function getYesterdayStr() {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Версия в сайдбаре
     var versionEl = document.querySelector('.sidebar-version');
     if (versionEl) {
         versionEl.textContent = 'BELTANEE v' + APP_VERSION + ' (' + APP_STAGE + ')';
@@ -1067,15 +1402,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Проверка базы данных
     checkDatabase();
 
-    // Кнопка загрузки тестовых данных
+    // Тестовые данные
     document.getElementById('loadTestDataBtn').addEventListener('click', loadTestData);
+    document.getElementById('clearTestDataBtn').addEventListener('click', clearAllData);
+
+    // Обновление главной
+    document.getElementById('refreshDashboardBtn').addEventListener('click', updateDashboard);
 
     // Настройки
     loadSettings();
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
     document.getElementById('taxSystem').addEventListener('change', togglePatentField);
 
-    // Страница товаров: поиск и фильтры
+    // Товары: поиск и фильтры
     document.getElementById('productSearch').addEventListener('input', function() {
         refreshProductTable();
     });
@@ -1090,10 +1429,9 @@ document.addEventListener('DOMContentLoaded', function() {
         refreshProductTable();
     });
 
-    // Кнопка "Назад к списку" в карточке товара
+    // Карточка товара
     document.getElementById('backToProductsBtn').addEventListener('click', closeProductCard);
 
-    // Кнопки периода графика
     document.querySelectorAll('.card-chart-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.card-chart-btn').forEach(function(b) {
@@ -1112,7 +1450,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Вкладки карточки
     document.querySelectorAll('.card-tab').forEach(function(tab) {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.card-tab').forEach(function(t) {
@@ -1131,6 +1468,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Импорт
+    document.getElementById('downloadSalesTemplateBtn').addEventListener('click', function() {
+        downloadTemplate('sales');
+    });
+    document.getElementById('downloadStockTemplateBtn').addEventListener('click', function() {
+        downloadTemplate('stock');
+    });
+
+    setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
+    setupImportDropZone('stockDropZone', 'stockFileInput', 'stock');
+
     // Обновляем главную при старте
     updateDashboard();
 });
@@ -1138,6 +1486,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function refreshProductTable() {
     Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
         var products = buildProductList(results[0], results[1]);
-        renderProductTable(products);
+        renderGroupedProducts(products);
     });
 }
