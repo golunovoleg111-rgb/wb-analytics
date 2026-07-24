@@ -6,6 +6,7 @@
     <title>BELTANEE v5.0</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <nav class="sidebar" id="sidebar">
@@ -22,12 +23,16 @@
                 <span class="menu-icon">📦</span>
                 <span class="menu-label">Товары</span>
             </li>
+            <li class="menu-item" data-page="import">
+                <span class="menu-icon">📥</span>
+                <span class="menu-label">Импорт</span>
+            </li>
             <li class="menu-item" data-page="settings">
                 <span class="menu-icon">⚙️</span>
                 <span class="menu-label">Настройки</span>
             </li>
         </ul>
-        <div class="sidebar-version">BELTANEE v5.0.0 (Alpha)</div>
+        <div class="sidebar-version">BELTANEE v5.0.0 (Beta)</div>
     </nav>
 
     <main class="content">
@@ -35,6 +40,7 @@
         <section id="page-dashboard" class="page active">
             <div class="page-header">
                 <h1>📊 Главная</h1>
+                <button class="btn btn-secondary btn-sm" id="refreshDashboardBtn">🔄 Обновить</button>
             </div>
 
             <div id="dashboardEmpty" class="card" style="text-align: center;">
@@ -43,9 +49,10 @@
                 <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
                     Загрузите тестовые данные или импортируйте отчёты WB
                 </div>
-                <button class="btn btn-primary" id="loadTestDataBtn" style="font-size: 13px;">
-                    🧪 Загрузить тестовые данные
-                </button>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <button class="btn btn-primary" id="loadTestDataBtn">🧪 Тестовые данные</button>
+                    <button class="btn btn-secondary" id="clearTestDataBtn">🗑️ Очистить данные</button>
+                </div>
             </div>
 
             <div id="dashboardContent" style="display: none;">
@@ -92,13 +99,13 @@
                         <div class="card-title">📦 Товары</div>
                         <div style="font-size: 13px; color: var(--text-secondary);">Перейти к списку товаров</div>
                     </div>
+                    <div class="card" style="cursor: pointer;" onclick="navigateTo('import')">
+                        <div class="card-title">📥 Импорт</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Загрузить отчёты WB</div>
+                    </div>
                     <div class="card" style="cursor: pointer;" onclick="navigateTo('settings')">
                         <div class="card-title">⚙️ Настройки</div>
                         <div style="font-size: 13px; color: var(--text-secondary);">Тарифы, себестоимость, налоги</div>
-                    </div>
-                    <div class="card">
-                        <div class="card-title">📥 Импорт</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Загрузить отчёты WB (скоро)</div>
                     </div>
                 </div>
             </div>
@@ -133,29 +140,51 @@
                     </div>
                 </div>
 
+                <div id="productsGroupedList"></div>
+            </div>
+        </section>
+
+        <!-- ИМПОРТ -->
+        <section id="page-import" class="page">
+            <div class="page-header">
+                <h1>📥 Импорт данных</h1>
+            </div>
+
+            <div class="grid-2">
+                <!-- Импорт продаж -->
                 <div class="card">
-                    <div style="overflow-x: auto;">
-                        <table id="productsTable">
-                            <thead>
-                                <tr>
-                                    <th>Артикул</th>
-                                    <th>Цена</th>
-                                    <th>Маржа</th>
-                                    <th>Остаток</th>
-                                    <th>ИО</th>
-                                    <th>Заказы (30 дн)</th>
-                                    <th>Дней запаса</th>
-                                </tr>
-                            </thead>
-                            <tbody id="productsTableBody">
-                                <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                                        Загрузка...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="card-title">🛒 Импорт продаж</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+                        Загрузите отчёт WB по продажам. Данные полностью заменят предыдущие.
                     </div>
+                    <div style="margin-bottom: 12px;">
+                        <button class="btn btn-secondary btn-sm" id="downloadSalesTemplateBtn">📥 Скачать шаблон</button>
+                    </div>
+                    <div class="drop-zone" id="salesDropZone">
+                        <div style="font-size: 24px; margin-bottom: 6px;">📤</div>
+                        <div style="font-size: 13px; font-weight: 500;">Перетащите файл или нажмите</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">XLSX, CSV</div>
+                    </div>
+                    <input type="file" id="salesFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                    <div id="salesImportStatus" style="margin-top: 8px; font-size: 12px;"></div>
+                </div>
+
+                <!-- Импорт остатков -->
+                <div class="card">
+                    <div class="card-title">📦 Импорт остатков</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+                        Загрузите отчёт WB по остаткам. Данные полностью заменят предыдущие.
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <button class="btn btn-secondary btn-sm" id="downloadStockTemplateBtn">📥 Скачать шаблон</button>
+                    </div>
+                    <div class="drop-zone" id="stockDropZone">
+                        <div style="font-size: 24px; margin-bottom: 6px;">📤</div>
+                        <div style="font-size: 13px; font-weight: 500;">Перетащите файл или нажмите</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">XLSX, CSV</div>
+                    </div>
+                    <input type="file" id="stockFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                    <div id="stockImportStatus" style="margin-top: 8px; font-size: 12px;"></div>
                 </div>
             </div>
         </section>
@@ -168,7 +197,6 @@
                 </button>
             </div>
 
-            <!-- Шапка -->
             <div id="cardHeader" style="margin-bottom: 20px;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
                     <span id="cardCategoryIcon" style="font-size: 28px;">👔</span>
@@ -180,7 +208,6 @@
                 </div>
             </div>
 
-            <!-- KPI блоки -->
             <div class="card-kpi-grid" style="margin-bottom: 20px;">
                 <div class="card-kpi-item">
                     <div class="card-kpi-label">Цена</div>
@@ -204,7 +231,6 @@
                 </div>
             </div>
 
-            <!-- График -->
             <div class="card card-dark" style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <span style="font-weight: 600; font-size: 14px; color: #F0F0FF;">📈 График продаж</span>
@@ -219,7 +245,6 @@
                 </div>
             </div>
 
-            <!-- Вкладки -->
             <div class="card card-dark">
                 <div style="display: flex; gap: 0; border-bottom: 1px solid #2A2A42; margin-bottom: 16px;">
                     <button class="card-tab active" data-card-tab="sales">Продажи</button>
@@ -227,7 +252,6 @@
                     <button class="card-tab" data-card-tab="economics">Экономика</button>
                 </div>
 
-                <!-- Вкладка: Продажи -->
                 <div id="cardTabSales" class="card-tab-content active">
                     <div style="overflow-x: auto;">
                         <table>
@@ -248,7 +272,6 @@
                     <div id="cardSalesCompare" style="margin-top: 12px; font-size: 12px; color: #9CA3AF;"></div>
                 </div>
 
-                <!-- Вкладка: Остатки -->
                 <div id="cardTabStock" class="card-tab-content" style="display: none;">
                     <div style="overflow-x: auto;">
                         <table>
@@ -269,7 +292,6 @@
                     <div id="cardStockForecast" style="margin-top: 12px; padding: 12px; background: #1A1A2E; border-radius: 8px; border-left: 3px solid #F59E0B;"></div>
                 </div>
 
-                <!-- Вкладка: Экономика -->
                 <div id="cardTabEconomics" class="card-tab-content" style="display: none;">
                     <div id="cardEconomicsBreakdown"></div>
                     <div id="cardEconomicsTotal" style="margin-top: 16px; padding: 12px; background: #1A1A2E; border-radius: 8px;"></div>
@@ -286,6 +308,7 @@
             <div class="card" style="margin-bottom: 14px;">
                 <div class="card-title">Состояние системы</div>
                 <div id="dbStatus">Проверка базы данных...</div>
+                <div id="dbStats" style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;"></div>
             </div>
 
             <div class="card">
@@ -352,6 +375,9 @@
             <div id="saveStatus" style="text-align: center; margin-top: 8px; font-size: 12px;"></div>
         </section>
     </main>
+
+    <!-- Toast уведомление -->
+    <div id="toast" class="toast"></div>
 
     <script src="app.js"></script>
 </body>
