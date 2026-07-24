@@ -5,7 +5,6 @@
 var APP_VERSION = '5.0.0';
 var APP_STAGE = 'Alpha';
 
-// База данных
 var DB_NAME = 'BeltaneeDB_v5';
 var DB_VERSION = 1;
 var STORES = ['sales', 'stock', 'settings'];
@@ -40,6 +39,10 @@ function navigateTo(pageName) {
     if (pageName === 'dashboard') {
         updateDashboard();
     }
+
+    if (pageName === 'products') {
+        updateProductList();
+    }
 }
 
 // ============================================================
@@ -50,13 +53,8 @@ function openDB() {
     return new Promise(function(resolve, reject) {
         var request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        // Создание или обновление схемы БД
         request.onupgradeneeded = function(event) {
             var db = event.target.result;
-            var oldVersion = event.oldVersion;
-
-            // Если это новая база (oldVersion = 0) — создаём все хранилища
-            // Если это миграция — добавляем только отсутствующие
             STORES.forEach(function(storeName) {
                 if (!db.objectStoreNames.contains(storeName)) {
                     db.createObjectStore(storeName, {
@@ -430,20 +428,8 @@ function collectStats(sales, stock) {
 
     var products = [];
     articles.forEach(function(article) {
-        var productInfo = null;
-        TEST_PRODUCTS.forEach(function(p) {
-            if (p.article === article) {
-                productInfo = p;
-            }
-        });
-
-        var totalStock = 0;
-        stock.forEach(function(s) {
-            if (s.article === article) {
-                totalStock += s.available || 0;
-            }
-        });
-
+        var productInfo = getProductInfo(article);
+        var totalStock = getTotalStock(article, stock);
         var sales30 = sales30Map[article] || 0;
         var io = calculateIO(totalStock, sales30);
         var ioInfo = getIOStatus(io);
@@ -490,40 +476,7 @@ function renderKPIs(stats) {
 
 function renderAttentionBlock(stats) {
     var container = document.getElementById('attentionBlock');
-
-    var problems = [];
-
-    stats.products.forEach(function(p) {
-        if (p.stock < 5) {
-            problems.push({
-                type: 'critical',
-                icon: '🔴',
-                text: p.article + ' — остаток ' + p.stock + ' шт (на ' + p.daysLeft + ' дней)',
-                action: 'Пополнить'
-            });
-        } else if (p.ioLevel === 'critical' && p.stock > 0) {
-            problems.push({
-                type: 'critical',
-                icon: '🔴',
-                text: p.article + ' — ИО ' + (p.io * 100).toFixed(1) + '% (риск блокировки)',
-                action: 'Снизить цену'
-            });
-        } else if (p.margin < 0) {
-            problems.push({
-                type: 'warning',
-                icon: '🟡',
-                text: p.article + ' — убыточный (маржа ' + p.margin + '%)',
-                action: 'Пересмотреть цену'
-            });
-        } else if (p.ioLevel === 'warning') {
-            problems.push({
-                type: 'warning',
-                icon: '🟡',
-                text: p.article + ' — ИО ' + (p.io * 100).toFixed(1) + '% (недостаток)',
-                action: 'Планировать поставку'
-            });
-        }
-    });
+    var problems = getProblems(stats.products);
 
     if (problems.length === 0) {
         container.innerHTML = '<div style="color: #10B981; font-size: 13px;">✅ Все показатели в норме</div>';
@@ -543,8 +496,172 @@ function renderAttentionBlock(stats) {
 }
 
 // ============================================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// СТРАНИЦА ТОВАРОВ
 // ============================================================
+
+function updateProductList() {
+    Promise.all([
+        dbGetAll('sales'),
+        dbGetAll('stock')
+    ]).then(function(results) {
+        var sales = results[0];
+        var stock = results[1];
+
+        if (sales.length === 0 && stock.length === 0) {
+            document.getElementById('productsEmpty').style.display = 'block';
+            document.getElementById('productsContent').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('productsEmpty').style.display = 'none';
+        document.getElementById('productsContent').style.display = 'block';
+
+        // Собираем данные по товарам
+        var products = buildProductList(sales, stock);
+        renderProductTable(products);
+    }).catch(function(error) {
+        console.error('Ошибка загрузки товаров:', error);
+    });
+}
+
+function buildProductList(sales, stock) {
+    var sales30Map = {};
+    sales.forEach(function(s) {
+        if (!sales30Map[s.article]) {
+            sales30Map[s.article] = 0;
+        }
+        sales30Map[s.article] += s.orders || 0;
+    });
+
+    var products = [];
+    TEST_PRODUCTS.forEach(function(p) {
+        var totalStock = getTotalStock(p.article, stock);
+        var sales30 = sales30Map[p.article] || 0;
+        var io = calculateIO(totalStock, sales30);
+        var ioInfo = getIOStatus(io);
+        var margin = calculateMargin(p.price, p.cost);
+        var daysLeft = calculateDaysLeft(totalStock, sales30);
+
+        products.push({
+            article: p.article,
+            price: p.price,
+            cost: p.cost,
+            margin: margin,
+            stock: totalStock,
+            io: io,
+            ioStatus: ioInfo.status,
+            ioColor: ioInfo.color,
+            ioLevel: ioInfo.level,
+            sales30: sales30,
+            daysLeft: daysLeft
+        });
+    });
+
+    return products;
+}
+
+function renderProductTable(products) {
+    var tbody = document.getElementById('productsTableBody');
+    var searchQuery = document.getElementById('productSearch').value.toLowerCase();
+    var filter = document.getElementById('productFilter').value;
+
+    // Фильтрация
+    var filtered = products.filter(function(p) {
+        // Поиск по артикулу
+        if (searchQuery && p.article.toLowerCase().indexOf(searchQuery) === -1) {
+            return false;
+        }
+
+        // Фильтр
+        if (filter === 'profitable' && p.margin <= 20) return false;
+        if (filter === 'lowMargin' && (p.margin <= 0 || p.margin > 20)) return false;
+        if (filter === 'unprofitable' && p.margin >= 0) return false;
+        if (filter === 'deficit' && p.io >= 0.2) return false;
+
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 20px;">Ничего не найдено</td></tr>';
+        return;
+    }
+
+    var html = '';
+    filtered.forEach(function(p) {
+        var marginColor = p.margin > 20 ? '#10B981' : p.margin > 0 ? '#F59E0B' : '#EF4444';
+        var stockColor = p.stock < 5 ? '#EF4444' : p.stock < 20 ? '#F59E0B' : '#10B981';
+
+        html += '<tr style="cursor: pointer;" onclick="alert(\'Карточка товара «' + p.article + '» будет доступна в следующей версии.\')">';
+        html += '<td style="font-weight: 500;">' + p.article + '</td>';
+        html += '<td>' + p.price.toLocaleString('ru-RU') + ' ₽</td>';
+        html += '<td style="color: ' + marginColor + '; font-weight: 600;">' + p.margin + '%</td>';
+        html += '<td style="color: ' + stockColor + '; font-weight: 600;">' + p.stock + ' шт</td>';
+        html += '<td style="color: ' + p.ioColor + '; font-weight: 600;">' + (p.io * 100).toFixed(1) + '%</td>';
+        html += '<td>' + p.sales30 + '</td>';
+        html += '<td>' + (p.daysLeft === 999 ? '—' : p.daysLeft) + '</td>';
+        html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+}
+
+// ============================================================
+// ОБЩИЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================================
+
+function getProductInfo(article) {
+    var result = null;
+    TEST_PRODUCTS.forEach(function(p) {
+        if (p.article === article) {
+            result = p;
+        }
+    });
+    return result;
+}
+
+function getTotalStock(article, stockData) {
+    var total = 0;
+    stockData.forEach(function(s) {
+        if (s.article === article) {
+            total += s.available || 0;
+        }
+    });
+    return total;
+}
+
+function getProblems(products) {
+    var problems = [];
+
+    products.forEach(function(p) {
+        if (p.stock < 5) {
+            problems.push({
+                type: 'critical',
+                icon: '🔴',
+                text: p.article + ' — остаток ' + p.stock + ' шт (на ' + p.daysLeft + ' дней)'
+            });
+        } else if (p.ioLevel === 'critical' && p.stock > 0) {
+            problems.push({
+                type: 'critical',
+                icon: '🔴',
+                text: p.article + ' — ИО ' + (p.io * 100).toFixed(1) + '% (риск блокировки)'
+            });
+        } else if (p.margin < 0) {
+            problems.push({
+                type: 'warning',
+                icon: '🟡',
+                text: p.article + ' — убыточный (маржа ' + p.margin + '%)'
+            });
+        } else if (p.ioLevel === 'warning') {
+            problems.push({
+                type: 'warning',
+                icon: '🟡',
+                text: p.article + ' — ИО ' + (p.io * 100).toFixed(1) + '% (недостаток)'
+            });
+        }
+    });
+
+    return problems;
+}
 
 function getYesterdayStr() {
     var d = new Date();
@@ -587,6 +704,30 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
     document.getElementById('taxSystem').addEventListener('change', togglePatentField);
+
+    // Страница товаров: поиск и фильтры
+    document.getElementById('productSearch').addEventListener('input', function() {
+        Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
+            var products = buildProductList(results[0], results[1]);
+            renderProductTable(products);
+        });
+    });
+
+    document.getElementById('productFilter').addEventListener('change', function() {
+        Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
+            var products = buildProductList(results[0], results[1]);
+            renderProductTable(products);
+        });
+    });
+
+    document.getElementById('clearFilterBtn').addEventListener('click', function() {
+        document.getElementById('productSearch').value = '';
+        document.getElementById('productFilter').value = 'all';
+        Promise.all([dbGetAll('sales'), dbGetAll('stock')]).then(function(results) {
+            var products = buildProductList(results[0], results[1]);
+            renderProductTable(products);
+        });
+    });
 
     // Обновляем главную при старте
     updateDashboard();
