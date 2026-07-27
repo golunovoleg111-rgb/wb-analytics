@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BELTANEE v5.0</title>
+    <title>StockFlow v5.0</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -11,8 +11,8 @@
 <body>
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-logo" id="sidebarLogo">
-            <span class="logo-icon">B</span>
-            <span class="logo-text">BELTANEE</span>
+            <span class="logo-icon">S</span>
+            <span class="logo-text">StockFlow</span>
         </div>
         <ul class="sidebar-menu">
             <li class="menu-item active" data-page="dashboard">
@@ -23,6 +23,14 @@
                 <span class="menu-icon">📦</span>
                 <span class="menu-label">Товары</span>
             </li>
+            <li class="menu-item" data-page="orders">
+                <span class="menu-icon">📋</span>
+                <span class="menu-label">Заказы</span>
+            </li>
+            <li class="menu-item" data-page="supplies">
+                <span class="menu-icon">🚚</span>
+                <span class="menu-label">Поставки</span>
+            </li>
             <li class="menu-item" data-page="import">
                 <span class="menu-icon">📥</span>
                 <span class="menu-label">Импорт</span>
@@ -32,7 +40,7 @@
                 <span class="menu-label">Настройки</span>
             </li>
         </ul>
-        <div class="sidebar-version">BELTANEE v5.0.0 (Beta)</div>
+        <div class="sidebar-version">StockFlow v5.0.0 (Beta)</div>
     </nav>
 
     <main class="content">
@@ -99,13 +107,13 @@
                         <div class="card-title">📦 Товары</div>
                         <div style="font-size: 13px; color: var(--text-secondary);">Перейти к списку товаров</div>
                     </div>
-                    <div class="card" style="cursor: pointer;" onclick="navigateTo('import')">
-                        <div class="card-title">📥 Импорт</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Загрузить отчёты WB</div>
+                    <div class="card" style="cursor: pointer;" onclick="navigateTo('orders')">
+                        <div class="card-title">📋 Заказы</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Планирование закупок</div>
                     </div>
-                    <div class="card" style="cursor: pointer;" onclick="navigateTo('settings')">
-                        <div class="card-title">⚙️ Настройки</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Тарифы, себестоимость, налоги</div>
+                    <div class="card" style="cursor: pointer;" onclick="navigateTo('supplies')">
+                        <div class="card-title">🚚 Поставки</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Формирование отгрузок</div>
                     </div>
                 </div>
             </div>
@@ -144,6 +152,110 @@
             </div>
         </section>
 
+        <!-- ЗАКАЗЫ -->
+        <section id="page-orders" class="page">
+            <div class="page-header">
+                <h1>📋 Планирование заказов</h1>
+                <div style="display: flex; gap: 8px;">
+                    <select id="ordersPeriodSelect" style="min-width: 120px;">
+                        <option value="7">Продажи за 7 дней</option>
+                        <option value="14">Продажи за 14 дней</option>
+                        <option value="30" selected>Продажи за 30 дней</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" id="exportOrdersBtn">📤 Экспорт в Excel</button>
+                </div>
+            </div>
+
+            <div id="ordersEmpty" class="card" style="text-align: center;">
+                <div style="font-size: 36px; margin-bottom: 10px;">📥</div>
+                <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">Нет данных</div>
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    Загрузите данные о продажах и остатках
+                </div>
+            </div>
+
+            <div id="ordersContent" style="display: none;">
+                <div class="card" style="margin-bottom: 14px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="ordersSearch" placeholder="🔍 Поиск по артикулу..." style="flex: 1; min-width: 180px;">
+                        <select id="ordersFilter" style="min-width: 120px;">
+                            <option value="all">Все товары</option>
+                            <option value="critical">🔴 Срочно (≤ 7 дней)</option>
+                            <option value="soon">🟡 Скоро (≤ 14 дней)</option>
+                            <option value="normal">🟢 Норма (> 14 дней)</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm" id="clearOrdersFilterBtn">Сбросить</button>
+                    </div>
+                </div>
+
+                <div id="ordersSummary" style="margin-bottom: 14px;"></div>
+
+                <div id="ordersList"></div>
+            </div>
+        </section>
+
+        <!-- ПОСТАВКИ -->
+        <section id="page-supplies" class="page">
+            <div class="page-header">
+                <h1>🚚 Поставки</h1>
+            </div>
+
+            <div class="grid-2">
+                <!-- Корзина -->
+                <div class="card">
+                    <div class="card-title">📦 Корзина поставки</div>
+                    <div id="supplyCart" style="max-height: 300px; overflow-y: auto; margin-bottom: 12px;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 13px;">
+                            Корзина пуста. Добавьте товары.
+                        </div>
+                    </div>
+                    <div style="padding: 10px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 12px; font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between;"><span>📦 Мест:</span><strong id="supplyPlaces">0</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>⚖️ Вес:</span><strong id="supplyWeight">0 кг</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>📐 Объём:</span><strong id="supplyVolume">0 л</strong></div>
+                    </div>
+                    <button class="btn btn-primary" id="createSupplyBtn" style="width: 100%;">✅ Сформировать поставку</button>
+                </div>
+
+                <!-- Добавление -->
+                <div class="card">
+                    <div class="card-title">➕ Добавить товар</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <input type="text" id="supplyArticle" placeholder="Артикул" style="width: 100%;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                            <input type="text" id="supplySize" placeholder="Размер">
+                            <input type="number" id="supplyQty" placeholder="Кол-во" value="1" min="1">
+                            <input type="text" id="supplyPallet" placeholder="Паллета">
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="addToSupplyBtn">➕ Добавить в корзину</button>
+                        <button class="btn btn-secondary btn-sm" id="addFromWarehouseBtn">📦 Добавить со склада</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- История -->
+            <div class="card" style="margin-top: 14px;">
+                <div class="card-title">📋 История поставок</div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Название</th>
+                                <th>Позиций</th>
+                                <th>Мест</th>
+                                <th>Статус</th>
+                                <th>Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplyHistoryBody">
+                            <tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">Нет поставок</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <!-- ИМПОРТ -->
         <section id="page-import" class="page">
             <div class="page-header">
@@ -151,7 +263,6 @@
             </div>
 
             <div class="grid-2">
-                <!-- Импорт продаж -->
                 <div class="card">
                     <div class="card-title">🛒 Импорт продаж</div>
                     <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
@@ -169,7 +280,6 @@
                     <div id="salesImportStatus" style="margin-top: 8px; font-size: 12px;"></div>
                 </div>
 
-                <!-- Импорт остатков -->
                 <div class="card">
                     <div class="card-title">📦 Импорт остатков</div>
                     <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
@@ -191,10 +301,11 @@
 
         <!-- КАРТОЧКА ТОВАРА -->
         <section id="page-product-card" class="page">
-            <div style="margin-bottom: 20px;">
-                <button class="btn btn-ghost" id="backToProductsBtn" style="font-size: 13px;">
+            <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <button class="btn btn-ghost" id="backToProductsBtn">
                     ← Назад к списку
                 </button>
+                <span id="backContext" style="font-size: 11px; color: #6B7280;"></span>
             </div>
 
             <div id="cardHeader" style="margin-bottom: 20px;">
@@ -315,34 +426,50 @@
                 <div class="card-title">📦 Тарифы Wildberries</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
-                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
-                            Комиссия FBO (%)
-                        </label>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Комиссия FBO (%)</label>
                         <input type="number" id="fboCommission" value="15" min="1" max="50" step="1" style="width: 100%;">
                     </div>
                     <div>
-                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
-                            Комиссия FBS (%)
-                        </label>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Комиссия FBS (%)</label>
                         <input type="number" id="fbsCommission" value="10" min="1" max="50" step="1" style="width: 100%;">
                     </div>
                     <div>
-                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
-                            Ставка хранения базовая (₽/литр/день)
-                        </label>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Ставка хранения базовая (₽/л/день)</label>
                         <input type="number" id="storageBaseRate" value="0.07" min="0.01" max="1" step="0.01" style="width: 100%;">
                     </div>
                     <div>
-                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
-                            Ставка хранения повышенная (₽/литр/день)
-                        </label>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Ставка хранения повышенная (₽/л/день)</label>
                         <input type="number" id="storageOverRate" value="0.15" min="0.01" max="1" step="0.01" style="width: 100%;">
                     </div>
                     <div>
-                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
-                            Объём единицы товара (литров)
-                        </label>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Объём единицы товара (литров)</label>
                         <input type="number" id="volumePerUnit" value="5" min="0.5" max="100" step="0.5" style="width: 100%;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 Планирование заказов</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Целевой запас (дней)</label>
+                        <input type="number" id="targetStockDays" value="60" min="14" max="180" step="1" style="width: 100%;">
+                        <div style="font-size: 9px; color: var(--text-secondary);">На сколько дней вперёд планировать запас</div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Страховой запас (дней)</label>
+                        <input type="number" id="safetyStockDays" value="30" min="7" max="90" step="1" style="width: 100%;">
+                        <div style="font-size: 9px; color: var(--text-secondary);">Минимальный запас на случай скачков</div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Срок производства (дней)</label>
+                        <input type="number" id="productionDays" value="14" min="1" max="90" step="1" style="width: 100%;">
+                        <div style="font-size: 9px; color: var(--text-secondary);">Время на пошив/закупку</div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Срок доставки до WB (дней)</label>
+                        <input type="number" id="deliveryDays" value="7" min="1" max="30" step="1" style="width: 100%;">
+                        <div style="font-size: 9px; color: var(--text-secondary);">Время доставки до склада WB</div>
                     </div>
                 </div>
             </div>
@@ -351,9 +478,7 @@
                 <div class="card-title">🧾 Налоги</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
-                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
-                            Система налогообложения
-                        </label>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Система налогообложения</label>
                         <select id="taxSystem" style="width: 100%;">
                             <option value="usn6">УСН 6% (доходы)</option>
                             <option value="usn15">УСН 15% (доходы − расходы)</option>
@@ -361,9 +486,7 @@
                         </select>
                     </div>
                     <div id="patentBlock" style="display: none;">
-                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">
-                            Стоимость патента в год (₽)
-                        </label>
+                        <label style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 3px;">Стоимость патента в год (₽)</label>
                         <input type="number" id="patentCost" value="30000" min="1000" max="10000000" step="1000" style="width: 100%;">
                     </div>
                 </div>
@@ -376,7 +499,6 @@
         </section>
     </main>
 
-    <!-- Toast уведомление -->
     <div id="toast" class="toast"></div>
 
     <script src="app.js"></script>
