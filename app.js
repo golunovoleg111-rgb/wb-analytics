@@ -12,6 +12,12 @@ var cardChart = null;
 var supplyCart = [];
 var currentWarehouse = 'Основной';
 
+// Пагинация рекламы
+var adsCurrentPage = 1;
+var adsPerPage = 25;
+var adsDataCache = [];
+var selectedAds = [];
+
 // ============================================================
 // НАВИГАЦИЯ
 // ============================================================
@@ -118,6 +124,41 @@ function saveSettings() {
 function togglePatentField() { var v = document.getElementById('taxSystem').value; var b = document.getElementById('patentBlock'); if (b) b.style.display = (v === 'patent') ? 'block' : 'none'; }
 
 // ============================================================
+// МЕНЮ — ГРУППИРОВКА
+// ============================================================
+
+function toggleMenuGroup(header) {
+    var items = header.nextElementSibling;
+    var arrow = header.querySelector('.menu-group-arrow');
+    if (items) {
+        items.classList.toggle('collapsed');
+        if (arrow) arrow.classList.toggle('collapsed');
+        // Сохраняем состояние
+        var groupLabel = header.querySelector('.menu-group-label');
+        if (groupLabel) {
+            var state = items.classList.contains('collapsed') ? 'collapsed' : 'expanded';
+            localStorage.setItem('menu_group_' + groupLabel.textContent.trim(), state);
+        }
+    }
+}
+
+function restoreMenuState() {
+    document.querySelectorAll('.menu-group').forEach(function(group) {
+        var header = group.querySelector('.menu-group-header');
+        var items = group.querySelector('.menu-group-items');
+        var label = header ? header.querySelector('.menu-group-label') : null;
+        if (label) {
+            var state = localStorage.getItem('menu_group_' + label.textContent.trim());
+            if (state === 'collapsed') {
+                if (items) items.classList.add('collapsed');
+                var arrow = header.querySelector('.menu-group-arrow');
+                if (arrow) arrow.classList.add('collapsed');
+            }
+        }
+    });
+}
+
+// ============================================================
 // ТЕСТОВЫЕ ДАННЫЕ
 // ============================================================
 
@@ -131,6 +172,26 @@ var TEST_PRODUCTS = [
 
 var TEST_ADS = [
     {
+        campaign: 'Кампания 5 (Свитер)',
+        type: 'Автоставка',
+        wbId: '36386803',
+        impressions: 32000,
+        clicks: 890,
+        cpc: 18.5,
+        ctr: 2.78,
+        cr: 3.5,
+        spent: 16465,
+        orders_from_ad: 31,
+        linkedArticle: '15_К_Свитер_бежевый_46',
+        status: 'active',
+        budget: 20000,
+        dailyLimit: 3000,
+        _roi: 0,
+        _drr: 0,
+        _trend: 5,
+        created: '2026-07-20'
+    },
+    {
         campaign: 'Кампания 1 (Вельвет)',
         type: 'Аукцион',
         wbId: '36386799',
@@ -142,38 +203,33 @@ var TEST_ADS = [
         spent: 14560,
         orders_from_ad: 13,
         linkedArticle: '21_К_Вельвет_голубой_40',
+        status: 'active',
+        budget: 15000,
+        dailyLimit: 2000,
         _roi: 0,
-        _drr: 0
+        _drr: 0,
+        _trend: -3,
+        created: '2026-07-15'
     },
     {
-        campaign: 'Кампания 2 (Платье)',
-        type: 'Аукцион',
-        wbId: '36386800',
-        impressions: 8400,
-        clicks: 180,
-        cpc: 32.8,
-        ctr: 2.14,
-        cr: 3.1,
-        spent: 5904,
-        orders_from_ad: 5,
-        linkedArticle: '27_К_Платье_чёрный_44',
-        _roi: 0,
-        _drr: 0
-    },
-    {
-        campaign: 'Кампания 3 (Жакет)',
+        campaign: 'Кампания 7 (Тестовая)',
         type: 'Автоставка',
-        wbId: '36386801',
-        impressions: 21500,
-        clicks: 540,
-        cpc: 28.2,
-        ctr: 2.51,
-        cr: 2.8,
-        spent: 15228,
-        orders_from_ad: 15,
-        linkedArticle: '33_К_Жакет_синий_48',
+        wbId: '36386805',
+        impressions: 9400,
+        clicks: 210,
+        cpc: 35.6,
+        ctr: 2.23,
+        cr: 4.8,
+        spent: 7476,
+        orders_from_ad: 10,
+        linkedArticle: '41_К_Брюки_серый_42',
+        status: 'active',
+        budget: 10000,
+        dailyLimit: 1500,
         _roi: 0,
-        _drr: 0
+        _drr: 0,
+        _trend: 2,
+        created: '2026-07-18'
     },
     {
         campaign: 'Кампания 4 (Брюки)',
@@ -187,23 +243,33 @@ var TEST_ADS = [
         spent: 4950,
         orders_from_ad: 2,
         linkedArticle: '41_К_Брюки_серый_42',
+        status: 'paused',
+        budget: 8000,
+        dailyLimit: 1000,
         _roi: 0,
-        _drr: 0
+        _drr: 0,
+        _trend: -8,
+        created: '2026-07-10'
     },
     {
-        campaign: 'Кампания 5 (Свитер)',
+        campaign: 'Кампания 3 (Жакет)',
         type: 'Автоставка',
-        wbId: '36386803',
-        impressions: 32000,
-        clicks: 890,
-        cpc: 18.5,
-        ctr: 2.78,
-        cr: 3.5,
-        spent: 16465,
-        orders_from_ad: 31,
-        linkedArticle: '15_К_Свитер_бежевый_46',
+        wbId: '36386801',
+        impressions: 21500,
+        clicks: 540,
+        cpc: 28.2,
+        ctr: 2.51,
+        cr: 2.8,
+        spent: 15228,
+        orders_from_ad: 15,
+        linkedArticle: '33_К_Жакет_синий_48',
+        status: 'paused',
+        budget: 20000,
+        dailyLimit: 2000,
         _roi: 0,
-        _drr: 0
+        _drr: 0,
+        _trend: -12,
+        created: '2026-07-08'
     },
     {
         campaign: 'Кампания 6 (Новая)',
@@ -217,23 +283,33 @@ var TEST_ADS = [
         spent: 2024,
         orders_from_ad: 0,
         linkedArticle: null,
+        status: 'paused',
+        budget: 5000,
+        dailyLimit: 500,
         _roi: 0,
-        _drr: 0
+        _drr: 0,
+        _trend: 0,
+        created: '2026-07-21'
     },
     {
-        campaign: 'Кампания 7 (Тестовая)',
-        type: 'Автоставка',
-        wbId: '36386805',
-        impressions: 9400,
-        clicks: 210,
-        cpc: 35.6,
-        ctr: 2.23,
-        cr: 4.8,
-        spent: 7476,
-        orders_from_ad: 10,
-        linkedArticle: null,
+        campaign: 'Кампания 2 (Платье)',
+        type: 'Аукцион',
+        wbId: '36386800',
+        impressions: 8400,
+        clicks: 180,
+        cpc: 32.8,
+        ctr: 2.14,
+        cr: 3.1,
+        spent: 5904,
+        orders_from_ad: 5,
+        linkedArticle: '27_К_Платье_чёрный_44',
+        status: 'active',
+        budget: 10000,
+        dailyLimit: 1500,
         _roi: 0,
-        _drr: 0
+        _drr: 0,
+        _trend: -5,
+        created: '2026-07-12'
     }
 ];
 
@@ -396,13 +472,18 @@ function renderOrdersSummary(prods) { var cr = prods.filter(function(p) { return
 function renderOrdersList(prods) { var c = document.getElementById('ordersList'), h = ''; prods.forEach(function(p) { var uc = p.forecast.urgency === 'critical' ? '#EF4444' : p.forecast.urgency === 'soon' ? '#F59E0B' : '#10B981', ul = p.forecast.urgency === 'critical' ? '🔴 Срочно' : p.forecast.urgency === 'soon' ? '🟡 Скоро' : '🟢 Норма'; h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📦</span><div class="product-group-info"><div class="product-group-name">' + p.article + '</div><div class="product-group-category">' + p.category + ' · ' + p.model + '</div></div><div class="product-group-metrics"><div class="product-group-metric"><div class="product-group-metric-label">Остаток</div><div class="product-group-metric-value">' + p.stock.total + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Продаж/д</div><div class="product-group-metric-value">' + p.forecast.dailyDemand.toFixed(1) + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Дней</div><div class="product-group-metric-value" style="color:' + uc + ';">' + p.forecast.daysUntilStockout + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Заказ</div><div class="product-group-metric-value">' + p.forecast.recommendedOrder + ' шт</div></div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:12px 16px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;"><div>WB: <strong>' + p.stock.wb + '</strong></div><div>В пути: <strong>' + p.stock.inTransit + '</strong></div><div>Склад: <strong>' + p.stock.ownWarehouse + '</strong></div><div>Продажи 7д: <strong>' + p.sales.last7days + '</strong></div><div>14д: <strong>' + p.sales.last14days + '</strong></div><div>30д: <strong>' + p.sales.last30days + '</strong></div><div>Маржа: <strong>' + p.metrics.margin + '%</strong></div><div>Цена: <strong>' + p.sellingPrice.toLocaleString('ru-RU') + ' ₽</strong></div><div style="color:' + uc + ';">' + ul + '</div></div></div></div>'; }); c.innerHTML = h || '<div class="card" style="text-align:center;padding:20px;">Нет данных</div>'; }
 
 // ============================================================
-// РЕКЛАМА
+// РЕКЛАМА — ОСНОВНЫЕ ФУНКЦИИ
 // ============================================================
 
 function updateAdsPage() {
     dbGetAll('ads').then(function(ads) {
-        if (ads.length === 0) { document.getElementById('adsEmpty').style.display = 'block'; document.getElementById('adsContent').style.display = 'none'; return; }
-        document.getElementById('adsEmpty').style.display = 'none'; document.getElementById('adsContent').style.display = 'block';
+        if (ads.length === 0) {
+            document.getElementById('adsEmpty').style.display = 'block';
+            document.getElementById('adsContent').style.display = 'none';
+            return;
+        }
+        document.getElementById('adsEmpty').style.display = 'none';
+        document.getElementById('adsContent').style.display = 'block';
         renderAds();
     });
 }
@@ -415,6 +496,7 @@ function recalculateAdsROI() {
             if (!ad.linkedArticle) {
                 ad._roi = 0;
                 ad._drr = 0;
+                ad._trend = ad._trend || 0;
                 promises.push(dbSave('ads', ad));
                 return;
             }
@@ -429,6 +511,7 @@ function recalculateAdsROI() {
             if (!prod) {
                 ad._roi = 0;
                 ad._drr = 0;
+                ad._trend = ad._trend || 0;
                 promises.push(dbSave('ads', ad));
                 return;
             }
@@ -446,18 +529,27 @@ function recalculateAdsROI() {
             var totalProfit = (ad.orders_from_ad || 0) * profitPerUnit;
             ad._roi = spent > 0 ? Math.round((totalProfit - spent) / spent * 100) : 0;
             ad._drr = revenue > 0 ? Math.round((spent / revenue) * 100) : 0;
+            ad._trend = ad._trend || 0;
             promises.push(dbSave('ads', ad));
         });
         return Promise.all(promises);
     });
 }
 
+// ============================================================
+// РЕКЛАМА — ОТРИСОВКА ТАБЛИЦЫ
+// ============================================================
+
 function renderAds() {
+    var sq = document.getElementById('adsSearch').value.toLowerCase();
+    var fl = document.getElementById('adsFilter').value;
+    var sort = document.getElementById('adsSort').value;
+    
     recalculateAdsROI().then(function() {
-        var sq = document.getElementById('adsSearch').value.toLowerCase();
-        var fl = document.getElementById('adsFilter').value;
         Promise.all([dbGetAll('ads'), getAllProducts()]).then(function(r) {
             var ads = r[0], allArticles = r[1];
+            
+            // Фильтрация
             var filt = ads.filter(function(a) {
                 var name = (a.campaign || '').toLowerCase();
                 if (sq && name.indexOf(sq) === -1 && (a.linkedArticle || '').toLowerCase().indexOf(sq) === -1) return false;
@@ -465,50 +557,381 @@ function renderAds() {
                 if (fl === 'linked' && !a.linkedArticle) return false;
                 if (fl === 'effective' && a._roi < 50) return false;
                 if (fl === 'loss' && a._roi >= 0) return false;
+                if (fl === 'active' && a.status !== 'active') return false;
+                if (fl === 'paused' && a.status !== 'paused') return false;
                 return true;
             });
-            renderAdsList(filt, allArticles);
+            
+            // Сортировка
+            filt.sort(function(a, b) {
+                switch(sort) {
+                    case 'roi_asc': return (a._roi || 0) - (b._roi || 0);
+                    case 'spent_desc': return (b.spent || 0) - (a.spent || 0);
+                    case 'orders_desc': return (b.orders_from_ad || 0) - (a.orders_from_ad || 0);
+                    case 'ctr_desc': return (b.ctr || 0) - (a.ctr || 0);
+                    default: return (b._roi || 0) - (a._roi || 0);
+                }
+            });
+            
+            adsDataCache = filt;
+            renderAdsSummary(filt);
+            renderAdsTable(filt);
+            renderAdsPagination(filt.length);
         });
     });
 }
 
-function renderAdsList(ads, allArticles) {
-    var c = document.getElementById('adsList');
-    if (ads.length === 0) { c.innerHTML = '<div class="card" style="text-align:center;padding:20px;">Ничего не найдено</div>'; return; }
-    ads.sort(function(a, b) {
-        var roiA = a._roi || 0;
-        var roiB = b._roi || 0;
-        return roiB - roiA;
-    });
-    var h = '';
-    ads.forEach(function(a) {
-        var linkedLabel = a.linkedArticle || 'Не привязана';
-        var linkedColor = a.linkedArticle ? '#10B981' : '#F59E0B';
-        var roi = a._roi || 0;
-        var drr = a._drr || 0;
-        var roiColor = roi > 0 ? '#10B981' : '#EF4444';
-        var statusIcon = roi > 50 ? '🟢' : roi > 0 ? '🟡' : '🔴';
-        var statusText = roi > 50 ? 'Эффективно' : roi > 0 ? 'На грани' : 'Убыточно';
-        h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📢</span><div class="product-group-info"><div class="product-group-name">' + (a.campaign || 'Без названия') + '</div><div class="product-group-category" style="color:' + linkedColor + ';">' + linkedLabel + '</div></div><div class="product-group-metrics"><div class="product-group-metric"><div class="product-group-metric-label">ROI</div><div class="product-group-metric-value" style="color:' + roiColor + ';">' + roi + '%</div></div><div class="product-group-metric"><div class="product-group-metric-label">ДРР</div><div class="product-group-metric-value">' + drr + '%</div></div><div class="product-group-metric"><div class="product-group-metric-label">Статус</div><div class="product-group-metric-value">' + statusIcon + '</div></div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:12px 16px;font-size:12px;">';
-        h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"><div>Показы: <strong>' + (a.impressions || 0).toLocaleString() + '</strong></div><div>Клики: <strong>' + (a.clicks || 0) + '</strong></div><div>CPC: <strong>' + (a.cpc || 0).toFixed(2) + ' ₽</strong></div><div>Заказы: <strong>' + (a.orders_from_ad || 0) + '</strong></div><div>CR: <strong>' + (a.cr || 0).toFixed(2) + '%</strong></div><div>Затраты: <strong>' + (a.spent || 0).toLocaleString() + ' ₽</strong></div></div>';
-        h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><span style="font-size:11px;color:var(--text-secondary);">Товар:</span><input type="text" id="adLink_' + a.id + '" value="' + (a.linkedArticle || '') + '" placeholder="Начните вводить артикул..." style="flex:1;font-size:11px;" oninput="filterArticleSuggestions(\'adLink_' + a.id + '\')"><div id="adLink_' + a.id + '_list" style="display:none;"></div><button class="btn btn-primary btn-sm" onclick="linkAdToArticle(' + a.id + ')">🔗 Привязать</button></div>';
-        if (a.linkedArticle) {
-            h += '<div style="margin-top:8px;padding:8px;background:#1A1A2E;border-radius:6px;font-size:11px;">';
-            h += '<strong>Рекомендация:</strong> ';
-            if (roi > 100) h += '<span style="color:#10B981;">Отличная эффективность. Увеличьте бюджет.</span>';
-            else if (roi > 50) h += '<span style="color:#10B981;">Хорошо. Можно масштабировать.</span>';
-            else if (roi > 0) h += '<span style="color:#F59E0B;">На грани окупаемости. Проверьте ставку.</span>';
-            else h += '<span style="color:#EF4444;">Убыточно. Снизьте ставку или остановите.</span>';
+function renderAdsSummary(ads) {
+    var totalSpent = ads.reduce(function(s, a) { return s + (a.spent || 0); }, 0);
+    var totalOrders = ads.reduce(function(s, a) { return s + (a.orders_from_ad || 0); }, 0);
+    var totalImpressions = ads.reduce(function(s, a) { return s + (a.impressions || 0); }, 0);
+    var totalClicks = ads.reduce(function(s, a) { return s + (a.clicks || 0); }, 0);
+    var avgRoi = ads.length > 0 ? Math.round(ads.reduce(function(s, a) { return s + (a._roi || 0); }, 0) / ads.length) : 0;
+    
+    var active = ads.filter(function(a) { return a.status === 'active'; }).length;
+    var paused = ads.filter(function(a) { return a.status === 'paused'; }).length;
+    var effective = ads.filter(function(a) { return a._roi > 50; }).length;
+    var loss = ads.filter(function(a) { return a._roi < 0; }).length;
+    
+    // Топ-3 лучшие и худшие
+    var sorted = ads.slice().sort(function(a, b) { return (b._roi || 0) - (a._roi || 0); });
+    var best = sorted.filter(function(a) { return a._roi > 0; }).slice(0, 3);
+    var worst = sorted.slice().reverse().filter(function(a) { return a._roi < 0; }).slice(0, 3);
+    
+    var h = '<div class="ads-summary-grid">';
+    h += '<div class="ads-summary-item"><div class="value">' + ads.length + '</div><div class="label">Всего кампаний</div></div>';
+    h += '<div class="ads-summary-item"><div class="value">' + totalSpent.toLocaleString() + ' ₽</div><div class="label">Общие затраты</div></div>';
+    h += '<div class="ads-summary-item"><div class="value">' + totalOrders + '</div><div class="label">Всего заказов</div></div>';
+    h += '<div class="ads-summary-item"><div class="value" style="color:' + (avgRoi > 0 ? '#10B981' : '#EF4444') + ';">' + avgRoi + '%</div><div class="label">Средний ROI</div></div>';
+    h += '<div class="ads-summary-item"><div class="value">🟢 ' + active + ' ⏸️ ' + paused + '</div><div class="label">Активные / Приостановлены</div></div>';
+    h += '<div class="ads-summary-item"><div class="value">📈 ' + effective + ' 📉 ' + loss + '</div><div class="label">Эффективные / Убыточные</div></div>';
+    h += '</div>';
+    
+    // Топ-3 (компактно, без перегруза)
+    if (best.length > 0 || worst.length > 0) {
+        h += '<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;flex-wrap:wrap;">';
+        if (best.length > 0) {
+            h += '<div><span style="color:#10B981;">🏆 Лучшие:</span> ';
+            best.forEach(function(a, i) {
+                h += '<span style="background:rgba(16,185,129,0.15);padding:2px 8px;border-radius:10px;margin:2px;">' + (a.campaign || '—').substring(0, 20) + ' (' + a._roi + '%)</span>';
+                if (i < best.length - 1) h += ' ';
+            });
             h += '</div>';
         }
-        h += '</div></div></div>';
-    });
-    c.innerHTML = h;
+        if (worst.length > 0) {
+            h += '<div><span style="color:#EF4444;">📉 Худшие:</span> ';
+            worst.forEach(function(a, i) {
+                h += '<span style="background:rgba(239,68,68,0.15);padding:2px 8px;border-radius:10px;margin:2px;">' + (a.campaign || '—').substring(0, 20) + ' (' + a._roi + '%)</span>';
+                if (i < worst.length - 1) h += ' ';
+            });
+            h += '</div>';
+        }
+        h += '</div>';
+    }
+    
+    document.getElementById('adsSummary').innerHTML = h;
 }
 
-function filterArticleSuggestions(inputId) {
+function renderAdsTable(ads) {
+    var start = (adsCurrentPage - 1) * adsPerPage;
+    var end = Math.min(start + adsPerPage, ads.length);
+    var pageAds = ads.slice(start, end);
+    var tbody = document.getElementById('adsTableBody');
+    
+    if (pageAds.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:20px;color:#9CA3AF;">Нет кампаний</td></tr>';
+        return;
+    }
+    
+    var h = '';
+    pageAds.forEach(function(a) {
+        var roi = a._roi || 0;
+        var drr = a._drr || 0;
+        var roiColor = roi > 50 ? '#10B981' : roi > 0 ? '#F59E0B' : '#EF4444';
+        var statusText = a.status === 'active' ? '🟢 Активна' : '⏸️ Приостановлена';
+        var statusClass = a.status === 'active' ? 'status-active' : 'status-paused';
+        
+        // Тренд
+        var trend = a._trend || 0;
+        var trendHtml = trend > 0 ? '<span class="trend-up">▲ +' + trend + '%</span>' : 
+                        trend < 0 ? '<span class="trend-down">▼ ' + trend + '%</span>' : 
+                        '<span class="trend-flat">↔ 0%</span>';
+        
+        var linkedLabel = a.linkedArticle || '—';
+        var linkedColor = a.linkedArticle ? '#10B981' : '#F59E0B';
+        
+        h += '<tr>';
+        h += '<td><input type="checkbox" class="ads-checkbox" data-id="' + a.id + '" onchange="toggleAdSelect(this)"></td>';
+        h += '<td><strong>' + (a.campaign || 'Без названия') + '</strong><br><span style="font-size:10px;color:' + linkedColor + ';">' + linkedLabel + '</span></td>';
+        h += '<td>' + (a.type || '—') + '</td>';
+        h += '<td class="' + statusClass + '">' + statusText + '</td>';
+        h += '<td>' + (a.spent || 0).toLocaleString() + ' ₽</td>';
+        h += '<td>' + (a.impressions || 0).toLocaleString() + '</td>';
+        h += '<td>' + (a.ctr || 0).toFixed(2) + '%</td>';
+        h += '<td>' + (a.orders_from_ad || 0) + '</td>';
+        h += '<td style="color:' + roiColor + ';font-weight:600;">' + roi + '%</td>';
+        h += '<td>' + drr + '%</td>';
+        h += '<td>' + trendHtml + '</td>';
+        h += '<td style="white-space:nowrap;">';
+        h += '<button class="btn btn-xs btn-secondary" onclick="editCampaign(' + a.id + ')" title="Редактировать">✏️</button> ';
+        h += '<button class="btn btn-xs ' + (a.status === 'active' ? 'btn-warning' : 'btn-success') + '" onclick="toggleCampaignStatus(' + a.id + ')" title="' + (a.status === 'active' ? 'Приостановить' : 'Запустить') + '">' + (a.status === 'active' ? '⏸️' : '▶️') + '</button> ';
+        h += '<button class="btn btn-xs btn-danger" onclick="deleteCampaign(' + a.id + ')" title="Удалить">🗑️</button>';
+        h += '</td>';
+        h += '</tr>';
+    });
+    tbody.innerHTML = h;
+    
+    // Обновляем информацию о пагинации
+    document.getElementById('adsShowing').textContent = pageAds.length;
+    document.getElementById('adsTotal').textContent = ads.length;
+    var totalPages = Math.ceil(ads.length / adsPerPage) || 1;
+    document.getElementById('adsPageInfo').textContent = adsCurrentPage + ' / ' + totalPages;
+}
+
+function renderAdsPagination(total) {
+    var totalPages = Math.ceil(total / adsPerPage) || 1;
+    if (adsCurrentPage > totalPages) adsCurrentPage = totalPages;
+    document.getElementById('adsPageInfo').textContent = adsCurrentPage + ' / ' + totalPages;
+    document.getElementById('adsShowing').textContent = Math.min(adsPerPage, total - (adsCurrentPage - 1) * adsPerPage);
+    document.getElementById('adsTotal').textContent = total;
+}
+
+function adsPrevPage() {
+    if (adsCurrentPage > 1) { adsCurrentPage--; renderAds(); }
+}
+
+function adsNextPage() {
+    var total = adsDataCache.length;
+    var totalPages = Math.ceil(total / adsPerPage) || 1;
+    if (adsCurrentPage < totalPages) { adsCurrentPage++; renderAds(); }
+}
+
+// ============================================================
+// РЕКЛАМА — УПРАВЛЕНИЕ КАМПАНИЯМИ
+// ============================================================
+
+function toggleAdSelect(checkbox) {
+    var id = parseInt(checkbox.getAttribute('data-id'));
+    if (checkbox.checked) {
+        if (selectedAds.indexOf(id) === -1) selectedAds.push(id);
+    } else {
+        selectedAds = selectedAds.filter(function(x) { return x !== id; });
+    }
+    // Обновляем "выбрать всё"
+    var allCheckboxes = document.querySelectorAll('.ads-checkbox');
+    var allChecked = true;
+    allCheckboxes.forEach(function(cb) {
+        if (!cb.checked) allChecked = false;
+    });
+    var selectAll = document.getElementById('adsSelectAll');
+    if (selectAll) selectAll.checked = allChecked && allCheckboxes.length > 0;
+}
+
+function toggleAllAds(selectAll) {
+    var checkboxes = document.querySelectorAll('.ads-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = selectAll.checked;
+        if (selectAll.checked) {
+            var id = parseInt(cb.getAttribute('data-id'));
+            if (selectedAds.indexOf(id) === -1) selectedAds.push(id);
+        } else {
+            var id = parseInt(cb.getAttribute('data-id'));
+            selectedAds = selectedAds.filter(function(x) { return x !== id; });
+        }
+    });
+}
+
+function applyBulkAction() {
+    if (selectedAds.length === 0) {
+        showToast('❌ Выберите хотя бы одну кампанию', 'error');
+        return;
+    }
+    var action = confirm('Выбрано ' + selectedAds.length + ' кампаний. Применить массовое действие?\n\n' +
+                         'Нажмите "OK" для приостановки всех выбранных.\n' +
+                         'Нажмите "Отмена" для удаления всех выбранных.');
+    
+    if (action) {
+        // Приостановить все
+        dbGetAll('ads').then(function(ads) {
+            var promises = [];
+            ads.forEach(function(a) {
+                if (selectedAds.indexOf(a.id) !== -1) {
+                    a.status = 'paused';
+                    promises.push(dbSave('ads', a));
+                }
+            });
+            return Promise.all(promises);
+        }).then(function() {
+            selectedAds = [];
+            renderAds();
+            showToast('✅ Выбранные кампании приостановлены', 'success');
+        });
+    } else {
+        // Удалить все
+        if (!confirm('Удалить выбранные кампании?')) return;
+        dbGetAll('ads').then(function(ads) {
+            var promises = [];
+            ads.forEach(function(a) {
+                if (selectedAds.indexOf(a.id) !== -1) {
+                    promises.push(dbDelete('ads', a.id));
+                }
+            });
+            return Promise.all(promises);
+        }).then(function() {
+            selectedAds = [];
+            renderAds();
+            showToast('✅ Выбранные кампании удалены', 'success');
+        });
+    }
+}
+
+function toggleCampaignStatus(id) {
+    dbGetAll('ads').then(function(ads) {
+        var ad = null;
+        ads.forEach(function(a) { if (a.id === id) ad = a; });
+        if (!ad) return;
+        ad.status = ad.status === 'active' ? 'paused' : 'active';
+        return dbSave('ads', ad);
+    }).then(function() {
+        renderAds();
+        showToast('✅ Статус обновлён', 'success');
+    });
+}
+
+function deleteCampaign(id) {
+    if (!confirm('Удалить кампанию?')) return;
+    dbDelete('ads', id).then(function() {
+        renderAds();
+        showToast('✅ Кампания удалена', 'success');
+    });
+}
+
+// ============================================================
+// РЕКЛАМА — СОЗДАНИЕ КАМПАНИИ
+// ============================================================
+
+function openCreateCampaignModal() {
+    document.getElementById('campaignModal').style.display = 'flex';
+    document.getElementById('campaignName').value = '';
+    document.getElementById('campaignArticle').value = '';
+    document.getElementById('campaignBudget').value = 5000;
+    document.getElementById('campaignDailyLimit').value = 1000;
+    document.getElementById('campaignCpc').value = 35;
+    document.getElementById('campaignTargetRoi').value = 50;
+    document.getElementById('campaignType').value = 'Аукцион';
+    document.getElementById('campaignStatus').value = 'active';
+    document.getElementById('campaignArticleList').style.display = 'none';
+}
+
+function closeCampaignModal() {
+    document.getElementById('campaignModal').style.display = 'none';
+}
+
+function createCampaign() {
+    var name = document.getElementById('campaignName').value.trim();
+    if (!name) { showToast('❌ Введите название кампании', 'error'); return; }
+    
+    var article = document.getElementById('campaignArticle').value.trim();
+    var budget = parseFloat(document.getElementById('campaignBudget').value) || 0;
+    var dailyLimit = parseFloat(document.getElementById('campaignDailyLimit').value) || 0;
+    var cpc = parseFloat(document.getElementById('campaignCpc').value) || 0;
+    var type = document.getElementById('campaignType').value;
+    var status = document.getElementById('campaignStatus').value;
+    
+    var ad = {
+        id: Date.now() + Math.random(),
+        campaign: name,
+        type: type,
+        wbId: 'manual_' + Date.now(),
+        impressions: 0,
+        clicks: 0,
+        cpc: cpc,
+        ctr: 0,
+        cr: 0,
+        spent: 0,
+        orders_from_ad: 0,
+        linkedArticle: article || null,
+        status: status,
+        budget: budget,
+        dailyLimit: dailyLimit,
+        _roi: 0,
+        _drr: 0,
+        _trend: 0,
+        created: getYesterdayStr()
+    };
+    
+    dbSave('ads', ad).then(function() {
+        closeCampaignModal();
+        renderAds();
+        showToast('✅ Кампания создана', 'success');
+    });
+}
+
+// ============================================================
+// РЕКЛАМА — РЕДАКТИРОВАНИЕ КАМПАНИИ
+// ============================================================
+
+var editCampaignId = null;
+
+function editCampaign(id) {
+    editCampaignId = id;
+    dbGetAll('ads').then(function(ads) {
+        var ad = null;
+        ads.forEach(function(a) { if (a.id === id) ad = a; });
+        if (!ad) return;
+        
+        document.getElementById('editCampaignName').value = ad.campaign || '';
+        document.getElementById('editCampaignStatus').value = ad.status || 'active';
+        document.getElementById('editCampaignCpc').value = ad.cpc || 0;
+        document.getElementById('editCampaignBudget').value = ad.budget || 0;
+        document.getElementById('editCampaignDailyLimit').value = ad.dailyLimit || 0;
+        
+        document.getElementById('editCampaignModal').style.display = 'flex';
+    });
+}
+
+function closeEditCampaignModal() {
+    document.getElementById('editCampaignModal').style.display = 'none';
+    editCampaignId = null;
+}
+
+function saveEditCampaign() {
+    if (!editCampaignId) return;
+    
+    var name = document.getElementById('editCampaignName').value.trim();
+    if (!name) { showToast('❌ Введите название', 'error'); return; }
+    
+    var status = document.getElementById('editCampaignStatus').value;
+    var cpc = parseFloat(document.getElementById('editCampaignCpc').value) || 0;
+    var budget = parseFloat(document.getElementById('editCampaignBudget').value) || 0;
+    var dailyLimit = parseFloat(document.getElementById('editCampaignDailyLimit').value) || 0;
+    
+    dbGetAll('ads').then(function(ads) {
+        var ad = null;
+        ads.forEach(function(a) { if (a.id === editCampaignId) ad = a; });
+        if (!ad) return;
+        
+        ad.campaign = name;
+        ad.status = status;
+        ad.cpc = cpc;
+        ad.budget = budget;
+        ad.dailyLimit = dailyLimit;
+        
+        return dbSave('ads', ad);
+    }).then(function() {
+        closeEditCampaignModal();
+        renderAds();
+        showToast('✅ Кампания обновлена', 'success');
+    });
+}
+
+// ============================================================
+// РЕКЛАМА — ПРИВЯЗКА ТОВАРА (обновлённая)
+// ============================================================
+
+function filterArticleSuggestions(inputId, listId) {
     var input = document.getElementById(inputId);
-    var list = document.getElementById(inputId + '_list');
+    var list = document.getElementById(listId || inputId + '_list');
     if (!input || !list) return;
     var q = input.value.toLowerCase();
     if (q.length < 1) { list.style.display = 'none'; return; }
@@ -519,7 +942,7 @@ function filterArticleSuggestions(inputId) {
         if (matches.length === 0) { list.style.display = 'none'; return; }
         var h = '';
         matches.forEach(function(m) {
-            h += '<div style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);" onclick="document.getElementById(\'' + inputId + '\').value=\'' + m + '\';document.getElementById(\'' + inputId + '_list\').style.display=\'none\';">' + m + '</div>';
+            h += '<div onclick="document.getElementById(\'' + inputId + '\').value=\'' + m + '\';document.getElementById(\'' + (listId || inputId + '_list') + '\').style.display=\'none\';">' + m + '</div>';
         });
         list.innerHTML = h;
         list.style.display = 'block';
@@ -541,6 +964,7 @@ function filterArticleSuggestions(inputId) {
     });
 }
 
+// Новая версия привязки для таблицы
 function linkAdToArticle(adId) {
     var input = document.getElementById('adLink_' + adId);
     if (!input) return;
@@ -642,7 +1066,7 @@ function mapSalesData(data, errs) { var keys = Object.keys(data[0]), gk = functi
 
 function mapStockData(data, errs) { var keys = Object.keys(data[0]), gk = function(p) { return keys.find(function(k) { return p.some(function(x) { return k.toLowerCase().indexOf(x) !== -1; }); }); }, kA = gk(['артикул', 'article']) || keys[0], kS = gk(['размер', 'size']) || keys[1], kW = gk(['склад', 'warehouse']) || keys[2], kAv = gk(['всего', 'available']) || keys[3], kT = gk(['пути', 'transit']) || keys[4], kR = gk(['возврат', 'returns']) || keys[5], mapped = []; data.forEach(function(r, i) { var a = String(r[kA] || '').trim(); if (!a) { errs.push({ row: i + 1, error: 'Пустой артикул' }); return; } mapped.push({ id: Date.now() + Math.random(), article: a, size: String(r[kS] || '').trim(), warehouse: String(r[kW] || 'Склад').trim(), available: parseInt(r[kAv]) || 0, inTransit: parseInt(r[kT]) || 0, returns: parseInt(r[kR]) || 0 }); }); return mapped; }
 
-function mapAdsData(data) { var keys = Object.keys(data[0]), gk = function(p) { return keys.find(function(k) { return p.some(function(x) { return k.toLowerCase().indexOf(x) !== -1; }); }); }, kCamp = gk(['кампания', 'campaign']) || keys[3], kType = gk(['тип ставки', 'тип']) || keys[1], kId = gk(['id']) || keys[2], kImpr = gk(['показы', 'impressions']) || keys[7], kClicks = gk(['клики', 'clicks']) || keys[9], kCpc = gk(['cpc']) || keys[10], kCtr = gk(['ctr']) || keys[12], kCr = gk(['cr']) || keys[15], kSpent = gk(['затраты', 'spent']) || keys[16], kOrders = gk(['заказанные', 'orders']) || keys[17], mapped = []; data.forEach(function(r) { var camp = String(r[kCamp] || '').trim(); if (!camp) return; mapped.push({ id: Date.now() + Math.random(), campaign: camp, type: String(r[kType] || '').trim(), wbId: String(r[kId] || '').trim(), impressions: parseInt(r[kImpr]) || 0, clicks: parseInt(r[kClicks]) || 0, cpc: parseFloat(String(r[kCpc] || '0').replace(',', '.')) || 0, ctr: parseFloat(String(r[kCtr] || '0').replace(',', '.')) || 0, cr: parseFloat(String(r[kCr] || '0').replace(',', '.')) || 0, spent: parseFloat(String(r[kSpent] || '0').replace(',', '.')) || 0, orders_from_ad: parseInt(r[kOrders]) || 0, linkedArticle: null, _roi: 0, _drr: 0 }); }); return mapped; }
+function mapAdsData(data) { var keys = Object.keys(data[0]), gk = function(p) { return keys.find(function(k) { return p.some(function(x) { return k.toLowerCase().indexOf(x) !== -1; }); }); }, kCamp = gk(['кампания', 'campaign']) || keys[3], kType = gk(['тип ставки', 'тип']) || keys[1], kId = gk(['id']) || keys[2], kImpr = gk(['показы', 'impressions']) || keys[7], kClicks = gk(['клики', 'clicks']) || keys[9], kCpc = gk(['cpc']) || keys[10], kCtr = gk(['ctr']) || keys[12], kCr = gk(['cr']) || keys[15], kSpent = gk(['затраты', 'spent']) || keys[16], kOrders = gk(['заказанные', 'orders']) || keys[17], mapped = []; data.forEach(function(r) { var camp = String(r[kCamp] || '').trim(); if (!camp) return; mapped.push({ id: Date.now() + Math.random(), campaign: camp, type: String(r[kType] || '').trim(), wbId: String(r[kId] || '').trim(), impressions: parseInt(r[kImpr]) || 0, clicks: parseInt(r[kClicks]) || 0, cpc: parseFloat(String(r[kCpc] || '0').replace(',', '.')) || 0, ctr: parseFloat(String(r[kCtr] || '0').replace(',', '.')) || 0, cr: parseFloat(String(r[kCr] || '0').replace(',', '.')) || 0, spent: parseFloat(String(r[kSpent] || '0').replace(',', '.')) || 0, orders_from_ad: parseInt(r[kOrders]) || 0, linkedArticle: null, status: 'active', budget: 0, dailyLimit: 0, _roi: 0, _drr: 0, _trend: 0 }); }); return mapped; }
 
 // ============================================================
 // ЯДРО: PRODUCT
@@ -707,9 +1131,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('.sidebar-version').textContent = 'StockFlow v' + APP_VERSION + ' (' + APP_STAGE + ')';
     document.querySelectorAll('.menu-item').forEach(function(item) { item.addEventListener('click', function() { navigateTo(this.getAttribute('data-page')); }); });
     document.getElementById('sidebarLogo').addEventListener('click', function() { navigateTo('dashboard'); });
-    checkDatabase();
+    
+    // Восстанавливаем состояние меню
+    restoreMenuState();
+    
+    // Кнопки "Загрузить все тестовые данные" и "Очистить всё"
     document.getElementById('loadTestDataBtn').addEventListener('click', loadTestData);
     document.getElementById('clearTestDataBtn').addEventListener('click', clearAllData);
+    
+    checkDatabase();
     document.getElementById('refreshDashboardBtn').addEventListener('click', updateDashboard);
     loadSettings();
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
@@ -736,6 +1166,30 @@ document.addEventListener('DOMContentLoaded', function() {
     setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
     document.getElementById('createPalletBtn').addEventListener('click', createPallet);
     document.querySelectorAll('.wh-tab').forEach(function(tab) { tab.addEventListener('click', function() { switchWarehouse(this.getAttribute('data-warehouse')); }); });
+    
+    // Обработчики для модальных окон
+    document.getElementById('campaignModal').addEventListener('click', function(e) {
+        if (e.target === this) closeCampaignModal();
+    });
+    document.getElementById('editCampaignModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditCampaignModal();
+    });
+    
+    // Обработчик клавиши Escape для закрытия модалок
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeCampaignModal();
+            closeEditCampaignModal();
+        }
+    });
+    
+    // Количество записей на странице
+    document.getElementById('adsPerPage').addEventListener('change', function() {
+        adsPerPage = parseInt(this.value) || 25;
+        adsCurrentPage = 1;
+        renderAds();
+    });
+    
     updateDashboard();
 });
 
