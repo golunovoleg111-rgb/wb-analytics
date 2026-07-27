@@ -6,7 +6,7 @@ var APP_VERSION = '5.0.0';
 var APP_STAGE = 'Beta';
 
 var DB_NAME = 'BeltaneeDB_v5';
-var DB_VERSION = 1;
+var DB_VERSION = 2;
 var STORES = ['sales', 'stock', 'settings', 'shipments'];
 
 var currentCardArticle = null;
