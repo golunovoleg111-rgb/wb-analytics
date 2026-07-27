@@ -61,8 +61,13 @@
 
         <!-- РЕКЛАМА -->
         <section id="page-ads" class="page">
-            <div class="page-header"><h1>📢 Реклама</h1></div>
-            <div id="adsEmpty" class="card" style="text-align:center;"><div style="font-size:36px;margin-bottom:10px;">📥</div><div style="font-size:15px;font-weight:600;margin-bottom:6px;">Нет данных</div><div style="font-size:13px;color:var(--text-secondary);">Импортируйте рекламный отчёт WB в разделе «Импорт»</div></div>
+            <div class="page-header"><h1>📢 Реклама</h1>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="loadTestAdsData()">🧪 Загрузить тестовую рекламу</button>
+                    <button class="btn btn-danger btn-sm" onclick="clearAdsData()">🗑️ Очистить рекламу</button>
+                </div>
+            </div>
+            <div id="adsEmpty" class="card" style="text-align:center;"><div style="font-size:36px;margin-bottom:10px;">📥</div><div style="font-size:15px;font-weight:600;margin-bottom:6px;">Нет данных</div><div style="font-size:13px;color:var(--text-secondary);">Импортируйте рекламный отчёт WB в разделе «Импорт» или загрузите тестовые данные</div></div>
             <div id="adsContent" style="display:none;">
                 <div class="card" style="margin-bottom:14px;"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><input type="text" id="adsSearch" placeholder="🔍 Поиск по названию..." style="flex:1;min-width:180px;" oninput="renderAds()"><select id="adsFilter" style="min-width:140px;" onchange="renderAds()"><option value="all">Все кампании</option><option value="unlinked">Не привязаны</option><option value="linked">Привязаны</option><option value="effective">🟢 Эффективные</option><option value="loss">🔴 Убыточные</option></select></div></div>
                 <div id="adsList"></div>
