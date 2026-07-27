@@ -346,35 +346,31 @@ function switchWarehouse(name) { currentWarehouse = name; document.querySelector
 function createPallet() { var n = document.getElementById('newPalletNumber').value.trim(); if (!n) { showToast('❌ Введите номер палеты', 'error'); return; } dbGetAll('warehouse').then(function(items) { if (items.some(function(i) { return i.type === 'pallet' && i.warehouse === currentWarehouse && i.pallet === n; })) { showToast('❌ Паллета №' + n + ' уже существует', 'error'); return; } return dbSave('warehouse', { id: Date.now(), type: 'pallet', warehouse: currentWarehouse, pallet: n, created: getYesterdayStr() }); }).then(function() { renderWarehouse(); showToast('✅ Паллета создана', 'success'); }); }
 
 function deletePallet(palletNumber) {
+    if (!confirm('Удалить палету №' + palletNumber + ' и всё её содержимое? Это действие необратимо.')) return;
     dbGetAll('warehouse').then(function(items) {
-        var hasItems = items.some(function(i) { return i.pallet === palletNumber && i.warehouse === currentWarehouse && i.type !== 'pallet'; });
-        if (hasItems) { showToast('❌ Паллета не пуста. Удалите все коробки и товары.', 'error'); return; }
-        if (!confirm('Удалить палету №' + palletNumber + '?')) return;
-        var toDelete = items.filter(function(i) { return i.pallet === palletNumber && i.warehouse === currentWarehouse && i.type === 'pallet'; });
+        var toDelete = items.filter(function(i) { return i.pallet === palletNumber && i.warehouse === currentWarehouse; });
         return Promise.all(toDelete.map(function(i) { return dbDelete('warehouse', i.id); }));
     }).then(function() { renderWarehouse(); showToast('✅ Паллета удалена', 'success'); });
 }
 
 function addBoxToPallet(palletNumber, side) { var bl = prompt('Этикетка коробки (например, КЗЖ№1):'); if (!bl) return; dbSave('warehouse', { id: Date.now(), type: 'box', warehouse: currentWarehouse, pallet: palletNumber, side: side, box: bl.trim(), created: getYesterdayStr() }).then(function() { renderWarehouse(); showToast('✅ Коробка добавлена', 'success'); }); }
-
-function moveBox(boxLabel, fromPallet) {
+function deleteBox(boxLabel, palletNumber) {
+    if (!confirm('Удалить коробку ' + boxLabel + ' с палеты №' + palletNumber + ' и все товары в ней?')) return;
     dbGetAll('warehouse').then(function(items) {
-        var pallets = items.filter(function(i) { return i.type === 'pallet' && i.warehouse === currentWarehouse && i.pallet !== fromPallet; });
-        if (pallets.length === 0) { showToast('❌ Нет других палет для перемещения', 'error'); return; }
-        var msg = 'Переместить коробку ' + boxLabel + ' с палеты №' + fromPallet + ' на:\n\n';
-        pallets.forEach(function(p, i) { msg += (i + 1) + '. Паллета №' + p.pallet + '\n'; });
-        var choice = parseInt(prompt(msg));
-        if (!choice || choice < 1 || choice > pallets.length) return;
-        var toPallet = pallets[choice - 1].pallet;
+        var toDelete = items.filter(function(i) { return i.box === boxLabel && i.pallet === palletNumber && i.warehouse === currentWarehouse; });
+        return Promise.all(toDelete.map(function(i) { return dbDelete('warehouse', i.id); }));
+    }).then(function() { renderWarehouse(); showToast('✅ Коробка удалена', 'success'); });
+}
+function moveBox(boxLabel, fromPallet) {
+    var newPallet = prompt('Переместить коробку ' + boxLabel + ' с палеты №' + fromPallet + ' на палету №:');
+    if (!newPallet || newPallet === fromPallet) return;
+    dbGetAll('warehouse').then(function(items) {
+        var palletExists = items.some(function(i) { return i.type === 'pallet' && i.warehouse === currentWarehouse && i.pallet === newPallet; });
+        if (!palletExists) { showToast('❌ Паллета №' + newPallet + ' не найдена', 'error'); return; }
         var boxItems = items.filter(function(i) { return i.box === boxLabel && i.pallet === fromPallet && i.warehouse === currentWarehouse; });
-        var historyNote = getYesterdayStr() + ': перемещена с пал.' + fromPallet + ' на пал.' + toPallet;
-        return Promise.all(boxItems.map(function(i) {
-            i.pallet = toPallet;
-            if (!i.history) i.history = [];
-            i.history.push(historyNote);
-            return dbSave('warehouse', i);
-        }));
-    }).then(function() { renderWarehouse(); showToast('✅ Коробка перемещена', 'success'); });
+        var historyNote = getYesterdayStr() + ': пал.' + fromPallet + ' → пал.' + newPallet;
+        return Promise.all(boxItems.map(function(i) { i.pallet = newPallet; if (!i.history) i.history = []; i.history.push(historyNote); return dbSave('warehouse', i); }));
+    }).then(function() { renderWarehouse(); showToast('✅ Коробка перемещена на пал.' + newPallet, 'success'); });
 }
 
 function addItemToBox(boxId, palletNumber, side) { var a = prompt('Артикул товара:'); if (!a) return; var c = prompt('Цвет:') || '', s = prompt('Размер:') || '', q = parseInt(prompt('Количество:') || '1') || 1; if (q <= 0) return; dbSave('warehouse', { id: Date.now(), type: 'item', warehouse: currentWarehouse, pallet: palletNumber, side: side, box: boxId, article: a, color: c, size: s, quantity: q, status: 'active', created: getYesterdayStr(), history: [] }).then(function() { renderWarehouse(); showToast('✅ Товар добавлен', 'success'); }); }
@@ -393,8 +389,7 @@ function renderWarehouse() {
             h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📦</span><div class="product-group-info"><div class="product-group-name">Паллета №' + pallet.pallet + '</div><div class="product-group-category">' + currentWarehouse + ' · ' + boxes.length + ' коробок · ' + totalQty + ' ед.</div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);"><button class="btn btn-secondary btn-sm" onclick="addBoxToPallet(\'' + pallet.pallet + '\',\'лицевая\')">➕ Коробка (лицо)</button><button class="btn btn-secondary btn-sm" onclick="addBoxToPallet(\'' + pallet.pallet + '\',\'обратная\')">➕ Коробка (оборот)</button><button class="btn btn-danger btn-sm" onclick="deletePallet(\'' + pallet.pallet + '\')" style="margin-left:auto;">🗑️ Удалить палету</button></div>';
             boxes.forEach(function(box) {
                 var boxItems = itemsAll.filter(function(i) { return i.box === box.box; }), boxQty = boxItems.reduce(function(s, i) { return s + (i.quantity || 0); }, 0);
-                h += '<div style="padding:6px 16px 6px 24px;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;"><span><strong>' + box.box + '</strong> (' + box.side + ') — ' + boxQty + ' ед.</span><div style="display:flex;gap:4px;"><button class="btn btn-primary btn-sm" onclick="addItemToBox(\'' + box.box + '\',\'' + pallet.pallet + '\',\'' + box.side + '\')" style="font-size:10px;padding:2px 8px;">➕ Товар</button><button class="btn btn-secondary btn-sm" onclick="moveBox(\'' + box.box + '\',\'' + pallet.pallet + '\')" style="font-size:10px;padding:2px 8px;">↔ Переместить</button></div></div>';
-                if (boxItems.length > 0) { h += '<div style="margin-top:4px;font-size:11px;color:var(--text-secondary);">'; boxItems.forEach(function(item) { h += '<div style="padding:2px 0;">' + item.article + ' ' + item.color + ' ' + item.size + ' — ' + item.quantity + ' шт <button class="btn btn-danger btn-sm" onclick="removeWarehouseItem(' + item.id + ')" style="font-size:9px;padding:1px 6px;">✕</button></div>'; }); h += '</div>'; }
+h += '<div style="padding:6px 16px 6px 24px;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;"><span><strong>' + box.box + '</strong> (' + box.side + ') — ' + boxQty + ' ед.</span><div style="display:flex;gap:4px;"><button class="btn btn-primary btn-sm" onclick="addItemToBox(\'' + box.box + '\',\'' + pallet.pallet + '\',\'' + box.side + '\')" style="font-size:10px;padding:2px 8px;">➕ Товар</button><button class="btn btn-secondary btn-sm" onclick="moveBox(\'' + box.box + '\',\'' + pallet.pallet + '\')" style="font-size:10px;padding:2px 8px;">↔ Переместить</button><button class="btn btn-danger btn-sm" onclick="deleteBox(\'' + box.box + '\',\'' + pallet.pallet + '\')" style="font-size:10px;padding:2px 8px;">🗑️</button></div></div>';                if (boxItems.length > 0) { h += '<div style="margin-top:4px;font-size:11px;color:var(--text-secondary);">'; boxItems.forEach(function(item) { h += '<div style="padding:2px 0;">' + item.article + ' ' + item.color + ' ' + item.size + ' — ' + item.quantity + ' шт <button class="btn btn-danger btn-sm" onclick="removeWarehouseItem(' + item.id + ')" style="font-size:9px;padding:1px 6px;">✕</button></div>'; }); h += '</div>'; }
                 h += '</div>';
             });
             h += '</div></div>';
