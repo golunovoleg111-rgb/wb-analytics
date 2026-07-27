@@ -7,7 +7,7 @@ var APP_STAGE = 'Beta';
 
 var DB_NAME = 'BeltaneeDB_v5';
 var DB_VERSION = 1;
-var STORES = ['sales', 'stock', 'settings'];
+var STORES = ['sales', 'stock', 'settings', 'shipments'];
 
 var currentCardArticle = null;
 var cardChart = null;
@@ -47,6 +47,14 @@ function navigateTo(pageName) {
     if (pageName === 'products') {
         updateProductList();
     }
+
+    if (pageName === 'orders') {
+        updateOrdersPage();
+    }
+
+    if (pageName === 'supplies') {
+        updateSuppliesPage();
+    }
 }
 
 // ============================================================
@@ -80,7 +88,7 @@ function openDB() {
         request.onblocked = function() {
             reject(new Error(
                 'База данных заблокирована. ' +
-                'Закройте другие вкладки BELTANEE и обновите страницу.'
+                'Закройте другие вкладки StockFlow и обновите страницу.'
             ));
         };
     });
@@ -228,7 +236,11 @@ function saveSettings() {
         { key: 'storageOverRate', value: parseFloat(document.getElementById('storageOverRate').value) || 0.15 },
         { key: 'volumePerUnit', value: parseFloat(document.getElementById('volumePerUnit').value) || 5 },
         { key: 'taxSystem', value: document.getElementById('taxSystem').value || 'usn6' },
-        { key: 'patentCost', value: parseFloat(document.getElementById('patentCost').value) || 30000 }
+        { key: 'patentCost', value: parseFloat(document.getElementById('patentCost').value) || 30000 },
+        { key: 'targetStockDays', value: parseInt(document.getElementById('targetStockDays').value) || 60 },
+        { key: 'safetyStockDays', value: parseInt(document.getElementById('safetyStockDays').value) || 30 },
+        { key: 'productionDays', value: parseInt(document.getElementById('productionDays').value) || 14 },
+        { key: 'deliveryDays', value: parseInt(document.getElementById('deliveryDays').value) || 7 }
     ];
 
     dbClear('settings').then(function() {
@@ -259,11 +271,11 @@ function togglePatentField() {
 // ============================================================
 
 var TEST_PRODUCTS = [
-    { article: '21_К_Вельвет_голубой_40', baseArticle: '21_К_Вельвет', category: 'Костюмы', price: 3200, cost: 960 },
-    { article: '27_К_Платье_чёрный_44', baseArticle: '27_К_Платье', category: 'Платья', price: 2100, cost: 2300 },
-    { article: '33_К_Жакет_синий_48', baseArticle: '33_К_Жакет', category: 'Жакеты', price: 4500, cost: 3200 },
-    { article: '41_К_Брюки_серый_42', baseArticle: '41_К_Брюки', category: 'Брюки', price: 3800, cost: 2100 },
-    { article: '15_К_Свитер_бежевый_46', baseArticle: '15_К_Свитер', category: 'Свитеры', price: 2800, cost: 1200 }
+    { article: '21_К_Вельвет_голубой_40', baseArticle: '21_К_Вельвет', category: 'Костюмы', price: 3200, cost: 960, color: 'голубой', size: '40' },
+    { article: '27_К_Платье_чёрный_44', baseArticle: '27_К_Платье', category: 'Платья', price: 2100, cost: 2300, color: 'чёрный', size: '44' },
+    { article: '33_К_Жакет_синий_48', baseArticle: '33_К_Жакет', category: 'Жакеты', price: 4500, cost: 3200, color: 'синий', size: '48' },
+    { article: '41_К_Брюки_серый_42', baseArticle: '41_К_Брюки', category: 'Брюки', price: 3800, cost: 2100, color: 'серый', size: '42' },
+    { article: '15_К_Свитер_бежевый_46', baseArticle: '15_К_Свитер', category: 'Свитеры', price: 2800, cost: 1200, color: 'бежевый', size: '46' }
 ];
 
 function generateTestSales() {
@@ -399,7 +411,11 @@ var appSettings = {
     storageOverRate: 0.15,
     volumePerUnit: 5,
     taxSystem: 'usn6',
-    patentCost: 30000
+    patentCost: 30000,
+    targetStockDays: 60,
+    safetyStockDays: 30,
+    productionDays: 14,
+    deliveryDays: 7
 };
 
 function loadAppSettings() {
@@ -544,7 +560,7 @@ function renderAttentionBlock(stats) {
 }
 
 // ============================================================
-// СТРАНИЦА ТОВАРОВ (ГРУППИРОВКА)
+// СТРАНИЦА ТОВАРОВ
 // ============================================================
 
 function updateProductList() {
@@ -620,7 +636,6 @@ function renderGroupedProducts(products) {
     var searchQuery = document.getElementById('productSearch').value.toLowerCase();
     var filter = document.getElementById('productFilter').value;
 
-    // Группируем по базовому артикулу
     var groups = {};
     products.forEach(function(p) {
         var base = p.baseArticle || p.article;
@@ -638,7 +653,6 @@ function renderGroupedProducts(products) {
         groups[base].totalSales30 += p.sales30;
     });
 
-    // Фильтрация групп
     var groupKeys = Object.keys(groups);
     var filteredGroups = groupKeys.filter(function(key) {
         var group = groups[key];
@@ -741,6 +755,268 @@ function toggleGroup(header) {
 }
 
 // ============================================================
+// СТРАНИЦА ЗАКАЗОВ
+// ============================================================
+
+function updateOrdersPage() {
+    Promise.all([
+        dbGetAll('sales'),
+        dbGetAll('stock')
+    ]).then(function(results) {
+        if (results[0].length === 0 && results[1].length === 0) {
+            document.getElementById('ordersEmpty').style.display = 'block';
+            document.getElementById('ordersContent').style.display = 'none';
+            return;
+        }
+        document.getElementById('ordersEmpty').style.display = 'none';
+        document.getElementById('ordersContent').style.display = 'block';
+        renderOrders();
+    });
+}
+
+function renderOrders() {
+    var period = parseInt(document.getElementById('ordersPeriodSelect').value) || 30;
+    var searchQuery = document.getElementById('ordersSearch').value.toLowerCase();
+    var filter = document.getElementById('ordersFilter').value;
+
+    getAllProducts().then(function(articles) {
+        var promises = articles.map(function(article) {
+            return buildProduct(article);
+        });
+        return Promise.all(promises);
+    }).then(function(products) {
+        var filtered = products.filter(function(p) {
+            if (searchQuery && p.article.toLowerCase().indexOf(searchQuery) === -1) return false;
+            if (filter === 'critical' && p.forecast.urgency !== 'critical') return false;
+            if (filter === 'soon' && p.forecast.urgency !== 'soon') return false;
+            if (filter === 'normal' && p.forecast.urgency !== 'normal') return false;
+            return true;
+        });
+
+        filtered.sort(function(a, b) {
+            return a.forecast.daysUntilStockout - b.forecast.daysUntilStockout;
+        });
+
+        renderOrdersSummary(filtered);
+        renderOrdersList(filtered, period);
+    });
+}
+
+function renderOrdersSummary(products) {
+    var critical = products.filter(function(p) { return p.forecast.urgency === 'critical'; }).length;
+    var soon = products.filter(function(p) { return p.forecast.urgency === 'soon'; }).length;
+    var normal = products.filter(function(p) { return p.forecast.urgency === 'normal'; }).length;
+
+    document.getElementById('ordersSummary').innerHTML =
+        '<div style="display: flex; gap: 14px;">' +
+        '<div class="card" style="flex: 1; border-left: 4px solid #EF4444;"><div style="font-size: 20px; font-weight: 600; color: #EF4444;">' + critical + '</div><div style="font-size: 11px; color: var(--text-secondary);">🔴 Срочно</div></div>' +
+        '<div class="card" style="flex: 1; border-left: 4px solid #F59E0B;"><div style="font-size: 20px; font-weight: 600; color: #F59E0B;">' + soon + '</div><div style="font-size: 11px; color: var(--text-secondary);">🟡 Скоро</div></div>' +
+        '<div class="card" style="flex: 1; border-left: 4px solid #10B981;"><div style="font-size: 20px; font-weight: 600; color: #10B981;">' + normal + '</div><div style="font-size: 11px; color: var(--text-secondary);">🟢 Норма</div></div>' +
+        '</div>';
+}
+
+function renderOrdersList(products, period) {
+    var container = document.getElementById('ordersList');
+    var html = '';
+
+    products.forEach(function(p) {
+        var urgencyColor = p.forecast.urgency === 'critical' ? '#EF4444' : p.forecast.urgency === 'soon' ? '#F59E0B' : '#10B981';
+        var urgencyLabel = p.forecast.urgency === 'critical' ? '🔴 Срочно' : p.forecast.urgency === 'soon' ? '🟡 Скоро' : '🟢 Норма';
+
+        html += '<div class="product-group">';
+        html += '<div class="product-group-header" onclick="toggleGroup(this)">';
+        html += '<span class="product-group-icon">📦</span>';
+        html += '<div class="product-group-info">';
+        html += '<div class="product-group-name">' + p.article + '</div>';
+        html += '<div class="product-group-category">' + p.category + ' · ' + p.model + '</div>';
+        html += '</div>';
+        html += '<div class="product-group-metrics">';
+        html += '<div class="product-group-metric"><div class="product-group-metric-label">Остаток</div><div class="product-group-metric-value">' + p.stock.total + '</div></div>';
+        html += '<div class="product-group-metric"><div class="product-group-metric-label">Продаж/день</div><div class="product-group-metric-value">' + p.forecast.dailyDemand.toFixed(1) + '</div></div>';
+        html += '<div class="product-group-metric"><div class="product-group-metric-label">Дней</div><div class="product-group-metric-value" style="color: ' + urgencyColor + ';">' + p.forecast.daysUntilStockout + '</div></div>';
+        html += '<div class="product-group-metric"><div class="product-group-metric-label">Заказ</div><div class="product-group-metric-value">' + p.forecast.recommendedOrder + ' шт</div></div>';
+        html += '</div>';
+        html += '<span class="product-group-arrow">▶</span>';
+        html += '</div>';
+
+        html += '<div class="product-group-items">';
+        html += '<div style="padding: 12px 16px; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">';
+        html += '<div><span style="color: var(--text-secondary);">Остатки WB:</span> <strong>' + p.stock.wb + '</strong></div>';
+        html += '<div><span style="color: var(--text-secondary);">В пути:</span> <strong>' + p.stock.inTransit + '</strong></div>';
+        html += '<div><span style="color: var(--text-secondary);">Свой склад:</span> <strong>' + p.stock.ownWarehouse + '</strong></div>';
+        html += '<div><span style="color: var(--text-secondary);">Продажи 7д:</span> <strong>' + p.sales.last7days + '</strong></div>';
+        html += '<div><span style="color: var(--text-secondary);">Продажи 14д:</span> <strong>' + p.sales.last14days + '</strong></div>';
+        html += '<div><span style="color: var(--text-secondary);">Продажи 30д:</span> <strong>' + p.sales.last30days + '</strong></div>';
+        html += '<div><span style="color: var(--text-secondary);">Маржа:</span> <strong>' + p.metrics.margin + '%</strong></div>';
+        html += '<div><span style="color: var(--text-secondary);">Цена:</span> <strong>' + p.sellingPrice.toLocaleString('ru-RU') + ' ₽</strong></div>';
+        html += '<div><span style="color: ' + urgencyColor + ';">' + urgencyLabel + '</span></div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+    });
+
+    container.innerHTML = html || '<div class="card" style="text-align: center; padding: 20px; color: var(--text-secondary);">Нет данных</div>';
+}
+
+// ============================================================
+// СТРАНИЦА ПОСТАВОК
+// ============================================================
+
+var supplyCart = [];
+
+function updateSuppliesPage() {
+    renderSupplyCart();
+    renderSupplyHistory();
+}
+
+function addToSupplyCart() {
+    var article = document.getElementById('supplyArticle').value.trim();
+    var size = document.getElementById('supplySize').value.trim();
+    var qty = parseInt(document.getElementById('supplyQty').value) || 1;
+    var pallet = document.getElementById('supplyPallet').value.trim();
+
+    if (!article) {
+        showToast('❌ Введите артикул', 'error');
+        return;
+    }
+
+    supplyCart.push({
+        article: article,
+        size: size,
+        quantity: qty,
+        pallet: pallet || 'Без паллеты'
+    });
+
+    document.getElementById('supplyArticle').value = '';
+    document.getElementById('supplySize').value = '';
+    document.getElementById('supplyQty').value = '1';
+    document.getElementById('supplyPallet').value = '';
+
+    renderSupplyCart();
+    showToast('✅ Товар добавлен', 'success');
+}
+
+function removeFromSupplyCart(index) {
+    supplyCart.splice(index, 1);
+    renderSupplyCart();
+}
+
+function renderSupplyCart() {
+    var container = document.getElementById('supplyCart');
+    var totalPlaces = 0;
+    supplyCart.forEach(function(item) { totalPlaces += item.quantity; });
+
+    document.getElementById('supplyPlaces').textContent = totalPlaces;
+    document.getElementById('supplyWeight').textContent = (totalPlaces * 0.5).toFixed(1) + ' кг';
+    document.getElementById('supplyVolume').textContent = (totalPlaces * 5) + ' л';
+
+    if (supplyCart.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 13px;">Корзина пуста. Добавьте товары.</div>';
+        return;
+    }
+
+    var html = '';
+    supplyCart.forEach(function(item, index) {
+        html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px;">';
+        html += '<span style="flex: 1;">' + item.article + '</span>';
+        html += '<span style="width: 50px; text-align: center;">' + (item.size || '—') + '</span>';
+        html += '<span style="width: 50px; text-align: center;">' + item.quantity + '</span>';
+        html += '<span style="width: 80px; text-align: center; font-size: 10px;">' + item.pallet + '</span>';
+        html += '<button class="btn btn-danger btn-sm" onclick="removeFromSupplyCart(' + index + ')" style="padding: 2px 6px; font-size: 10px;">✕</button>';
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+function createSupply() {
+    if (supplyCart.length === 0) {
+        showToast('❌ Корзина пуста', 'error');
+        return;
+    }
+
+    var totalPlaces = 0;
+    supplyCart.forEach(function(item) { totalPlaces += item.quantity; });
+
+    var supply = {
+        id: Date.now(),
+        name: 'Поставка #' + new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+        date: getYesterdayStr(),
+        items: supplyCart.length,
+        places: totalPlaces,
+        weight: totalPlaces * 0.5,
+        volume: totalPlaces * 5,
+        status: 'planned',
+        cart: JSON.parse(JSON.stringify(supplyCart))
+    };
+
+    dbSave('shipments', supply).then(function() {
+        supplyCart = [];
+        renderSupplyCart();
+        renderSupplyHistory();
+        showToast('✅ Поставка создана', 'success');
+    }).catch(function(error) {
+        showToast('❌ Ошибка: ' + error.message, 'error');
+    });
+}
+
+function updateSupplyStatus(id, newStatus) {
+    dbGetAll('shipments').then(function(shipments) {
+        var supply = null;
+        shipments.forEach(function(s) { if (s.id === id) supply = s; });
+        if (!supply) return;
+
+        supply.status = newStatus;
+        return dbSave('shipments', supply);
+    }).then(function() {
+        renderSupplyHistory();
+        showToast('✅ Статус обновлён', 'success');
+    });
+}
+
+function renderSupplyHistory() {
+    var tbody = document.getElementById('supplyHistoryBody');
+    dbGetAll('shipments').then(function(shipments) {
+        if (shipments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">Нет поставок</td></tr>';
+            return;
+        }
+
+        shipments.sort(function(a, b) { return b.id - a.id; });
+
+        var statusLabels = {
+            'planned': '📋 Запланировано',
+            'in_transit': '🚛 В пути',
+            'accepted': '✅ Принято',
+            'archive': '📦 Архив'
+        };
+
+        var html = '';
+        shipments.forEach(function(s) {
+            var statusText = statusLabels[s.status] || s.status;
+            html += '<tr>';
+            html += '<td>' + (s.date || '—') + '</td>';
+            html += '<td>' + s.name + '</td>';
+            html += '<td>' + s.items + '</td>';
+            html += '<td>' + s.places + '</td>';
+            html += '<td>' + statusText + '</td>';
+            html += '<td>';
+            if (s.status === 'planned') {
+                html += '<button class="btn btn-primary btn-sm" onclick="updateSupplyStatus(' + s.id + ', \'in_transit\')" style="font-size: 10px; padding: 2px 8px;">🚛 В путь</button> ';
+            }
+            if (s.status === 'in_transit') {
+                html += '<button class="btn btn-success btn-sm" onclick="updateSupplyStatus(' + s.id + ', \'accepted\')" style="font-size: 10px; padding: 2px 8px;">✅ Принято</button> ';
+            }
+            if (s.status === 'accepted') {
+                html += '<button class="btn btn-secondary btn-sm" onclick="updateSupplyStatus(' + s.id + ', \'archive\')" style="font-size: 10px; padding: 2px 8px;">📦 Архив</button>';
+            }
+            html += '</td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+    });
+}
+
+// ============================================================
 // КАРТОЧКА ТОВАРА
 // ============================================================
 
@@ -751,6 +1027,16 @@ function openProductCard(article) {
         p.classList.remove('active');
     });
     document.getElementById('page-product-card').classList.add('active');
+
+    // Контекст возврата
+    var backContext = document.getElementById('backContext');
+    var currentPage = '';
+    document.querySelectorAll('.menu-item.active').forEach(function(item) {
+        currentPage = item.getAttribute('data-page');
+    });
+    if (currentPage === 'orders') backContext.textContent = 'из Заказов';
+    else if (currentPage === 'supplies') backContext.textContent = 'из Поставок';
+    else backContext.textContent = 'из Товаров';
 
     Promise.all([
         dbGetAll('sales'),
@@ -834,7 +1120,11 @@ function closeProductCard() {
         cardChart.destroy();
         cardChart = null;
     }
-    navigateTo('products');
+
+    var backContext = document.getElementById('backContext');
+    if (backContext.textContent.indexOf('Заказов') !== -1) navigateTo('orders');
+    else if (backContext.textContent.indexOf('Поставок') !== -1) navigateTo('supplies');
+    else navigateTo('products');
 }
 
 function renderCardChart(sales, days) {
@@ -1085,11 +1375,11 @@ function downloadTemplate(type) {
     if (type === 'sales') {
         headers = ['Артикул продавца', 'Дата', 'Заказано', 'Выкуплено', 'Сумма заказов', 'Возвраты'];
         example = ['21_К_Вельвет_голубой_40', '23.07.2026', '5', '4', '16000', '0'];
-        fileName = 'BELTANEE_Шаблон_Продажи.xlsx';
+        fileName = 'StockFlow_Шаблон_Продажи.xlsx';
     } else if (type === 'stock') {
         headers = ['Артикул продавца', 'Размер', 'Склад', 'Всего на складе', 'В пути', 'Возвраты'];
         example = ['21_К_Вельвет_голубой_40', '40', 'Коледино', '50', '10', '2'];
-        fileName = 'BELTANEE_Шаблон_Остатки.xlsx';
+        fileName = 'StockFlow_Шаблон_Остатки.xlsx';
     } else {
         return;
     }
@@ -1293,6 +1583,148 @@ function mapStockData(data, errors) {
 }
 
 // ============================================================
+// ЯДРО СИСТЕМЫ: PRODUCT
+// ============================================================
+
+function buildProduct(article) {
+    return Promise.all([
+        dbGetAll('sales'),
+        dbGetAll('stock'),
+        dbGetAll('shipments'),
+        loadAppSettings()
+    ]).then(function(results) {
+        var sales = results[0];
+        var stock = results[1];
+        var shipments = results[2];
+
+        var productInfo = getProductInfo(article);
+
+        var articleSales = sales.filter(function(s) {
+            return s.article === article;
+        });
+
+        var articleStock = stock.filter(function(s) {
+            return s.article === article;
+        });
+        var wbStock = getTotalStock(article, articleStock);
+        var inTransit = 0;
+        articleStock.forEach(function(s) {
+            inTransit += s.inTransit || 0;
+        });
+
+        var ownWarehouse = 0;
+        shipments.forEach(function(s) {
+            if (s.article === article && s.status === 'own_warehouse') {
+                ownWarehouse += s.quantity || 0;
+            }
+        });
+
+        var today = new Date();
+        var days7ago = new Date(today); days7ago.setDate(days7ago.getDate() - 7);
+        var days14ago = new Date(today); days14ago.setDate(days14ago.getDate() - 14);
+        var days30ago = new Date(today); days30ago.setDate(days30ago.getDate() - 30);
+
+        var sales7 = 0, sales14 = 0, sales30 = 0;
+        articleSales.forEach(function(s) {
+            var parts = s.date.split('.');
+            var saleDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            if (saleDate >= days7ago) sales7 += s.orders || 0;
+            if (saleDate >= days14ago) sales14 += s.orders || 0;
+            if (saleDate >= days30ago) sales30 += s.orders || 0;
+        });
+
+        var totalStock = wbStock + inTransit + ownWarehouse;
+        var avgPerDay30 = sales30 / 30;
+
+        var io = calculateIO(wbStock, sales30);
+        var ioInfo = getIOStatus(io);
+        var daysLeft = calculateDaysLeft(totalStock, sales30);
+        var margin = calculateMargin(productInfo.price, productInfo.cost);
+
+        var targetDays = parseInt(appSettings.targetStockDays) || 60;
+        var recommendedOrder = Math.max(0, Math.round((avgPerDay30 * targetDays) - totalStock));
+        var urgency;
+        if (daysLeft <= 7) urgency = 'critical';
+        else if (daysLeft <= 14) urgency = 'soon';
+        else urgency = 'normal';
+
+        return {
+            productId: article,
+            article: article,
+            model: productInfo.baseArticle || article,
+            color: productInfo.color || '',
+            size: productInfo.size || article.split('_').pop(),
+            category: productInfo.category || 'Товар',
+            barcode: productInfo.barcode || '',
+            weight: 0.5,
+            volume: parseFloat(appSettings.volumePerUnit) || 5,
+            costPrice: productInfo.cost,
+            sellingPrice: productInfo.price,
+
+            stock: {
+                wb: wbStock,
+                inTransit: inTransit,
+                ownWarehouse: ownWarehouse,
+                total: totalStock
+            },
+
+            sales: {
+                last7days: sales7,
+                last14days: sales14,
+                last30days: sales30,
+                avgPerDay7: parseFloat((sales7 / 7).toFixed(1)),
+                avgPerDay14: parseFloat((sales14 / 14).toFixed(1)),
+                avgPerDay30: parseFloat((sales30 / 30).toFixed(1))
+            },
+
+            metrics: {
+                io: io,
+                ioStatus: ioInfo.status,
+                ioColor: ioInfo.color,
+                daysLeft: daysLeft,
+                margin: margin,
+                profit: productInfo.price - productInfo.cost
+            },
+
+            forecast: {
+                dailyDemand: parseFloat(avgPerDay30.toFixed(1)),
+                daysUntilStockout: daysLeft,
+                recommendedOrder: recommendedOrder,
+                urgency: urgency
+            }
+        };
+    });
+}
+
+function getAllProducts() {
+    return Promise.all([
+        dbGetAll('sales'),
+        dbGetAll('stock')
+    ]).then(function(results) {
+        var sales = results[0];
+        var stock = results[1];
+        var articles = {};
+        sales.forEach(function(s) { articles[s.article] = true; });
+        stock.forEach(function(s) { articles[s.article] = true; });
+        TEST_PRODUCTS.forEach(function(p) { articles[p.article] = true; });
+        return Object.keys(articles).sort();
+    });
+}
+
+function updateProduct(article, changes) {
+    var product = null;
+    TEST_PRODUCTS.forEach(function(p) {
+        if (p.article === article) product = p;
+    });
+    if (product) {
+        if (changes.price !== undefined) product.price = changes.price;
+        if (changes.cost !== undefined) product.cost = changes.cost;
+        if (changes.category !== undefined) product.category = changes.category;
+        if (changes.baseArticle !== undefined) product.baseArticle = changes.baseArticle;
+    }
+}
+
+// ============================================================
 // ОБЩИЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================================
 
@@ -1309,7 +1741,10 @@ function getProductInfo(article) {
             baseArticle: article.split('_').slice(0, -2).join('_'),
             category: 'Товар',
             price: 0,
-            cost: 0
+            cost: 0,
+            color: '',
+            size: article.split('_').pop(),
+            barcode: ''
         };
     }
     return result;
@@ -1384,10 +1819,9 @@ function getYesterdayStr() {
 document.addEventListener('DOMContentLoaded', function() {
     var versionEl = document.querySelector('.sidebar-version');
     if (versionEl) {
-        versionEl.textContent = 'BELTANEE v' + APP_VERSION + ' (' + APP_STAGE + ')';
+        versionEl.textContent = 'StockFlow v' + APP_VERSION + ' (' + APP_STAGE + ')';
     }
 
-    // Навигация
     document.querySelectorAll('.menu-item').forEach(function(item) {
         item.addEventListener('click', function() {
             var page = this.getAttribute('data-page');
@@ -1399,22 +1833,16 @@ document.addEventListener('DOMContentLoaded', function() {
         navigateTo('dashboard');
     });
 
-    // Проверка базы данных
     checkDatabase();
 
-    // Тестовые данные
     document.getElementById('loadTestDataBtn').addEventListener('click', loadTestData);
     document.getElementById('clearTestDataBtn').addEventListener('click', clearAllData);
-
-    // Обновление главной
     document.getElementById('refreshDashboardBtn').addEventListener('click', updateDashboard);
 
-    // Настройки
     loadSettings();
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
     document.getElementById('taxSystem').addEventListener('change', togglePatentField);
 
-    // Товары: поиск и фильтры
     document.getElementById('productSearch').addEventListener('input', function() {
         refreshProductTable();
     });
@@ -1427,6 +1855,27 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('productSearch').value = '';
         document.getElementById('productFilter').value = 'all';
         refreshProductTable();
+    });
+
+    // Заказы
+    document.getElementById('ordersPeriodSelect').addEventListener('change', renderOrders);
+    document.getElementById('ordersSearch').addEventListener('input', renderOrders);
+    document.getElementById('ordersFilter').addEventListener('change', renderOrders);
+    document.getElementById('clearOrdersFilterBtn').addEventListener('click', function() {
+        document.getElementById('ordersSearch').value = '';
+        document.getElementById('ordersFilter').value = 'all';
+        renderOrders();
+    });
+
+    document.getElementById('exportOrdersBtn').addEventListener('click', function() {
+        showToast('📤 Экспорт в Excel будет добавлен в следующем обновлении', 'success');
+    });
+
+    // Поставки
+    document.getElementById('addToSupplyBtn').addEventListener('click', addToSupplyCart);
+    document.getElementById('createSupplyBtn').addEventListener('click', createSupply);
+    document.getElementById('addFromWarehouseBtn').addEventListener('click', function() {
+        showToast('📦 Добавление со склада будет доступно в следующем обновлении', 'success');
     });
 
     // Карточка товара
@@ -1479,7 +1928,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
     setupImportDropZone('stockDropZone', 'stockFileInput', 'stock');
 
-    // Обновляем главную при старте
     updateDashboard();
 });
 
