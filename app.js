@@ -129,6 +129,114 @@ var TEST_PRODUCTS = [
     { article: '15_К_Свитер_бежевый_46', baseArticle: '15_К_Свитер', category: 'Свитеры', price: 2800, cost: 1200, color: 'бежевый', size: '46' }
 ];
 
+var TEST_ADS = [
+    {
+        campaign: 'Кампания 1 (Вельвет)',
+        type: 'Аукцион',
+        wbId: '36386799',
+        impressions: 12500,
+        clicks: 320,
+        cpc: 45.5,
+        ctr: 2.56,
+        cr: 4.2,
+        spent: 14560,
+        orders_from_ad: 13,
+        linkedArticle: '21_К_Вельвет_голубой_40',
+        _roi: 0,
+        _drr: 0
+    },
+    {
+        campaign: 'Кампания 2 (Платье)',
+        type: 'Аукцион',
+        wbId: '36386800',
+        impressions: 8400,
+        clicks: 180,
+        cpc: 32.8,
+        ctr: 2.14,
+        cr: 3.1,
+        spent: 5904,
+        orders_from_ad: 5,
+        linkedArticle: '27_К_Платье_чёрный_44',
+        _roi: 0,
+        _drr: 0
+    },
+    {
+        campaign: 'Кампания 3 (Жакет)',
+        type: 'Автоставка',
+        wbId: '36386801',
+        impressions: 21500,
+        clicks: 540,
+        cpc: 28.2,
+        ctr: 2.51,
+        cr: 2.8,
+        spent: 15228,
+        orders_from_ad: 15,
+        linkedArticle: '33_К_Жакет_синий_48',
+        _roi: 0,
+        _drr: 0
+    },
+    {
+        campaign: 'Кампания 4 (Брюки)',
+        type: 'Аукцион',
+        wbId: '36386802',
+        impressions: 6800,
+        clicks: 95,
+        cpc: 52.1,
+        ctr: 1.40,
+        cr: 2.1,
+        spent: 4950,
+        orders_from_ad: 2,
+        linkedArticle: '41_К_Брюки_серый_42',
+        _roi: 0,
+        _drr: 0
+    },
+    {
+        campaign: 'Кампания 5 (Свитер)',
+        type: 'Автоставка',
+        wbId: '36386803',
+        impressions: 32000,
+        clicks: 890,
+        cpc: 18.5,
+        ctr: 2.78,
+        cr: 3.5,
+        spent: 16465,
+        orders_from_ad: 31,
+        linkedArticle: '15_К_Свитер_бежевый_46',
+        _roi: 0,
+        _drr: 0
+    },
+    {
+        campaign: 'Кампания 6 (Новая)',
+        type: 'Аукцион',
+        wbId: '36386804',
+        impressions: 3200,
+        clicks: 42,
+        cpc: 48.2,
+        ctr: 1.31,
+        cr: 0.5,
+        spent: 2024,
+        orders_from_ad: 0,
+        linkedArticle: null,
+        _roi: 0,
+        _drr: 0
+    },
+    {
+        campaign: 'Кампания 7 (Тестовая)',
+        type: 'Автоставка',
+        wbId: '36386805',
+        impressions: 9400,
+        clicks: 210,
+        cpc: 35.6,
+        ctr: 2.23,
+        cr: 4.8,
+        spent: 7476,
+        orders_from_ad: 10,
+        linkedArticle: null,
+        _roi: 0,
+        _drr: 0
+    }
+];
+
 function generateTestSales() {
     var sales = [], today = new Date();
     TEST_PRODUCTS.forEach(function(p) { var bs = Math.floor(Math.random() * 5) + 1; for (var i = 29; i >= 0; i--) { var d = new Date(today); d.setDate(d.getDate() - i); var ds = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); var o = Math.max(0, bs + Math.floor(Math.random() * 3) - 1); if (o === 0) continue; var del = Math.floor(o * (0.7 + Math.random() * 0.25)); sales.push({ id: Date.now() + Math.random(), article: p.article, date: ds, orders: o, delivered: del, returns: o - del, amount: o * p.price }); } });
@@ -142,12 +250,57 @@ function generateTestStock() {
 }
 
 function loadTestData() {
-    Promise.all([dbClear('sales'), dbClear('stock')]).then(function() { return Promise.all(generateTestSales().map(function(s) { return dbSave('sales', s); })); }).then(function() { return Promise.all(generateTestStock().map(function(s) { return dbSave('stock', s); })); }).then(function() { updateDashboard(); updateProductList(); });
+    Promise.all([dbClear('sales'), dbClear('stock'), dbClear('ads')]).then(function() {
+        return Promise.all(generateTestSales().map(function(s) { return dbSave('sales', s); }));
+    }).then(function() {
+        return Promise.all(generateTestStock().map(function(s) { return dbSave('stock', s); }));
+    }).then(function() {
+        return loadTestAdsData();
+    }).then(function() {
+        updateDashboard();
+        updateProductList();
+        updateAdsPage();
+        showToast('✅ Тестовые данные загружены', 'success');
+    });
 }
 
 function clearAllData() {
     if (!confirm('Удалить все данные?')) return;
-    Promise.all([dbClear('sales'), dbClear('stock')]).then(function() { updateDashboard(); updateProductList(); showToast('✅ Данные очищены', 'success'); });
+    Promise.all([dbClear('sales'), dbClear('stock'), dbClear('ads')]).then(function() {
+        updateDashboard();
+        updateProductList();
+        updateAdsPage();
+        showToast('✅ Данные очищены', 'success');
+    });
+}
+
+// ============================================================
+// ТЕСТОВЫЕ ДАННЫЕ РЕКЛАМЫ
+// ============================================================
+
+function loadTestAdsData() {
+    return dbClear('ads').then(function() {
+        return Promise.all(TEST_ADS.map(function(ad) {
+            var copy = JSON.parse(JSON.stringify(ad));
+            copy.id = Date.now() + Math.random();
+            return dbSave('ads', copy);
+        }));
+    }).then(function() {
+        return recalculateAdsROI();
+    }).then(function() {
+        updateAdsPage();
+        showToast('✅ Загружено ' + TEST_ADS.length + ' рекламных кампаний', 'success');
+    }).catch(function(e) {
+        showToast('❌ Ошибка: ' + e.message, 'error');
+    });
+}
+
+function clearAdsData() {
+    if (!confirm('Удалить все рекламные данные?')) return;
+    dbClear('ads').then(function() {
+        updateAdsPage();
+        showToast('✅ Рекламные данные очищены', 'success');
+    });
 }
 
 // ============================================================
@@ -161,7 +314,7 @@ function calculateMargin(price, cost) { if (price === 0) return 0; return parseF
 
 var appSettings = { fboCommission: 15, fbsCommission: 10, storageBaseRate: 0.07, storageOverRate: 0.15, volumePerUnit: 5, taxSystem: 'usn6', patentCost: 30000, targetStockDays: 60, safetyStockDays: 30, productionDays: 14, deliveryDays: 7 };
 
-function loadAppSettings() { return dbGetAll('settings').then(function(d) { d.forEach(function(x) { if (appSettings.hasOwnProperty(x.key)) appSettings[x.key] = x.value; }); }); }
+function loadAppSettings() { return dbGetAll('settings').then(function(d) { d.forEach(function(x) { if (appSettings.hasOwnProperty(x.key)) appSettings[x.key] = x.value; }); return appSettings; }); }
 
 // ============================================================
 // ГЛАВНАЯ
@@ -254,26 +407,79 @@ function updateAdsPage() {
     });
 }
 
-function renderAds() {
-    var sq = document.getElementById('adsSearch').value.toLowerCase(), fl = document.getElementById('adsFilter').value;
-    Promise.all([dbGetAll('ads'), getAllProducts()]).then(function(r) {
-        var ads = r[0], arts = r[1];
-        var filt = ads.filter(function(a) {
-            var name = (a.campaign || '').toLowerCase();
-            if (sq && name.indexOf(sq) === -1 && (a.linkedArticle || '').toLowerCase().indexOf(sq) === -1) return false;
-            if (fl === 'unlinked' && a.linkedArticle) return false;
-            if (fl === 'linked' && !a.linkedArticle) return false;
-            if (fl === 'effective' && a._roi < 0) return false;
-            if (fl === 'loss' && a._roi >= 0) return false;
-            return true;
+function recalculateAdsROI() {
+    return Promise.all([dbGetAll('ads'), getAllProducts(), loadAppSettings()]).then(function(r) {
+        var ads = r[0], allArticles = r[1], settings = r[2];
+        var promises = [];
+        ads.forEach(function(ad) {
+            if (!ad.linkedArticle) {
+                ad._roi = 0;
+                ad._drr = 0;
+                promises.push(dbSave('ads', ad));
+                return;
+            }
+            var prod = null;
+            for (var i = 0; i < allArticles.length; i++) {
+                if (allArticles[i] === ad.linkedArticle) {
+                    var info = getProductInfo(ad.linkedArticle);
+                    prod = { article: ad.linkedArticle, price: info.price, cost: info.cost };
+                    break;
+                }
+            }
+            if (!prod) {
+                ad._roi = 0;
+                ad._drr = 0;
+                promises.push(dbSave('ads', ad));
+                return;
+            }
+            var price = prod.price || 0;
+            var cost = prod.cost || 0;
+            var fboComm = settings.fboCommission || 15;
+            var comm = price * (fboComm / 100);
+            var log = 150;
+            var storage = 0.07 * 5 * 30;
+            var ret = price * 0.05;
+            var profitPerUnit = price - comm - log - storage - cost - ret;
+            
+            var revenue = (ad.orders_from_ad || 0) * price;
+            var spent = ad.spent || 0;
+            var totalProfit = (ad.orders_from_ad || 0) * profitPerUnit;
+            ad._roi = spent > 0 ? Math.round((totalProfit - spent) / spent * 100) : 0;
+            ad._drr = revenue > 0 ? Math.round((spent / revenue) * 100) : 0;
+            promises.push(dbSave('ads', ad));
         });
-        renderAdsList(filt, arts);
+        return Promise.all(promises);
+    });
+}
+
+function renderAds() {
+    recalculateAdsROI().then(function() {
+        var sq = document.getElementById('adsSearch').value.toLowerCase();
+        var fl = document.getElementById('adsFilter').value;
+        Promise.all([dbGetAll('ads'), getAllProducts()]).then(function(r) {
+            var ads = r[0], allArticles = r[1];
+            var filt = ads.filter(function(a) {
+                var name = (a.campaign || '').toLowerCase();
+                if (sq && name.indexOf(sq) === -1 && (a.linkedArticle || '').toLowerCase().indexOf(sq) === -1) return false;
+                if (fl === 'unlinked' && a.linkedArticle) return false;
+                if (fl === 'linked' && !a.linkedArticle) return false;
+                if (fl === 'effective' && a._roi < 50) return false;
+                if (fl === 'loss' && a._roi >= 0) return false;
+                return true;
+            });
+            renderAdsList(filt, allArticles);
+        });
     });
 }
 
 function renderAdsList(ads, allArticles) {
     var c = document.getElementById('adsList');
     if (ads.length === 0) { c.innerHTML = '<div class="card" style="text-align:center;padding:20px;">Ничего не найдено</div>'; return; }
+    ads.sort(function(a, b) {
+        var roiA = a._roi || 0;
+        var roiB = b._roi || 0;
+        return roiB - roiA;
+    });
     var h = '';
     ads.forEach(function(a) {
         var linkedLabel = a.linkedArticle || 'Не привязана';
@@ -284,8 +490,8 @@ function renderAdsList(ads, allArticles) {
         var statusIcon = roi > 50 ? '🟢' : roi > 0 ? '🟡' : '🔴';
         var statusText = roi > 50 ? 'Эффективно' : roi > 0 ? 'На грани' : 'Убыточно';
         h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📢</span><div class="product-group-info"><div class="product-group-name">' + (a.campaign || 'Без названия') + '</div><div class="product-group-category" style="color:' + linkedColor + ';">' + linkedLabel + '</div></div><div class="product-group-metrics"><div class="product-group-metric"><div class="product-group-metric-label">ROI</div><div class="product-group-metric-value" style="color:' + roiColor + ';">' + roi + '%</div></div><div class="product-group-metric"><div class="product-group-metric-label">ДРР</div><div class="product-group-metric-value">' + drr + '%</div></div><div class="product-group-metric"><div class="product-group-metric-label">Статус</div><div class="product-group-metric-value">' + statusIcon + '</div></div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:12px 16px;font-size:12px;">';
-        h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"><div>Показы: <strong>' + (a.impressions || 0).toLocaleString() + '</strong></div><div>Клики: <strong>' + (a.clicks || 0) + '</strong></div><div>CPC: <strong>' + (a.cpc || 0) + ' ₽</strong></div><div>Заказы: <strong>' + (a.orders_from_ad || 0) + '</strong></div><div>CR: <strong>' + (a.cr || 0) + '%</strong></div><div>Затраты: <strong>' + (a.spent || 0).toLocaleString() + ' ₽</strong></div></div>';
-        h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><span style="font-size:11px;color:var(--text-secondary);">Товар:</span><input type="text" id="adLink_' + a.id + '" value="' + (a.linkedArticle || '') + '" placeholder="Начните вводить артикул..." style="flex:1;font-size:11px;" oninput="filterArticleSuggestions(\'adLink_' + a.id + '\')"><div id="adLink_' + a.id + '_list" style="display:none;position:absolute;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;max-height:150px;overflow-y:auto;z-index:50;"></div><button class="btn btn-primary btn-sm" onclick="linkAdToArticle(' + a.id + ')">🔗 Привязать</button></div>';
+        h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"><div>Показы: <strong>' + (a.impressions || 0).toLocaleString() + '</strong></div><div>Клики: <strong>' + (a.clicks || 0) + '</strong></div><div>CPC: <strong>' + (a.cpc || 0).toFixed(2) + ' ₽</strong></div><div>Заказы: <strong>' + (a.orders_from_ad || 0) + '</strong></div><div>CR: <strong>' + (a.cr || 0).toFixed(2) + '%</strong></div><div>Затраты: <strong>' + (a.spent || 0).toLocaleString() + ' ₽</strong></div></div>';
+        h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><span style="font-size:11px;color:var(--text-secondary);">Товар:</span><input type="text" id="adLink_' + a.id + '" value="' + (a.linkedArticle || '') + '" placeholder="Начните вводить артикул..." style="flex:1;font-size:11px;" oninput="filterArticleSuggestions(\'adLink_' + a.id + '\')"><div id="adLink_' + a.id + '_list" style="display:none;"></div><button class="btn btn-primary btn-sm" onclick="linkAdToArticle(' + a.id + ')">🔗 Привязать</button></div>';
         if (a.linkedArticle) {
             h += '<div style="margin-top:8px;padding:8px;background:#1A1A2E;border-radius:6px;font-size:11px;">';
             h += '<strong>Рекомендация:</strong> ';
@@ -307,13 +513,31 @@ function filterArticleSuggestions(inputId) {
     var q = input.value.toLowerCase();
     if (q.length < 1) { list.style.display = 'none'; return; }
     getAllProducts().then(function(arts) {
-        var matches = arts.filter(function(a) { return a.toLowerCase().indexOf(q) !== -1; }).slice(0, 8);
+        var matches = arts.filter(function(a) {
+            return a.toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 8);
         if (matches.length === 0) { list.style.display = 'none'; return; }
         var h = '';
-        matches.forEach(function(m) { h += '<div style="padding:4px 8px;cursor:pointer;font-size:11px;" onclick="document.getElementById(\'' + inputId + '\').value=\'' + m + '\';document.getElementById(\'' + inputId + '_list\').style.display=\'none\';">' + m + '</div>'; });
-        list.innerHTML = h; list.style.display = 'block';
+        matches.forEach(function(m) {
+            h += '<div style="padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);" onclick="document.getElementById(\'' + inputId + '\').value=\'' + m + '\';document.getElementById(\'' + inputId + '_list\').style.display=\'none\';">' + m + '</div>';
+        });
+        list.innerHTML = h;
+        list.style.display = 'block';
         var rect = input.getBoundingClientRect();
-        list.style.left = rect.left + 'px'; list.style.top = (rect.bottom + 4) + 'px'; list.style.width = rect.width + 'px';
+        var left = Math.min(rect.left, window.innerWidth - 300);
+        var top = Math.min(rect.bottom + 4, window.innerHeight - 200);
+        list.style.position = 'fixed';
+        list.style.left = left + 'px';
+        list.style.top = top + 'px';
+        list.style.width = Math.min(rect.width, 300) + 'px';
+        list.style.maxHeight = '150px';
+        list.style.overflowY = 'auto';
+        list.style.background = '#1E1E32';
+        list.style.border = '1px solid #2A2A42';
+        list.style.borderRadius = '6px';
+        list.style.zIndex = '100';
+        list.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+        list.style.color = '#F0F0FF';
     });
 }
 
@@ -323,20 +547,17 @@ function linkAdToArticle(adId) {
     var article = input.value.trim();
     if (!article) { showToast('❌ Введите артикул', 'error'); return; }
     dbGetAll('ads').then(function(ads) {
-        var ad = null; ads.forEach(function(a) { if (a.id === adId) ad = a; });
+        var ad = null;
+        ads.forEach(function(a) { if (a.id === adId) ad = a; });
         if (!ad) return;
         ad.linkedArticle = article;
-        return Promise.all([dbSave('ads', ad), loadAppSettings()]).then(function(r) {
-            var settings = r[1];
-            return buildProduct(article).then(function(prod) {
-                var profitPerUnit = prod.sellingPrice - prod.costPrice;
-                var revenue = (ad.orders_from_ad || 0) * (prod.sellingPrice || 0);
-                ad._roi = (ad.spent || 0) > 0 ? Math.round(((revenue * (prod.metrics.margin / 100)) - (ad.spent || 0)) / (ad.spent || 0) * 100) : 0;
-                ad._drr = revenue > 0 ? Math.round(((ad.spent || 0) / revenue) * 100) : 0;
-                return dbSave('ads', ad);
-            });
-        });
-    }).then(function() { renderAds(); showToast('✅ Товар привязан', 'success'); });
+        return dbSave('ads', ad);
+    }).then(function() {
+        return recalculateAdsROI();
+    }).then(function() {
+        renderAds();
+        showToast('✅ Товар привязан', 'success');
+    });
 }
 
 // ============================================================
@@ -415,7 +636,7 @@ function downloadTemplate(type) { var hd, ex, fn; if (type === 'sales') { hd = [
 
 function setupImportDropZone(dzId, fiId, type) { var dz = document.getElementById(dzId), fi = document.getElementById(fiId); if (!dz || !fi) return; dz.addEventListener('click', function() { fi.click(); }); dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('dragover'); }); dz.addEventListener('dragleave', function() { dz.classList.remove('dragover'); }); dz.addEventListener('drop', function(e) { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) processImportFile(e.dataTransfer.files[0], type); }); fi.addEventListener('change', function() { if (fi.files.length > 0) { processImportFile(fi.files[0], type); fi.value = ''; } }); }
 
-function processImportFile(file, type) { var se = document.getElementById(type + 'ImportStatus'); if (se) se.innerHTML = '<span style="color:#F59E0B;">⏳ Обработка...</span>'; var rd = new FileReader(); rd.onload = function(e) { try { var wb = XLSX.read(e.target.result, { type: 'array' }), sh = wb.Sheets[wb.SheetNames[0]], data = XLSX.utils.sheet_to_json(sh, { defval: '' }); if (data.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Файл пуст</span>'; return; } var mapped = [], errs = []; if (type === 'sales') mapped = mapSalesData(data, errs); else if (type === 'stock') mapped = mapStockData(data, errs); else if (type === 'ads') mapped = mapAdsData(data); if (mapped.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Нет данных</span>'; return; } var sn = type === 'sales' ? 'sales' : type === 'stock' ? 'stock' : 'ads'; dbClear(sn).then(function() { return Promise.all(mapped.map(function(x) { return dbSave(sn, x); })); }).then(function() { var msg = '✅ Импортировано ' + mapped.length + ' записей'; if (se) se.innerHTML = '<span style="color:#10B981;">' + msg + '</span>'; showToast(msg, 'success'); updateDashboard(); updateProductList(); }).catch(function(er) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка: ' + er.message + '</span>'; }); } catch (er) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка: ' + er.message + '</span>'; } }; rd.onerror = function() { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка чтения</span>'; }; rd.readAsArrayBuffer(file); }
+function processImportFile(file, type) { var se = document.getElementById(type + 'ImportStatus'); if (se) se.innerHTML = '<span style="color:#F59E0B;">⏳ Обработка...</span>'; var rd = new FileReader(); rd.onload = function(e) { try { var wb = XLSX.read(e.target.result, { type: 'array' }), sh = wb.Sheets[wb.SheetNames[0]], data = XLSX.utils.sheet_to_json(sh, { defval: '' }); if (data.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Файл пуст</span>'; return; } var mapped = [], errs = []; if (type === 'sales') mapped = mapSalesData(data, errs); else if (type === 'stock') mapped = mapStockData(data, errs); else if (type === 'ads') mapped = mapAdsData(data); if (mapped.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Нет данных</span>'; return; } var sn = type === 'sales' ? 'sales' : type === 'stock' ? 'stock' : 'ads'; dbClear(sn).then(function() { return Promise.all(mapped.map(function(x) { return dbSave(sn, x); })); }).then(function() { var msg = '✅ Импортировано ' + mapped.length + ' записей'; if (se) se.innerHTML = '<span style="color:#10B981;">' + msg + '</span>'; showToast(msg, 'success'); if (type === 'ads') { recalculateAdsROI().then(function() { updateAdsPage(); }); } else { updateDashboard(); updateProductList(); } }).catch(function(er) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка: ' + er.message + '</span>'; }); } catch (er) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка: ' + er.message + '</span>'; } }; rd.onerror = function() { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка чтения</span>'; }; rd.readAsArrayBuffer(file); }
 
 function mapSalesData(data, errs) { var keys = Object.keys(data[0]), gk = function(p) { return keys.find(function(k) { return p.some(function(x) { return k.toLowerCase().indexOf(x) !== -1; }); }); }, kA = gk(['артикул', 'article']) || keys[0], kD = gk(['дата', 'date']) || keys[1], kO = gk(['заказано', 'orders']) || keys[2], kDel = gk(['выкуплено', 'delivered']) || keys[3], kAm = gk(['сумма', 'amount']) || keys[4], kR = gk(['возврат', 'returns']) || keys[5], mapped = []; data.forEach(function(r, i) { var a = String(r[kA] || '').trim(); if (!a) { errs.push({ row: i + 1, error: 'Пустой артикул' }); return; } mapped.push({ id: Date.now() + Math.random(), article: a, date: String(r[kD] || '').trim() || getYesterdayStr(), orders: parseInt(r[kO]) || 0, delivered: parseInt(r[kDel]) || 0, returns: parseInt(r[kR]) || 0, amount: parseFloat(String(r[kAm] || '0').replace(',', '.').replace(/\s/g, '')) || 0 }); }); return mapped; }
 
