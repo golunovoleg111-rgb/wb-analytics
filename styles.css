@@ -1,5 +1,5 @@
 /* ============================================================
-   BELTANEE v5.0 — ОСНОВНЫЕ СТИЛИ
+   StockFlow v5.0 — ОСНОВНЫЕ СТИЛИ
    ============================================================ */
 
 :root {
@@ -8,10 +8,13 @@
     --primary-light: #A78BFA;
     --primary-glow: rgba(124, 58, 237, 0.3);
 
+    --gradient-main: linear-gradient(135deg, #6C2BD9 0%, #C850C0 50%, #FF6B6B 100%);
+
     --bg-page: #F0F2F8;
     --bg-card: #FFFFFF;
     --bg-hover: #F3F4F6;
     --bg-dark: #1A1A2E;
+    --bg-card-dark: #1E1E32;
     --bg-input: #F9FAFB;
 
     --text-primary: #1A1A2E;
@@ -20,6 +23,7 @@
     --text-muted: #9CA3AF;
 
     --border: #E5E7EB;
+    --border-dark: #2A2A42;
     --shadow: 0 4px 24px rgba(108, 43, 217, 0.08);
     --shadow-hover: 0 8px 48px rgba(108, 43, 217, 0.16);
     --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -28,7 +32,7 @@
     --radius-sm: 10px;
     --radius-xs: 6px;
 
-    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition: 0.2s ease;
 
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -47,11 +51,14 @@ body {
     min-height: 100vh;
 }
 
-/* Сайдбар */
+/* ============================================================
+   САЙДБАР
+   ============================================================ */
+
 .sidebar {
     width: 220px;
     min-height: 100vh;
-    background: var(--bg-dark);
+    background: #12121F;
     color: var(--text-light);
     display: flex;
     flex-direction: column;
@@ -70,7 +77,7 @@ body {
 .logo-icon {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, #6C2BD9 0%, #C850C0 50%, #FF6B6B 100%);
+    background: var(--gradient-main);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -84,7 +91,7 @@ body {
 .logo-text {
     font-size: 18px;
     font-weight: 800;
-    background: linear-gradient(135deg, #6C2BD9 0%, #C850C0 50%, #FF6B6B 100%);
+    background: var(--gradient-main);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -141,14 +148,16 @@ body {
     font-weight: 500;
 }
 
-/* Основной контент */
+/* ============================================================
+   ОСНОВНОЙ КОНТЕНТ
+   ============================================================ */
+
 .content {
     flex: 1;
     padding: 24px 28px 32px;
     overflow-y: auto;
 }
 
-/* Страницы */
 .page {
     display: none;
     animation: pageIn 0.3s ease;
@@ -159,14 +168,8 @@ body {
 }
 
 @keyframes pageIn {
-    from {
-        opacity: 0;
-        transform: translateY(12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
@@ -181,13 +184,16 @@ body {
 .page-header h1 {
     font-size: 22px;
     font-weight: 800;
-    background: linear-gradient(135deg, #6C2BD9 0%, #C850C0 50%, #FF6B6B 100%);
+    background: var(--gradient-main);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-/* Карточка */
+/* ============================================================
+   КАРТОЧКИ
+   ============================================================ */
+
 .card {
     background: var(--bg-card);
     border-radius: var(--radius);
@@ -198,23 +204,23 @@ body {
 }
 
 .card-dark {
-    background: #1E1E32;
-    border: 1px solid #2A2A42;
+    background: var(--bg-card-dark);
+    border: 1px solid var(--border-dark);
     color: #F0F0FF;
 }
 
 .card-dark table th {
-    background: #2A2A42;
+    background: var(--border-dark);
     color: #9CA3AF;
 }
 
 .card-dark table td {
-    border-bottom: 1px solid #2A2A42;
+    border-bottom: 1px solid var(--border-dark);
     color: #F0F0FF;
 }
 
 .card-dark table tr:hover td {
-    background: #2A2A42;
+    background: rgba(42, 42, 66, 0.5);
 }
 
 .card-title {
@@ -226,165 +232,10 @@ body {
     gap: 6px;
 }
 
-/* Группированный список товаров */
-.product-group {
-    background: var(--bg-card);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    margin-bottom: 8px;
-    overflow: hidden;
-}
+/* ============================================================
+   КНОПКИ
+   ============================================================ */
 
-.product-group-header {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-    gap: 12px;
-}
-
-.product-group-header:hover {
-    background: var(--bg-hover);
-}
-
-.product-group-icon {
-    font-size: 20px;
-    flex-shrink: 0;
-}
-
-.product-group-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.product-group-name {
-    font-weight: 600;
-    font-size: 14px;
-    color: var(--text-primary);
-}
-
-.product-group-category {
-    font-size: 11px;
-    color: var(--text-secondary);
-}
-
-.product-group-metrics {
-    display: flex;
-    gap: 20px;
-    font-size: 12px;
-    flex-shrink: 0;
-}
-
-.product-group-metric {
-    text-align: center;
-}
-
-.product-group-metric-label {
-    font-size: 9px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-}
-
-.product-group-metric-value {
-    font-weight: 600;
-    font-size: 13px;
-}
-
-.product-group-arrow {
-    font-size: 12px;
-    color: var(--text-secondary);
-    transition: transform 0.2s ease;
-}
-
-.product-group-arrow.open {
-    transform: rotate(90deg);
-}
-
-.product-group-items {
-    display: none;
-    border-top: 1px solid var(--border);
-    background: var(--bg-hover);
-}
-
-.product-group-items.open {
-    display: block;
-}
-
-.product-group-item {
-    display: flex;
-    align-items: center;
-    padding: 8px 16px 8px 52px;
-    font-size: 12px;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.15s ease;
-    gap: 12px;
-}
-
-.product-group-item:last-child {
-    border-bottom: none;
-}
-
-.product-group-item:hover {
-    background: var(--bg-card);
-}
-
-.product-group-item-name {
-    flex: 1;
-    font-weight: 500;
-}
-
-.product-group-item-price {
-    width: 80px;
-    text-align: right;
-}
-
-.product-group-item-margin {
-    width: 60px;
-    text-align: right;
-    font-weight: 600;
-}
-
-.product-group-item-stock {
-    width: 60px;
-    text-align: right;
-    font-weight: 600;
-}
-
-.product-group-item-io {
-    width: 60px;
-    text-align: right;
-    font-weight: 600;
-}
-
-.product-group-item-status {
-    width: 24px;
-    text-align: center;
-}
-
-/* Drop zone для импорта */
-.drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: var(--radius-sm);
-    padding: 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: var(--bg-hover);
-}
-
-.drop-zone:hover {
-    border-color: var(--primary);
-    background: rgba(124, 58, 237, 0.04);
-}
-
-.drop-zone.dragover {
-    border-color: var(--primary);
-    background: rgba(124, 58, 237, 0.08);
-}
-
-/* Кнопки */
 .btn {
     padding: 8px 16px;
     border: none;
@@ -400,7 +251,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #6C2BD9 0%, #C850C0 50%, #FF6B6B 100%);
+    background: var(--gradient-main);
     color: #fff;
 }
 
@@ -437,11 +288,11 @@ body {
 .btn-ghost {
     background: transparent;
     color: #9CA3AF;
-    border: 1px solid #2A2A42;
+    border: 1px solid var(--border-dark);
 }
 
 .btn-ghost:hover {
-    background: #2A2A42;
+    background: var(--border-dark);
     color: #F0F0FF;
 }
 
@@ -450,7 +301,10 @@ body {
     font-size: 11px;
 }
 
-/* Таблица */
+/* ============================================================
+   ТАБЛИЦЫ
+   ============================================================ */
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -477,7 +331,10 @@ tr:hover td {
     background: var(--bg-hover);
 }
 
-/* Теги */
+/* ============================================================
+   ТЕГИ
+   ============================================================ */
+
 .tag {
     display: inline-block;
     padding: 2px 10px;
@@ -486,59 +343,24 @@ tr:hover td {
     font-weight: 500;
 }
 
-.tag-green {
-    background: #ECFDF5;
-    color: #065F46;
-}
+.tag-green { background: #ECFDF5; color: #065F46; }
+.tag-red { background: #FEF2F2; color: #991B1B; }
+.tag-yellow { background: #FFFBEB; color: #92400E; }
+.tag-blue { background: #EFF6FF; color: #1E40AF; }
+.tag-gray { background: var(--bg-hover); color: var(--text-secondary); }
 
-.tag-red {
-    background: #FEF2F2;
-    color: #991B1B;
-}
+/* ============================================================
+   СЕТКИ
+   ============================================================ */
 
-.tag-yellow {
-    background: #FFFBEB;
-    color: #92400E;
-}
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 
-.tag-blue {
-    background: #EFF6FF;
-    color: #1E40AF;
-}
+/* ============================================================
+   KPI КАРТОЧКИ (Главная)
+   ============================================================ */
 
-.tag-gray {
-    background: var(--bg-hover);
-    color: var(--text-secondary);
-}
-
-/* Заглушка */
-.placeholder-text {
-    color: var(--text-secondary);
-    font-size: 14px;
-    padding: 40px 0;
-    text-align: center;
-}
-
-/* Сетки */
-.grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-}
-
-.grid-3 {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 14px;
-}
-
-.grid-4 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-}
-
-/* KPI карточка */
 .kpi-card {
     background: var(--bg-card);
     border-radius: var(--radius);
@@ -559,7 +381,7 @@ tr:hover td {
     justify-content: center;
     font-size: 18px;
     flex-shrink: 0;
-    background: linear-gradient(135deg, #6C2BD9 0%, #C850C0 50%, #FF6B6B 100%);
+    background: var(--gradient-main);
     color: #fff;
 }
 
@@ -579,7 +401,10 @@ tr:hover td {
     color: var(--text-primary);
 }
 
-/* KPI карточки товара (тёмная тема) */
+/* ============================================================
+   KPI КАРТОЧКИ ТОВАРА
+   ============================================================ */
+
 .card-kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -587,8 +412,8 @@ tr:hover td {
 }
 
 .card-kpi-item {
-    background: #1E1E32;
-    border: 1px solid #2A2A42;
+    background: var(--bg-card-dark);
+    border: 1px solid var(--border-dark);
     border-radius: 12px;
     padding: 14px 16px;
     text-align: center;
@@ -615,7 +440,10 @@ tr:hover td {
     margin-top: 2px;
 }
 
-/* Кнопки периода графика */
+/* ============================================================
+   ГРАФИК
+   ============================================================ */
+
 .card-chart-btn {
     padding: 4px 12px;
     border: none;
@@ -625,20 +453,21 @@ tr:hover td {
     font-weight: 500;
     color: #9CA3AF;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: var(--transition);
     font-family: inherit;
 }
 
-.card-chart-btn:hover {
-    color: #F0F0FF;
-}
+.card-chart-btn:hover { color: #F0F0FF; }
 
 .card-chart-btn.active {
     background: #7C3AED;
     color: #fff;
 }
 
-/* Вкладки карточки */
+/* ============================================================
+   ВКЛАДКИ КАРТОЧКИ
+   ============================================================ */
+
 .card-tab {
     padding: 10px 20px;
     border: none;
@@ -648,13 +477,11 @@ tr:hover td {
     font-weight: 500;
     cursor: pointer;
     border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
+    transition: var(--transition);
     font-family: inherit;
 }
 
-.card-tab:hover {
-    color: #F0F0FF;
-}
+.card-tab:hover { color: #F0F0FF; }
 
 .card-tab.active {
     color: #A78BFA;
@@ -665,16 +492,110 @@ tr:hover td {
     animation: fadeIn 0.25s ease;
 }
 
-.card-tab-content.active {
-    display: block;
-}
-
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Полоски расходов в экономике */
+/* ============================================================
+   ГРУППИРОВКА ТОВАРОВ
+   ============================================================ */
+
+.product-group {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.product-group-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background var(--transition);
+    gap: 12px;
+}
+
+.product-group-header:hover { background: var(--bg-hover); }
+
+.product-group-icon { font-size: 20px; flex-shrink: 0; }
+
+.product-group-info { flex: 1; min-width: 0; }
+
+.product-group-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.product-group-category {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.product-group-metrics {
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.product-group-metric { text-align: center; }
+
+.product-group-metric-label {
+    font-size: 9px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.product-group-metric-value {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.product-group-arrow {
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: transform var(--transition);
+}
+
+.product-group-arrow.open { transform: rotate(90deg); }
+
+.product-group-items {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: var(--bg-hover);
+}
+
+.product-group-items.open { display: block; }
+
+.product-group-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px 8px 52px;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    gap: 12px;
+}
+
+.product-group-item:last-child { border-bottom: none; }
+.product-group-item:hover { background: var(--bg-card); }
+
+.product-group-item-name { flex: 1; font-weight: 500; }
+.product-group-item-price { width: 80px; text-align: right; }
+.product-group-item-margin { width: 60px; text-align: right; font-weight: 600; }
+.product-group-item-stock { width: 60px; text-align: right; font-weight: 600; }
+.product-group-item-io { width: 60px; text-align: right; font-weight: 600; }
+.product-group-item-status { width: 24px; text-align: center; }
+
+/* ============================================================
+   ЭКОНОМИКА (ПОЛОСКИ)
+   ============================================================ */
+
 .econ-bar {
     display: flex;
     align-items: center;
@@ -684,22 +605,13 @@ tr:hover td {
     color: #F0F0FF;
 }
 
-.econ-bar-label {
-    width: 130px;
-    font-size: 11px;
-    color: #9CA3AF;
-}
-
-.econ-bar-value {
-    width: 85px;
-    text-align: right;
-    font-weight: 600;
-}
+.econ-bar-label { width: 130px; font-size: 11px; color: #9CA3AF; }
+.econ-bar-value { width: 85px; text-align: right; font-weight: 600; }
 
 .econ-bar-track {
     flex: 1;
     height: 6px;
-    background: #2A2A42;
+    background: var(--border-dark);
     border-radius: 3px;
     overflow: hidden;
 }
@@ -717,7 +629,71 @@ tr:hover td {
 .econ-bar-fill.returns { background: #EC4899; }
 .econ-bar-fill.tax { background: #8B5CF6; }
 
-/* Toast уведомление */
+/* ============================================================
+   ЗАКАЗЫ (сводка)
+   ============================================================ */
+
+.orders-summary-card {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.orders-summary-card.critical {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 4px solid #EF4444;
+}
+
+.orders-summary-card.soon {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 4px solid #F59E0B;
+}
+
+.orders-summary-card.normal {
+    background: rgba(16, 185, 129, 0.08);
+    border-left: 4px solid #10B981;
+}
+
+.orders-summary-value {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.orders-summary-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* ============================================================
+   DROP ZONE (Импорт)
+   ============================================================ */
+
+.drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition);
+    background: var(--bg-hover);
+}
+
+.drop-zone:hover {
+    border-color: var(--primary);
+    background: rgba(124, 58, 237, 0.04);
+}
+
+.drop-zone.dragover {
+    border-color: var(--primary);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+
 .toast {
     position: fixed;
     bottom: 30px;
@@ -729,25 +705,18 @@ tr:hover td {
     font-weight: 500;
     z-index: 999;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s;
     pointer-events: none;
 }
 
-.toast.show {
-    opacity: 1;
-}
+.toast.show { opacity: 1; }
+.toast.success { background: #065F46; color: #ECFDF5; }
+.toast.error { background: #991B1B; color: #FEF2F2; }
 
-.toast.success {
-    background: #065F46;
-    color: #ECFDF5;
-}
+/* ============================================================
+   ФОРМЫ
+   ============================================================ */
 
-.toast.error {
-    background: #991B1B;
-    color: #FEF2F2;
-}
-
-/* Форма */
 input[type="text"],
 input[type="number"],
 input[type="date"],
@@ -769,55 +738,27 @@ select:focus {
     box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
-/* Скроллбар */
-::-webkit-scrollbar {
-    width: 5px;
-}
+/* ============================================================
+   СКРОЛЛБАР
+   ============================================================ */
 
-::-webkit-scrollbar-track {
-    background: transparent;
-}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 10px; }
 
-::-webkit-scrollbar-thumb {
-    background: var(--primary-light);
-    border-radius: 10px;
-}
+/* ============================================================
+   АДАПТИВНОСТЬ
+   ============================================================ */
 
-/* Адаптивность */
 @media (max-width: 768px) {
-    .sidebar {
-        width: 52px;
-    }
-
-    .logo-text,
-    .menu-label,
-    .sidebar-version {
-        display: none;
-    }
-
-    .menu-item {
-        justify-content: center;
-        padding: 10px;
-    }
-
-    .content {
-        padding: 16px;
-    }
-
-    .grid-2,
-    .grid-3,
-    .grid-4,
-    .card-kpi-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .product-group-metrics {
-        display: none;
-    }
+    .sidebar { width: 52px; }
+    .logo-text, .menu-label, .sidebar-version { display: none; }
+    .menu-item { justify-content: center; padding: 10px; }
+    .content { padding: 16px; }
+    .grid-2, .grid-3, .grid-4, .card-kpi-grid { grid-template-columns: 1fr 1fr; }
+    .product-group-metrics { display: none; }
 }
 
 @media (max-width: 480px) {
-    .card-kpi-grid {
-        grid-template-columns: 1fr;
-    }
+    .card-kpi-grid { grid-template-columns: 1fr; }
 }
