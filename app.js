@@ -254,7 +254,51 @@ function removeFromSupplyCart(i) { supplyCart.splice(i, 1); renderSupplyCart(); 
 function renderSupplyCart() { var c = document.getElementById('supplyCart'), tp = 0; supplyCart.forEach(function(x) { tp += x.quantity; }); document.getElementById('supplyPlaces').textContent = tp; document.getElementById('supplyWeight').textContent = (tp * 0.5).toFixed(1) + ' кг'; document.getElementById('supplyVolume').textContent = (tp * 5) + ' л'; if (supplyCart.length === 0) { c.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:20px;">Корзина пуста</div>'; return; } var h = ''; supplyCart.forEach(function(x, i) { h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="flex:1;">' + x.article + '</span><span style="width:50px;text-align:center;">' + (x.size || '—') + '</span><span style="width:50px;text-align:center;">' + x.quantity + '</span><span style="width:80px;text-align:center;font-size:10px;">' + x.pallet + '</span><button class="btn btn-danger btn-sm" onclick="removeFromSupplyCart(' + i + ')" style="padding:2px 6px;font-size:10px;">✕</button></div>'; }); c.innerHTML = h; }
 
 function createSupply() { if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; } var tp = 0; supplyCart.forEach(function(x) { tp += x.quantity; }); var s = { id: Date.now(), name: 'Поставка #' + new Date().toISOString().slice(0, 10).replace(/-/g, ''), date: getYesterdayStr(), items: supplyCart.length, places: tp, weight: tp * 0.5, volume: tp * 5, status: 'planned', cart: JSON.parse(JSON.stringify(supplyCart)) }; dbSave('shipments', s).then(function() { supplyCart = []; renderSupplyCart(); renderSupplyHistory(); showToast('✅ Поставка создана', 'success'); }); }
+function exportSupplyForWB() {
+    if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; }
+    var data = supplyCart.map(function(item) {
+        return {
+            'Артикул продавца': item.article,
+            'Размер': item.size || '',
+            'Количество': item.quantity,
+            'Номер палеты': item.pallet || 'Без паллеты'
+        };
+    });
+    var wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [{ wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Поставка_WB');
+    XLSX.writeFile(wb, 'StockFlow_Поставка_WB_' + getYesterdayStr().replace(/\./g, '_') + '.xlsx');
+    showToast('✅ Файл для WB готов', 'success');
+}
 
+function exportSupplyPackingList() {
+    if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; }
+    var grouped = {};
+    supplyCart.forEach(function(item) {
+        var pallet = item.pallet || 'Без паллеты';
+        if (!grouped[pallet]) grouped[pallet] = [];
+        grouped[pallet].push(item);
+    });
+    var data = [];
+    Object.keys(grouped).sort().forEach(function(pallet) {
+        data.push({ 'Паллета': pallet, 'Артикул': '', 'Размер': '', 'Количество': '', 'Проклеить?': '' });
+        grouped[pallet].forEach(function(item) {
+            data.push({
+                'Паллета': '',
+                'Артикул': item.article,
+                'Размер': item.size || '',
+                'Количество': item.quantity,
+                'Проклеить?': '☐'
+            });
+        });
+        data.push({ 'Паллета': '', 'Артикул': '', 'Размер': '', 'Количество': '', 'Проклеить?': '' });
+    });
+    var wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Сборочный_лист');
+    XLSX.writeFile(wb, 'StockFlow_Сборочный_лист_' + getYesterdayStr().replace(/\./g, '_') + '.xlsx');
+    showToast('✅ Сборочный лист готов', 'success');
+}
 function updateSupplyStatus(id, ns) { dbGetAll('shipments').then(function(ss) { var s = null; ss.forEach(function(x) { if (x.id === id) s = x; }); if (!s) return; s.status = ns; return dbSave('shipments', s); }).then(function() { renderSupplyHistory(); showToast('✅ Статус обновлён', 'success'); }); }
 
 function renderSupplyHistory() { var tb = document.getElementById('supplyHistoryBody'); dbGetAll('shipments').then(function(ss) { if (ss.length === 0) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Нет поставок</td></tr>'; return; } ss.sort(function(a, b) { return b.id - a.id; }); var sl = { 'planned': '📋 Запланировано', 'in_transit': '🚛 В пути', 'accepted': '✅ Принято', 'archive': '📦 Архив' }, h = ''; ss.forEach(function(s) { h += '<tr><td>' + (s.date || '—') + '</td><td>' + s.name + '</td><td>' + s.items + '</td><td>' + s.places + '</td><td>' + (sl[s.status] || s.status) + '</td><td>'; if (s.status === 'planned') h += '<button class="btn btn-primary btn-sm" onclick="updateSupplyStatus(' + s.id + ',\'in_transit\')" style="font-size:10px;padding:2px 8px;">🚛 В путь</button> '; if (s.status === 'in_transit') h += '<button class="btn btn-success btn-sm" onclick="updateSupplyStatus(' + s.id + ',\'accepted\')" style="font-size:10px;padding:2px 8px;">✅ Принято</button> '; if (s.status === 'accepted') h += '<button class="btn btn-secondary btn-sm" onclick="updateSupplyStatus(' + s.id + ',\'archive\')" style="font-size:10px;padding:2px 8px;">📦 Архив</button>'; h += '</td></tr>'; }); tb.innerHTML = h; }); }
