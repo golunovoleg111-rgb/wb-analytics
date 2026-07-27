@@ -5,8 +5,8 @@
 var APP_VERSION = '5.0.0';
 var APP_STAGE = 'Beta';
 var DB_NAME = 'BeltaneeDB_v5';
-var DB_VERSION = 3;
-var STORES = ['sales', 'stock', 'settings', 'shipments', 'warehouse'];
+var DB_VERSION = 4;
+var STORES = ['sales', 'stock', 'settings', 'shipments', 'warehouse', 'ads'];
 var currentCardArticle = null;
 var cardChart = null;
 var supplyCart = [];
@@ -29,6 +29,7 @@ function navigateTo(pageName) {
     if (pageName === 'orders') updateOrdersPage();
     if (pageName === 'supplies') updateSuppliesPage();
     if (pageName === 'warehouse') updateWarehousePage();
+    if (pageName === 'ads') updateAdsPage();
 }
 
 // ============================================================
@@ -86,7 +87,7 @@ function checkDatabase() {
 
 function updateDBStats() {
     var el = document.getElementById('dbStats'); if (!el) return;
-    Promise.all([dbGetAll('sales'), dbGetAll('stock'), dbGetAll('settings')]).then(function(r) { el.textContent = 'Продаж: ' + r[0].length + ', Остатков: ' + r[1].length + ', Настроек: ' + r[2].length; }).catch(function() { el.textContent = ''; });
+    Promise.all([dbGetAll('sales'), dbGetAll('stock'), dbGetAll('ads')]).then(function(r) { el.textContent = 'Продаж: ' + r[0].length + ', Остатков: ' + r[1].length + ', Рекламы: ' + r[2].length; }).catch(function() { el.textContent = ''; });
 }
 
 // ============================================================
@@ -239,7 +240,104 @@ function renderOrders() {
 
 function renderOrdersSummary(prods) { var cr = prods.filter(function(p) { return p.forecast.urgency === 'critical'; }).length, sn = prods.filter(function(p) { return p.forecast.urgency === 'soon'; }).length, no = prods.filter(function(p) { return p.forecast.urgency === 'normal'; }).length; document.getElementById('ordersSummary').innerHTML = '<div style="display:flex;gap:14px;"><div class="orders-summary-card critical"><div class="orders-summary-value" style="color:#EF4444;">' + cr + '</div><div class="orders-summary-label">🔴 Срочно</div></div><div class="orders-summary-card soon"><div class="orders-summary-value" style="color:#F59E0B;">' + sn + '</div><div class="orders-summary-label">🟡 Скоро</div></div><div class="orders-summary-card normal"><div class="orders-summary-value" style="color:#10B981;">' + no + '</div><div class="orders-summary-label">🟢 Норма</div></div></div>'; }
 
-function renderOrdersList(prods) { var c = document.getElementById('ordersList'), h = ''; prods.forEach(function(p) { var uc = p.forecast.urgency === 'critical' ? '#EF4444' : p.forecast.urgency === 'soon' ? '#F59E0B' : '#10B981', ul = p.forecast.urgency === 'critical' ? '🔴 Срочно' : p.forecast.urgency === 'soon' ? '🟡 Скоро' : '🟢 Норма'; h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📦</span><div class="product-group-info"><div class="product-group-name">' + p.article + '</div><div class="product-group-category">' + p.category + ' · ' + p.model + '</div></div><div class="product-group-metrics"><div class="product-group-metric"><div class="product-group-metric-label">Остаток</div><div class="product-group-metric-value">' + p.stock.total + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Продаж/д</div><div class="product-group-metric-value">' + p.forecast.dailyDemand.toFixed(1) + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Дней</div><div class="product-group-metric-value" style="color:' + uc + ';">' + p.forecast.daysUntilStockout + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Заказ</div><div class="product-group-metric-value">' + p.forecast.recommendedOrder + ' шт</div></div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:12px 16px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;"><div>Остатки WB: <strong>' + p.stock.wb + '</strong></div><div>В пути: <strong>' + p.stock.inTransit + '</strong></div><div>Свой склад: <strong>' + p.stock.ownWarehouse + '</strong></div><div>Продажи 7д: <strong>' + p.sales.last7days + '</strong></div><div>Продажи 14д: <strong>' + p.sales.last14days + '</strong></div><div>Продажи 30д: <strong>' + p.sales.last30days + '</strong></div><div>Маржа: <strong>' + p.metrics.margin + '%</strong></div><div>Цена: <strong>' + p.sellingPrice.toLocaleString('ru-RU') + ' ₽</strong></div><div style="color:' + uc + ';">' + ul + '</div></div></div></div>'; }); c.innerHTML = h || '<div class="card" style="text-align:center;padding:20px;">Нет данных</div>'; }
+function renderOrdersList(prods) { var c = document.getElementById('ordersList'), h = ''; prods.forEach(function(p) { var uc = p.forecast.urgency === 'critical' ? '#EF4444' : p.forecast.urgency === 'soon' ? '#F59E0B' : '#10B981', ul = p.forecast.urgency === 'critical' ? '🔴 Срочно' : p.forecast.urgency === 'soon' ? '🟡 Скоро' : '🟢 Норма'; h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📦</span><div class="product-group-info"><div class="product-group-name">' + p.article + '</div><div class="product-group-category">' + p.category + ' · ' + p.model + '</div></div><div class="product-group-metrics"><div class="product-group-metric"><div class="product-group-metric-label">Остаток</div><div class="product-group-metric-value">' + p.stock.total + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Продаж/д</div><div class="product-group-metric-value">' + p.forecast.dailyDemand.toFixed(1) + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Дней</div><div class="product-group-metric-value" style="color:' + uc + ';">' + p.forecast.daysUntilStockout + '</div></div><div class="product-group-metric"><div class="product-group-metric-label">Заказ</div><div class="product-group-metric-value">' + p.forecast.recommendedOrder + ' шт</div></div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:12px 16px;font-size:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;"><div>WB: <strong>' + p.stock.wb + '</strong></div><div>В пути: <strong>' + p.stock.inTransit + '</strong></div><div>Склад: <strong>' + p.stock.ownWarehouse + '</strong></div><div>Продажи 7д: <strong>' + p.sales.last7days + '</strong></div><div>14д: <strong>' + p.sales.last14days + '</strong></div><div>30д: <strong>' + p.sales.last30days + '</strong></div><div>Маржа: <strong>' + p.metrics.margin + '%</strong></div><div>Цена: <strong>' + p.sellingPrice.toLocaleString('ru-RU') + ' ₽</strong></div><div style="color:' + uc + ';">' + ul + '</div></div></div></div>'; }); c.innerHTML = h || '<div class="card" style="text-align:center;padding:20px;">Нет данных</div>'; }
+
+// ============================================================
+// РЕКЛАМА
+// ============================================================
+
+function updateAdsPage() {
+    dbGetAll('ads').then(function(ads) {
+        if (ads.length === 0) { document.getElementById('adsEmpty').style.display = 'block'; document.getElementById('adsContent').style.display = 'none'; return; }
+        document.getElementById('adsEmpty').style.display = 'none'; document.getElementById('adsContent').style.display = 'block';
+        renderAds();
+    });
+}
+
+function renderAds() {
+    var sq = document.getElementById('adsSearch').value.toLowerCase(), fl = document.getElementById('adsFilter').value;
+    Promise.all([dbGetAll('ads'), getAllProducts()]).then(function(r) {
+        var ads = r[0], arts = r[1];
+        var filt = ads.filter(function(a) {
+            var name = (a.campaign || '').toLowerCase();
+            if (sq && name.indexOf(sq) === -1 && (a.linkedArticle || '').toLowerCase().indexOf(sq) === -1) return false;
+            if (fl === 'unlinked' && a.linkedArticle) return false;
+            if (fl === 'linked' && !a.linkedArticle) return false;
+            if (fl === 'effective' && a._roi < 0) return false;
+            if (fl === 'loss' && a._roi >= 0) return false;
+            return true;
+        });
+        renderAdsList(filt, arts);
+    });
+}
+
+function renderAdsList(ads, allArticles) {
+    var c = document.getElementById('adsList');
+    if (ads.length === 0) { c.innerHTML = '<div class="card" style="text-align:center;padding:20px;">Ничего не найдено</div>'; return; }
+    var h = '';
+    ads.forEach(function(a) {
+        var linkedLabel = a.linkedArticle || 'Не привязана';
+        var linkedColor = a.linkedArticle ? '#10B981' : '#F59E0B';
+        var roi = a._roi || 0;
+        var drr = a._drr || 0;
+        var roiColor = roi > 0 ? '#10B981' : '#EF4444';
+        var statusIcon = roi > 50 ? '🟢' : roi > 0 ? '🟡' : '🔴';
+        var statusText = roi > 50 ? 'Эффективно' : roi > 0 ? 'На грани' : 'Убыточно';
+        h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📢</span><div class="product-group-info"><div class="product-group-name">' + (a.campaign || 'Без названия') + '</div><div class="product-group-category" style="color:' + linkedColor + ';">' + linkedLabel + '</div></div><div class="product-group-metrics"><div class="product-group-metric"><div class="product-group-metric-label">ROI</div><div class="product-group-metric-value" style="color:' + roiColor + ';">' + roi + '%</div></div><div class="product-group-metric"><div class="product-group-metric-label">ДРР</div><div class="product-group-metric-value">' + drr + '%</div></div><div class="product-group-metric"><div class="product-group-metric-label">Статус</div><div class="product-group-metric-value">' + statusIcon + '</div></div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:12px 16px;font-size:12px;">';
+        h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"><div>Показы: <strong>' + (a.impressions || 0).toLocaleString() + '</strong></div><div>Клики: <strong>' + (a.clicks || 0) + '</strong></div><div>CPC: <strong>' + (a.cpc || 0) + ' ₽</strong></div><div>Заказы: <strong>' + (a.orders_from_ad || 0) + '</strong></div><div>CR: <strong>' + (a.cr || 0) + '%</strong></div><div>Затраты: <strong>' + (a.spent || 0).toLocaleString() + ' ₽</strong></div></div>';
+        h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><span style="font-size:11px;color:var(--text-secondary);">Товар:</span><input type="text" id="adLink_' + a.id + '" value="' + (a.linkedArticle || '') + '" placeholder="Начните вводить артикул..." style="flex:1;font-size:11px;" oninput="filterArticleSuggestions(\'adLink_' + a.id + '\')"><div id="adLink_' + a.id + '_list" style="display:none;position:absolute;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;max-height:150px;overflow-y:auto;z-index:50;"></div><button class="btn btn-primary btn-sm" onclick="linkAdToArticle(' + a.id + ')">🔗 Привязать</button></div>';
+        if (a.linkedArticle) {
+            h += '<div style="margin-top:8px;padding:8px;background:#1A1A2E;border-radius:6px;font-size:11px;">';
+            h += '<strong>Рекомендация:</strong> ';
+            if (roi > 100) h += '<span style="color:#10B981;">Отличная эффективность. Увеличьте бюджет.</span>';
+            else if (roi > 50) h += '<span style="color:#10B981;">Хорошо. Можно масштабировать.</span>';
+            else if (roi > 0) h += '<span style="color:#F59E0B;">На грани окупаемости. Проверьте ставку.</span>';
+            else h += '<span style="color:#EF4444;">Убыточно. Снизьте ставку или остановите.</span>';
+            h += '</div>';
+        }
+        h += '</div></div></div>';
+    });
+    c.innerHTML = h;
+}
+
+function filterArticleSuggestions(inputId) {
+    var input = document.getElementById(inputId);
+    var list = document.getElementById(inputId + '_list');
+    if (!input || !list) return;
+    var q = input.value.toLowerCase();
+    if (q.length < 1) { list.style.display = 'none'; return; }
+    getAllProducts().then(function(arts) {
+        var matches = arts.filter(function(a) { return a.toLowerCase().indexOf(q) !== -1; }).slice(0, 8);
+        if (matches.length === 0) { list.style.display = 'none'; return; }
+        var h = '';
+        matches.forEach(function(m) { h += '<div style="padding:4px 8px;cursor:pointer;font-size:11px;" onclick="document.getElementById(\'' + inputId + '\').value=\'' + m + '\';document.getElementById(\'' + inputId + '_list\').style.display=\'none\';">' + m + '</div>'; });
+        list.innerHTML = h; list.style.display = 'block';
+        var rect = input.getBoundingClientRect();
+        list.style.left = rect.left + 'px'; list.style.top = (rect.bottom + 4) + 'px'; list.style.width = rect.width + 'px';
+    });
+}
+
+function linkAdToArticle(adId) {
+    var input = document.getElementById('adLink_' + adId);
+    if (!input) return;
+    var article = input.value.trim();
+    if (!article) { showToast('❌ Введите артикул', 'error'); return; }
+    dbGetAll('ads').then(function(ads) {
+        var ad = null; ads.forEach(function(a) { if (a.id === adId) ad = a; });
+        if (!ad) return;
+        ad.linkedArticle = article;
+        return Promise.all([dbSave('ads', ad), loadAppSettings()]).then(function(r) {
+            var settings = r[1];
+            return buildProduct(article).then(function(prod) {
+                var profitPerUnit = prod.sellingPrice - prod.costPrice;
+                var revenue = (ad.orders_from_ad || 0) * (prod.sellingPrice || 0);
+                ad._roi = (ad.spent || 0) > 0 ? Math.round(((revenue * (prod.metrics.margin / 100)) - (ad.spent || 0)) / (ad.spent || 0) * 100) : 0;
+                ad._drr = revenue > 0 ? Math.round(((ad.spent || 0) / revenue) * 100) : 0;
+                return dbSave('ads', ad);
+            });
+        });
+    }).then(function() { renderAds(); showToast('✅ Товар привязан', 'success'); });
+}
 
 // ============================================================
 // ПОСТАВКИ
@@ -254,71 +352,25 @@ function removeFromSupplyCart(i) { supplyCart.splice(i, 1); renderSupplyCart(); 
 function renderSupplyCart() { var c = document.getElementById('supplyCart'), tp = 0; supplyCart.forEach(function(x) { tp += x.quantity; }); document.getElementById('supplyPlaces').textContent = tp; document.getElementById('supplyWeight').textContent = (tp * 0.5).toFixed(1) + ' кг'; document.getElementById('supplyVolume').textContent = (tp * 5) + ' л'; if (supplyCart.length === 0) { c.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:20px;">Корзина пуста</div>'; return; } var h = ''; supplyCart.forEach(function(x, i) { h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="flex:1;">' + x.article + '</span><span style="width:50px;text-align:center;">' + (x.size || '—') + '</span><span style="width:50px;text-align:center;">' + x.quantity + '</span><span style="width:80px;text-align:center;font-size:10px;">' + x.pallet + '</span><button class="btn btn-danger btn-sm" onclick="removeFromSupplyCart(' + i + ')" style="padding:2px 6px;font-size:10px;">✕</button></div>'; }); c.innerHTML = h; }
 
 function createSupply() { if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; } var tp = 0; supplyCart.forEach(function(x) { tp += x.quantity; }); var s = { id: Date.now(), name: 'Поставка #' + new Date().toISOString().slice(0, 10).replace(/-/g, ''), date: getYesterdayStr(), items: supplyCart.length, places: tp, weight: tp * 0.5, volume: tp * 5, status: 'planned', cart: JSON.parse(JSON.stringify(supplyCart)) }; dbSave('shipments', s).then(function() { supplyCart = []; renderSupplyCart(); renderSupplyHistory(); showToast('✅ Поставка создана', 'success'); }); }
-function exportSupplyForWB() {
-    if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; }
-    var data = supplyCart.map(function(item) {
-        return {
-            'Артикул продавца': item.article,
-            'Размер': item.size || '',
-            'Количество': item.quantity,
-            'Номер палеты': item.pallet || 'Без паллеты'
-        };
-    });
-    var wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Поставка_WB');
-    XLSX.writeFile(wb, 'StockFlow_Поставка_WB_' + getYesterdayStr().replace(/\./g, '_') + '.xlsx');
-    showToast('✅ Файл для WB готов', 'success');
-}
 
-function exportSupplyPackingList() {
-    if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; }
-    var grouped = {};
-    supplyCart.forEach(function(item) {
-        var pallet = item.pallet || 'Без паллеты';
-        if (!grouped[pallet]) grouped[pallet] = [];
-        grouped[pallet].push(item);
-    });
-    var data = [];
-    Object.keys(grouped).sort().forEach(function(pallet) {
-        data.push({ 'Паллета': pallet, 'Артикул': '', 'Размер': '', 'Количество': '', 'Проклеить?': '' });
-        grouped[pallet].forEach(function(item) {
-            data.push({
-                'Паллета': '',
-                'Артикул': item.article,
-                'Размер': item.size || '',
-                'Количество': item.quantity,
-                'Проклеить?': '☐'
-            });
-        });
-        data.push({ 'Паллета': '', 'Артикул': '', 'Размер': '', 'Количество': '', 'Проклеить?': '' });
-    });
-    var wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Сборочный_лист');
-    XLSX.writeFile(wb, 'StockFlow_Сборочный_лист_' + getYesterdayStr().replace(/\./g, '_') + '.xlsx');
-    showToast('✅ Сборочный лист готов', 'success');
-}
 function updateSupplyStatus(id, ns) { dbGetAll('shipments').then(function(ss) { var s = null; ss.forEach(function(x) { if (x.id === id) s = x; }); if (!s) return; s.status = ns; return dbSave('shipments', s); }).then(function() { renderSupplyHistory(); showToast('✅ Статус обновлён', 'success'); }); }
 
 function renderSupplyHistory() { var tb = document.getElementById('supplyHistoryBody'); dbGetAll('shipments').then(function(ss) { if (ss.length === 0) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Нет поставок</td></tr>'; return; } ss.sort(function(a, b) { return b.id - a.id; }); var sl = { 'planned': '📋 Запланировано', 'in_transit': '🚛 В пути', 'accepted': '✅ Принято', 'archive': '📦 Архив' }, h = ''; ss.forEach(function(s) { h += '<tr><td>' + (s.date || '—') + '</td><td>' + s.name + '</td><td>' + s.items + '</td><td>' + s.places + '</td><td>' + (sl[s.status] || s.status) + '</td><td>'; if (s.status === 'planned') h += '<button class="btn btn-primary btn-sm" onclick="updateSupplyStatus(' + s.id + ',\'in_transit\')" style="font-size:10px;padding:2px 8px;">🚛 В путь</button> '; if (s.status === 'in_transit') h += '<button class="btn btn-success btn-sm" onclick="updateSupplyStatus(' + s.id + ',\'accepted\')" style="font-size:10px;padding:2px 8px;">✅ Принято</button> '; if (s.status === 'accepted') h += '<button class="btn btn-secondary btn-sm" onclick="updateSupplyStatus(' + s.id + ',\'archive\')" style="font-size:10px;padding:2px 8px;">📦 Архив</button>'; h += '</td></tr>'; }); tb.innerHTML = h; }); }
+
+function exportSupplyForWB() { if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; } var data = supplyCart.map(function(x) { return { 'Артикул продавца': x.article, 'Размер': x.size || '', 'Количество': x.quantity, 'Номер палеты': x.pallet || 'Без паллеты' }; }); var wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(data); ws['!cols'] = [{ wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 18 }]; XLSX.utils.book_append_sheet(wb, ws, 'Поставка_WB'); XLSX.writeFile(wb, 'StockFlow_Поставка_WB_' + getYesterdayStr().replace(/\./g, '_') + '.xlsx'); showToast('✅ Файл для WB готов', 'success'); }
+
+function exportSupplyPackingList() { if (supplyCart.length === 0) { showToast('❌ Корзина пуста', 'error'); return; } var grp = {}; supplyCart.forEach(function(x) { var p = x.pallet || 'Без паллеты'; if (!grp[p]) grp[p] = []; grp[p].push(x); }); var data = []; Object.keys(grp).sort().forEach(function(p) { data.push({ 'Паллета': p, 'Артикул': '', 'Размер': '', 'Количество': '', 'Проклеить?': '' }); grp[p].forEach(function(x) { data.push({ 'Паллета': '', 'Артикул': x.article, 'Размер': x.size || '', 'Количество': x.quantity, 'Проклеить?': '☐' }); }); data.push({ 'Паллета': '', 'Артикул': '', 'Размер': '', 'Количество': '', 'Проклеить?': '' }); }); var wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(data); ws['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, ws, 'Сборочный_лист'); XLSX.writeFile(wb, 'StockFlow_Сборочный_лист_' + getYesterdayStr().replace(/\./g, '_') + '.xlsx'); showToast('✅ Сборочный лист готов', 'success'); }
 
 function addFromWarehouseToSupply() {
     dbGetAll('warehouse').then(function(items) {
         var active = items.filter(function(i) { return i.type === 'item' && i.status === 'active' && i.warehouse === currentWarehouse; });
         if (active.length === 0) { showToast('❌ Нет товаров на складе', 'error'); return; }
-        var msg = 'Товары на складе (' + currentWarehouse + '):\n\n';
-        var grouped = {}; active.forEach(function(i) { var key = i.article + ' | ' + i.color + ' | ' + i.size; if (!grouped[key]) grouped[key] = { article: i.article, color: i.color, size: i.size, qty: 0, pallet: i.pallet, box: i.box }; grouped[key].qty += i.quantity || 0; });
-        var keys = Object.keys(grouped);
-        keys.forEach(function(k, idx) { var g = grouped[k]; msg += (idx + 1) + '. ' + g.article + ' ' + g.color + ' ' + g.size + ' — ' + g.qty + ' шт (пал.' + g.pallet + ', ' + g.box + ')\n'; });
-        msg += '\nВведите номер товара и количество через запятую (например: 1,20):';
-        var input = prompt(msg);
-        if (!input) return;
+        var msg = 'Товары на складе (' + currentWarehouse + '):\n\n', grouped = {}; active.forEach(function(i) { var key = i.article + ' | ' + i.color + ' | ' + i.size; if (!grouped[key]) grouped[key] = { article: i.article, color: i.color, size: i.size, qty: 0, pallet: i.pallet, box: i.box }; grouped[key].qty += i.quantity || 0; });
+        Object.keys(grouped).forEach(function(k, idx) { var g = grouped[k]; msg += (idx + 1) + '. ' + g.article + ' ' + g.color + ' ' + g.size + ' — ' + g.qty + ' шт (пал.' + g.pallet + ', ' + g.box + ')\n'; });
+        msg += '\nВведите номер товара и количество через запятую (например: 1,20):'; var input = prompt(msg); if (!input) return;
         var parts = input.split(','), idx = parseInt(parts[0]) - 1, qty = parseInt(parts[1]) || 1;
-        if (idx < 0 || idx >= keys.length) { showToast('❌ Неверный номер', 'error'); return; }
-        var g = grouped[keys[idx]];
-        supplyCart.push({ article: g.article, size: g.size, quantity: qty, pallet: 'Склад ' + g.pallet });
-        renderSupplyCart(); showToast('✅ Добавлено: ' + g.article + ' x' + qty, 'success');
+        if (idx < 0 || idx >= Object.keys(grouped).length) { showToast('❌ Неверный номер', 'error'); return; }
+        var g = grouped[Object.keys(grouped)[idx]]; supplyCart.push({ article: g.article, size: g.size, quantity: qty, pallet: 'Склад ' + g.pallet }); renderSupplyCart(); showToast('✅ Добавлено: ' + g.article + ' x' + qty, 'success');
     });
 }
 
@@ -329,7 +381,7 @@ function addFromWarehouseToSupply() {
 function openProductCard(article) {
     currentCardArticle = article; document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); }); document.getElementById('page-product-card').classList.add('active');
     var bc = document.getElementById('backContext'), cp = ''; document.querySelectorAll('.menu-item.active').forEach(function(x) { cp = x.getAttribute('data-page'); });
-    if (cp === 'orders') bc.textContent = 'из Заказов'; else if (cp === 'supplies') bc.textContent = 'из Поставок'; else if (cp === 'warehouse') bc.textContent = 'из Склада'; else bc.textContent = 'из Товаров';
+    if (cp === 'orders') bc.textContent = 'из Заказов'; else if (cp === 'supplies') bc.textContent = 'из Поставок'; else if (cp === 'warehouse') bc.textContent = 'из Склада'; else if (cp === 'ads') bc.textContent = 'из Рекламы'; else bc.textContent = 'из Товаров';
     Promise.all([dbGetAll('sales'), dbGetAll('stock'), loadAppSettings()]).then(function(r) {
         var sales = r[0], stock = r[1], info = getProductInfo(article); if (!info) return;
         var aSales = sales.filter(function(s) { return s.article === article; }), aStock = stock.filter(function(s) { return s.article === article; });
@@ -339,35 +391,37 @@ function openProductCard(article) {
         var st = '🟢 Стабильно', sbg = 'rgba(16,185,129,0.15)', sc = '#10B981'; if (ioI.level === 'critical' || ts < 5) { st = '🔴 Проблема'; sbg = 'rgba(239,68,68,0.15)'; sc = '#EF4444'; } else if (ioI.level === 'warning' || m < 0) { st = '🟡 Внимание'; sbg = 'rgba(245,158,11,0.15)'; sc = '#F59E0B'; }
         var badge = document.getElementById('cardStatusBadge'); badge.textContent = st; badge.style.background = sbg; badge.style.color = sc;
         document.getElementById('cardKpiPrice').textContent = info.price.toLocaleString('ru-RU') + ' ₽'; var me = document.getElementById('cardKpiMargin'); me.textContent = m + '%'; me.style.color = m > 20 ? '#10B981' : m > 0 ? '#F59E0B' : '#EF4444';
-        var se = document.getElementById('cardKpiStock'); se.textContent = ts + ' шт'; se.style.color = ts < 5 ? '#EF4444' : ts < 20 ? '#F59E0B' : '#10B981'; document.getElementById('cardKpiStockSub').textContent = 'на ' + dl + ' дн';
-        var ie = document.getElementById('cardKpiIO'); ie.textContent = io.toFixed(2); ie.style.color = ioI.color; document.getElementById('cardKpiIOSub').textContent = ioI.status;
+        var se = document.getElementById('cardKpiStock'); se.textContent = ts + ' шт'; se.style.color = ts < 5 ? '#EF4444' : ts < 20 ? '#F59E0B' : '#10B981';
+        var ie = document.getElementById('cardKpiIO'); ie.textContent = io.toFixed(2); ie.style.color = ioI.color;
         renderCardChart(aSales, 7); renderCardSalesTab(aSales); renderCardStockTab(aStock, ts, dl, s30); renderCardEconomicsTab(info, ts, s30);
     });
 }
 
-function closeProductCard() { currentCardArticle = null; if (cardChart) { cardChart.destroy(); cardChart = null; } var bc = document.getElementById('backContext'); if (bc.textContent.indexOf('Заказов') !== -1) navigateTo('orders'); else if (bc.textContent.indexOf('Поставок') !== -1) navigateTo('supplies'); else if (bc.textContent.indexOf('Склада') !== -1) navigateTo('warehouse'); else navigateTo('products'); }
+function closeProductCard() { currentCardArticle = null; if (cardChart) { cardChart.destroy(); cardChart = null; } var bc = document.getElementById('backContext'); if (bc.textContent.indexOf('Заказов') !== -1) navigateTo('orders'); else if (bc.textContent.indexOf('Поставок') !== -1) navigateTo('supplies'); else if (bc.textContent.indexOf('Склада') !== -1) navigateTo('warehouse'); else if (bc.textContent.indexOf('Рекламы') !== -1) navigateTo('ads'); else navigateTo('products'); }
 
 function renderCardChart(sales, days) { var cv = document.getElementById('cardSalesChart'); if (!cv) return; if (cardChart) { cardChart.destroy(); cardChart = null; } var today = new Date(), lbs = [], od = [], dd = []; for (var i = days - 1; i >= 0; i--) { var d = new Date(today); d.setDate(d.getDate() - i); var ds = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); lbs.push(ds); var oo = 0, dv = 0; sales.forEach(function(s) { if (s.date === ds) { oo += s.orders || 0; dv += s.delivered || 0; } }); od.push(oo); dd.push(dv); } cardChart = new Chart(cv.getContext('2d'), { type: 'line', data: { labels: lbs, datasets: [{ label: 'Заказы', data: od, borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 2 }, { label: 'Выкупы', data: dd, borderColor: '#10B981', borderWidth: 2, borderDash: [4, 3], fill: false, tension: 0.3, pointRadius: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#9CA3AF', usePointStyle: true, padding: 15, font: { size: 11 } } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9CA3AF', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 9 }, maxTicksLimit: 10 } } } } }); }
 
 function renderCardSalesTab(sales) { var srt = sales.slice().sort(function(a, b) { return b.date.localeCompare(a.date); }), tb = document.getElementById('cardSalesHistory'); if (srt.length === 0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">Нет данных</td></tr>'; } else { var h = ''; srt.slice(0, 30).forEach(function(s) { h += '<tr><td>' + s.date + '</td><td>' + s.orders + '</td><td>' + s.delivered + '</td><td>' + (s.returns || 0) + '</td><td>' + (s.orders > 0 ? Math.round((s.delivered / s.orders) * 100) : 0) + '%</td></tr>'; }); tb.innerHTML = h; } var today = new Date(), wa = new Date(today), twa = new Date(today); wa.setDate(wa.getDate() - 7); twa.setDate(twa.getDate() - 14); var tw = 0, pw = 0; sales.forEach(function(s) { var p = s.date.split('.'), sd = new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0])); if (sd >= wa) tw += s.orders || 0; else if (sd >= twa && sd < wa) pw += s.orders || 0; }); var ce = document.getElementById('cardSalesCompare'); if (pw > 0) { var ch = Math.round(((tw - pw) / pw) * 100); ce.innerHTML = 'Эта неделя: <strong>' + tw + '</strong> заказов <span style="color:' + (ch > 0 ? '#10B981' : '#EF4444') + ';">' + (ch > 0 ? '▲' : '▼') + ' ' + Math.abs(ch) + '%</span> к прошлой'; } else ce.textContent = 'Эта неделя: ' + tw + ' заказов'; }
 
-function renderCardStockTab(stock, ts, dl, s30) { var tb = document.getElementById('cardStockTable'); if (stock.length === 0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">Нет данных</td></tr>'; } else { var h = ''; stock.forEach(function(s) { h += '<tr><td>' + (s.warehouse || '—') + '</td><td style="font-weight:600;">' + (s.available || 0) + '</td><td>' + (s.inTransit || 0) + '</td><td>' + (s.returns || 0) + '</td><td>' + (s.available < 5 ? '🔴 Мало' : '🟡 Норма') + '</td></tr>'; }); tb.innerHTML = h; } var fe = document.getElementById('cardStockForecast'), ds = s30 / 30; if (ts === 0) fe.innerHTML = '<span style="color:#EF4444;">❌ Товар отсутствует</span>'; else if (dl <= 3) fe.innerHTML = '<span style="color:#EF4444;">⚠️ Остатка на <strong>' + dl + ' дн</strong> (~' + ds.toFixed(1) + ' шт/день). Срочно!</span>'; else if (dl <= 7) fe.innerHTML = '<span style="color:#F59E0B;">🟡 Остатка на <strong>' + dl + ' дн</strong> (~' + ds.toFixed(1) + ' шт/день).</span>'; else fe.innerHTML = '<span style="color:#10B981;">✅ Остатка на <strong>' + dl + ' дн</strong> (~' + ds.toFixed(1) + ' шт/день).</span>'; }
+function renderCardStockTab(stock, ts, dl, s30) { var tb = document.getElementById('cardStockTable'); if (stock.length === 0) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">Нет данных</td></tr>'; } else { var h = ''; stock.forEach(function(s) { h += '<tr><td>' + (s.warehouse || '—') + '</td><td style="font-weight:600;">' + (s.available || 0) + '</td><td>' + (s.inTransit || 0) + '</td><td>' + (s.returns || 0) + '</td><td>' + (s.available < 5 ? '🔴 Мало' : '🟡 Норма') + '</td></tr>'; }); tb.innerHTML = h; } var fe = document.getElementById('cardStockForecast'), ds = s30 / 30; if (ts === 0) fe.innerHTML = '<span style="color:#EF4444;">❌ Товар отсутствует</span>'; else if (dl <= 3) fe.innerHTML = '<span style="color:#EF4444;">⚠️ Остатка на <strong>' + dl + ' дн</strong></span>'; else if (dl <= 7) fe.innerHTML = '<span style="color:#F59E0B;">🟡 Остатка на <strong>' + dl + ' дн</strong></span>'; else fe.innerHTML = '<span style="color:#10B981;">✅ Остатка на <strong>' + dl + ' дн</strong></span>'; }
 
-function renderCardEconomicsTab(info, ts, s30) { var p = info.price, cst = info.cost, comm = Math.round(p * appSettings.fboCommission / 100), log = 150, stor = Math.round(appSettings.storageBaseRate * appSettings.volumePerUnit * 30), ret = Math.round(p * 0.05), prof = p - comm - log - stor - cst - ret, tax = Math.round(p * 0.06), np = prof - tax, tm = parseFloat(((np / p) * 100).toFixed(1)); var be = document.getElementById('cardEconomicsBreakdown'), bars = [{ l: 'Комиссия WB (' + appSettings.fboCommission + '%)', v: comm, c: 'commission' }, { l: 'Логистика', v: log, c: 'logistics' }, { l: 'Хранение (мес)', v: stor, c: 'storage' }, { l: 'Себестоимость', v: cst, c: 'cost' }, { l: 'Возвраты (~5%)', v: ret, c: 'returns' }, { l: 'Налог (УСН 6%)', v: tax, c: 'tax' }], mx = Math.max(comm, log, stor, cst, ret, tax); var h = '<div style="font-size:16px;font-weight:600;color:#F0F0FF;margin-bottom:12px;">Цена продажи: ' + p.toLocaleString('ru-RU') + ' ₽</div><div style="border-top:1px solid #2A2A42;margin-bottom:8px;"></div>'; bars.forEach(function(b) { var w = mx > 0 ? Math.round((b.v / mx) * 100) : 0; h += '<div class="econ-bar"><span class="econ-bar-label">' + b.l + '</span><div class="econ-bar-track"><div class="econ-bar-fill ' + b.c + '" style="width:' + w + '%;"></div></div><span class="econ-bar-value" style="color:#EF4444;">−' + b.v.toLocaleString('ru-RU') + ' ₽</span></div>'; }); h += '<div style="border-top:1px solid #2A2A42;margin:8px 0;"></div><div class="econ-bar"><span class="econ-bar-label" style="font-weight:600;">Прибыль</span><div class="econ-bar-track"></div><span class="econ-bar-value" style="color:#10B981;font-size:14px;">' + prof.toLocaleString('ru-RU') + ' ₽</span></div><div class="econ-bar"><span class="econ-bar-label" style="font-weight:600;">ЧИСТАЯ ПРИБЫЛЬ</span><div class="econ-bar-track"></div><span class="econ-bar-value" style="color:#10B981;font-size:16px;font-weight:600;">' + np.toLocaleString('ru-RU') + ' ₽</span></div><div style="font-size:13px;color:#9CA3AF;margin-top:4px;">Маржинальность: <span style="color:' + (tm > 20 ? '#10B981' : '#F59E0B') + ';font-weight:600;">' + tm + '%</span></div>'; be.innerHTML = h; document.getElementById('cardEconomicsTotal').innerHTML = '<div style="font-size:12px;color:#9CA3AF;">📊 Итого за 30 дней</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;"><div>Продано<div style="font-weight:600;color:#F0F0FF;">' + s30 + ' шт</div></div><div>Выручка<div style="font-weight:600;color:#F0F0FF;">' + (s30 * p).toLocaleString('ru-RU') + ' ₽</div></div><div>Чистая прибыль<div style="font-weight:600;color:#10B981;">' + (s30 * np).toLocaleString('ru-RU') + ' ₽</div></div></div>'; }
+function renderCardEconomicsTab(info, ts, s30) { var p = info.price, cst = info.cost, comm = Math.round(p * appSettings.fboCommission / 100), log = 150, stor = Math.round(appSettings.storageBaseRate * appSettings.volumePerUnit * 30), ret = Math.round(p * 0.05), prof = p - comm - log - stor - cst - ret, tax = Math.round(p * 0.06), np = prof - tax, tm = parseFloat(((np / p) * 100).toFixed(1)); var be = document.getElementById('cardEconomicsBreakdown'), bars = [{ l: 'Комиссия WB', v: comm, c: 'commission' }, { l: 'Логистика', v: log, c: 'logistics' }, { l: 'Хранение (мес)', v: stor, c: 'storage' }, { l: 'Себестоимость', v: cst, c: 'cost' }, { l: 'Возвраты', v: ret, c: 'returns' }, { l: 'Налог', v: tax, c: 'tax' }], mx = Math.max(comm, log, stor, cst, ret, tax); var h = '<div style="font-size:16px;font-weight:600;color:#F0F0FF;margin-bottom:12px;">Цена: ' + p.toLocaleString('ru-RU') + ' ₽</div><div style="border-top:1px solid #2A2A42;margin-bottom:8px;"></div>'; bars.forEach(function(b) { var w = mx > 0 ? Math.round((b.v / mx) * 100) : 0; h += '<div class="econ-bar"><span class="econ-bar-label">' + b.l + '</span><div class="econ-bar-track"><div class="econ-bar-fill ' + b.c + '" style="width:' + w + '%;"></div></div><span class="econ-bar-value" style="color:#EF4444;">−' + b.v.toLocaleString('ru-RU') + ' ₽</span></div>'; }); h += '<div style="border-top:1px solid #2A2A42;margin:8px 0;"></div><div class="econ-bar"><span class="econ-bar-label" style="font-weight:600;">Прибыль</span><div class="econ-bar-track"></div><span class="econ-bar-value" style="color:#10B981;">' + prof.toLocaleString('ru-RU') + ' ₽</span></div><div class="econ-bar"><span class="econ-bar-label" style="font-weight:600;">ЧИСТАЯ ПРИБЫЛЬ</span><div class="econ-bar-track"></div><span class="econ-bar-value" style="color:#10B981;font-size:16px;">' + np.toLocaleString('ru-RU') + ' ₽</span></div><div style="font-size:13px;color:#9CA3AF;margin-top:4px;">Маржа: <span style="color:' + (tm > 20 ? '#10B981' : '#F59E0B') + ';">' + tm + '%</span></div>'; be.innerHTML = h; document.getElementById('cardEconomicsTotal').innerHTML = '<div style="font-size:12px;color:#9CA3AF;">📊 Итого за 30 дней</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;"><div>Продано<div style="font-weight:600;">' + s30 + ' шт</div></div><div>Выручка<div style="font-weight:600;">' + (s30 * p).toLocaleString('ru-RU') + ' ₽</div></div><div>Прибыль<div style="font-weight:600;color:#10B981;">' + (s30 * np).toLocaleString('ru-RU') + ' ₽</div></div></div>'; }
 
 // ============================================================
 // ИМПОРТ
 // ============================================================
 
-function downloadTemplate(type) { var hd, ex, fn; if (type === 'sales') { hd = ['Артикул продавца', 'Дата', 'Заказано', 'Выкуплено', 'Сумма заказов', 'Возвраты']; ex = ['21_К_Вельвет_голубой_40', '23.07.2026', '5', '4', '16000', '0']; fn = 'StockFlow_Шаблон_Продажи.xlsx'; } else if (type === 'stock') { hd = ['Артикул продавца', 'Размер', 'Склад', 'Всего на складе', 'В пути', 'Возвраты']; ex = ['21_К_Вельвет_голубой_40', '40', 'Коледино', '50', '10', '2']; fn = 'StockFlow_Шаблон_Остатки.xlsx'; } else return; var wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet([hd, ex]); ws['!cols'] = hd.map(function() { return { wch: 20 }; }); XLSX.utils.book_append_sheet(wb, ws, 'Шаблон'); XLSX.writeFile(wb, fn); }
+function downloadTemplate(type) { var hd, ex, fn; if (type === 'sales') { hd = ['Артикул продавца', 'Дата', 'Заказано', 'Выкуплено', 'Сумма заказов', 'Возвраты']; ex = ['21_К_Вельвет_голубой_40', '23.07.2026', '5', '4', '16000', '0']; fn = 'StockFlow_Шаблон_Продажи.xlsx'; } else if (type === 'stock') { hd = ['Артикул продавца', 'Размер', 'Склад', 'Всего на складе', 'В пути', 'Возвраты']; ex = ['21_К_Вельвет_голубой_40', '40', 'Коледино', '50', '10', '2']; fn = 'StockFlow_Шаблон_Остатки.xlsx'; } else if (type === 'ads') { hd = ['Раздел', 'Тип Ставки', 'ID', 'Кампания', 'Бренд', 'Старт', 'Финиш', 'Показы', 'Частота', 'Клики', 'CPC', 'CPM', 'CTR(%)', 'Место', 'Длительность', 'CR(%)', 'Затраты', 'Заказанные товары, шт', 'Добавления в корзину', 'Валюта']; ex = ['Аукцион', 'Единая Ставка', '36386799', 'Кампания от 06.05.2025', '', '2026-05-06', '2026-07-27', '1', '1', '0', '0', '350', '0', '', '1972:01:47', '0', '0,35', '0', '0', 'RUB']; fn = 'StockFlow_Шаблон_Реклама.xlsx'; } else return; var wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet([hd, ex]); ws['!cols'] = hd.map(function() { return { wch: 20 }; }); XLSX.utils.book_append_sheet(wb, ws, 'Шаблон'); XLSX.writeFile(wb, fn); }
 
 function setupImportDropZone(dzId, fiId, type) { var dz = document.getElementById(dzId), fi = document.getElementById(fiId); if (!dz || !fi) return; dz.addEventListener('click', function() { fi.click(); }); dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('dragover'); }); dz.addEventListener('dragleave', function() { dz.classList.remove('dragover'); }); dz.addEventListener('drop', function(e) { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) processImportFile(e.dataTransfer.files[0], type); }); fi.addEventListener('change', function() { if (fi.files.length > 0) { processImportFile(fi.files[0], type); fi.value = ''; } }); }
 
-function processImportFile(file, type) { var se = document.getElementById(type === 'sales' ? 'salesImportStatus' : 'stockImportStatus'); if (se) se.innerHTML = '<span style="color:#F59E0B;">⏳ Обработка...</span>'; var rd = new FileReader(); rd.onload = function(e) { try { var wb = XLSX.read(e.target.result, { type: 'array' }), sh = wb.Sheets[wb.SheetNames[0]], data = XLSX.utils.sheet_to_json(sh, { defval: '' }); if (data.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Файл пуст</span>'; return; } var mapped = [], errs = []; if (type === 'sales') mapped = mapSalesData(data, errs); else mapped = mapStockData(data, errs); if (mapped.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Нет данных</span>'; return; } var sn = type === 'sales' ? 'sales' : 'stock'; dbClear(sn).then(function() { return Promise.all(mapped.map(function(x) { return dbSave(sn, x); })); }).then(function() { var msg = '✅ Импортировано ' + mapped.length + ' записей'; if (errs.length > 0) msg += ' (ошибок: ' + errs.length + ')'; if (se) se.innerHTML = '<span style="color:#10B981;">' + msg + '</span>'; showToast(msg, errs.length > 0 ? 'error' : 'success'); updateDashboard(); updateProductList(); }); } catch (er) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка: ' + er.message + '</span>'; } }; rd.onerror = function() { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка чтения</span>'; }; rd.readAsArrayBuffer(file); }
+function processImportFile(file, type) { var se = document.getElementById(type + 'ImportStatus'); if (se) se.innerHTML = '<span style="color:#F59E0B;">⏳ Обработка...</span>'; var rd = new FileReader(); rd.onload = function(e) { try { var wb = XLSX.read(e.target.result, { type: 'array' }), sh = wb.Sheets[wb.SheetNames[0]], data = XLSX.utils.sheet_to_json(sh, { defval: '' }); if (data.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Файл пуст</span>'; return; } var mapped = [], errs = []; if (type === 'sales') mapped = mapSalesData(data, errs); else if (type === 'stock') mapped = mapStockData(data, errs); else if (type === 'ads') mapped = mapAdsData(data); if (mapped.length === 0) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Нет данных</span>'; return; } var sn = type === 'sales' ? 'sales' : type === 'stock' ? 'stock' : 'ads'; dbClear(sn).then(function() { return Promise.all(mapped.map(function(x) { return dbSave(sn, x); })); }).then(function() { var msg = '✅ Импортировано ' + mapped.length + ' записей'; if (se) se.innerHTML = '<span style="color:#10B981;">' + msg + '</span>'; showToast(msg, 'success'); updateDashboard(); updateProductList(); }).catch(function(er) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка: ' + er.message + '</span>'; }); } catch (er) { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка: ' + er.message + '</span>'; } }; rd.onerror = function() { if (se) se.innerHTML = '<span style="color:#EF4444;">❌ Ошибка чтения</span>'; }; rd.readAsArrayBuffer(file); }
 
 function mapSalesData(data, errs) { var keys = Object.keys(data[0]), gk = function(p) { return keys.find(function(k) { return p.some(function(x) { return k.toLowerCase().indexOf(x) !== -1; }); }); }, kA = gk(['артикул', 'article']) || keys[0], kD = gk(['дата', 'date']) || keys[1], kO = gk(['заказано', 'orders']) || keys[2], kDel = gk(['выкуплено', 'delivered']) || keys[3], kAm = gk(['сумма', 'amount']) || keys[4], kR = gk(['возврат', 'returns']) || keys[5], mapped = []; data.forEach(function(r, i) { var a = String(r[kA] || '').trim(); if (!a) { errs.push({ row: i + 1, error: 'Пустой артикул' }); return; } mapped.push({ id: Date.now() + Math.random(), article: a, date: String(r[kD] || '').trim() || getYesterdayStr(), orders: parseInt(r[kO]) || 0, delivered: parseInt(r[kDel]) || 0, returns: parseInt(r[kR]) || 0, amount: parseFloat(String(r[kAm] || '0').replace(',', '.').replace(/\s/g, '')) || 0 }); }); return mapped; }
 
 function mapStockData(data, errs) { var keys = Object.keys(data[0]), gk = function(p) { return keys.find(function(k) { return p.some(function(x) { return k.toLowerCase().indexOf(x) !== -1; }); }); }, kA = gk(['артикул', 'article']) || keys[0], kS = gk(['размер', 'size']) || keys[1], kW = gk(['склад', 'warehouse']) || keys[2], kAv = gk(['всего', 'available']) || keys[3], kT = gk(['пути', 'transit']) || keys[4], kR = gk(['возврат', 'returns']) || keys[5], mapped = []; data.forEach(function(r, i) { var a = String(r[kA] || '').trim(); if (!a) { errs.push({ row: i + 1, error: 'Пустой артикул' }); return; } mapped.push({ id: Date.now() + Math.random(), article: a, size: String(r[kS] || '').trim(), warehouse: String(r[kW] || 'Склад').trim(), available: parseInt(r[kAv]) || 0, inTransit: parseInt(r[kT]) || 0, returns: parseInt(r[kR]) || 0 }); }); return mapped; }
+
+function mapAdsData(data) { var keys = Object.keys(data[0]), gk = function(p) { return keys.find(function(k) { return p.some(function(x) { return k.toLowerCase().indexOf(x) !== -1; }); }); }, kCamp = gk(['кампания', 'campaign']) || keys[3], kType = gk(['тип ставки', 'тип']) || keys[1], kId = gk(['id']) || keys[2], kImpr = gk(['показы', 'impressions']) || keys[7], kClicks = gk(['клики', 'clicks']) || keys[9], kCpc = gk(['cpc']) || keys[10], kCtr = gk(['ctr']) || keys[12], kCr = gk(['cr']) || keys[15], kSpent = gk(['затраты', 'spent']) || keys[16], kOrders = gk(['заказанные', 'orders']) || keys[17], mapped = []; data.forEach(function(r) { var camp = String(r[kCamp] || '').trim(); if (!camp) return; mapped.push({ id: Date.now() + Math.random(), campaign: camp, type: String(r[kType] || '').trim(), wbId: String(r[kId] || '').trim(), impressions: parseInt(r[kImpr]) || 0, clicks: parseInt(r[kClicks]) || 0, cpc: parseFloat(String(r[kCpc] || '0').replace(',', '.')) || 0, ctr: parseFloat(String(r[kCtr] || '0').replace(',', '.')) || 0, cr: parseFloat(String(r[kCr] || '0').replace(',', '.')) || 0, spent: parseFloat(String(r[kSpent] || '0').replace(',', '.')) || 0, orders_from_ad: parseInt(r[kOrders]) || 0, linkedArticle: null, _roi: 0, _drr: 0 }); }); return mapped; }
 
 // ============================================================
 // ЯДРО: PRODUCT
@@ -384,56 +438,29 @@ function updateProduct(article, changes) { var p = null; TEST_PRODUCTS.forEach(f
 // ============================================================
 
 function updateWarehousePage() { renderWarehouse(); }
-
 function switchWarehouse(name) { currentWarehouse = name; document.querySelectorAll('.wh-tab').forEach(function(t) { t.classList.remove('active'); }); document.querySelector('.wh-tab[data-warehouse="' + name + '"]').classList.add('active'); renderWarehouse(); }
-
 function createPallet() { var n = document.getElementById('newPalletNumber').value.trim(); if (!n) { showToast('❌ Введите номер палеты', 'error'); return; } dbGetAll('warehouse').then(function(items) { if (items.some(function(i) { return i.type === 'pallet' && i.warehouse === currentWarehouse && i.pallet === n; })) { showToast('❌ Паллета №' + n + ' уже существует', 'error'); return; } return dbSave('warehouse', { id: Date.now(), type: 'pallet', warehouse: currentWarehouse, pallet: n, created: getYesterdayStr() }); }).then(function() { renderWarehouse(); showToast('✅ Паллета создана', 'success'); }); }
-
-function deletePallet(palletNumber) {
-    if (!confirm('Удалить палету №' + palletNumber + ' и всё её содержимое? Это действие необратимо.')) return;
-    dbGetAll('warehouse').then(function(items) {
-        var toDelete = items.filter(function(i) { return i.pallet === palletNumber && i.warehouse === currentWarehouse; });
-        return Promise.all(toDelete.map(function(i) { return dbDelete('warehouse', i.id); }));
-    }).then(function() { renderWarehouse(); showToast('✅ Паллета удалена', 'success'); });
-}
-
-function addBoxToPallet(palletNumber, side) { var bl = prompt('Этикетка коробки (например, КЗЖ№1):'); if (!bl) return; dbSave('warehouse', { id: Date.now(), type: 'box', warehouse: currentWarehouse, pallet: palletNumber, side: side, box: bl.trim(), created: getYesterdayStr() }).then(function() { renderWarehouse(); showToast('✅ Коробка добавлена', 'success'); }); }
-function deleteBox(boxLabel, palletNumber) {
-    if (!confirm('Удалить коробку ' + boxLabel + ' с палеты №' + palletNumber + ' и все товары в ней?')) return;
-    dbGetAll('warehouse').then(function(items) {
-        var toDelete = items.filter(function(i) { return i.box === boxLabel && i.pallet === palletNumber && i.warehouse === currentWarehouse; });
-        return Promise.all(toDelete.map(function(i) { return dbDelete('warehouse', i.id); }));
-    }).then(function() { renderWarehouse(); showToast('✅ Коробка удалена', 'success'); });
-}
-function moveBox(boxLabel, fromPallet) {
-    var newPallet = prompt('Переместить коробку ' + boxLabel + ' с палеты №' + fromPallet + ' на палету №:');
-    if (!newPallet || newPallet === fromPallet) return;
-    dbGetAll('warehouse').then(function(items) {
-        var palletExists = items.some(function(i) { return i.type === 'pallet' && i.warehouse === currentWarehouse && i.pallet === newPallet; });
-        if (!palletExists) { showToast('❌ Паллета №' + newPallet + ' не найдена', 'error'); return; }
-        var boxItems = items.filter(function(i) { return i.box === boxLabel && i.pallet === fromPallet && i.warehouse === currentWarehouse; });
-        var historyNote = getYesterdayStr() + ': пал.' + fromPallet + ' → пал.' + newPallet;
-        return Promise.all(boxItems.map(function(i) { i.pallet = newPallet; if (!i.history) i.history = []; i.history.push(historyNote); return dbSave('warehouse', i); }));
-    }).then(function() { renderWarehouse(); showToast('✅ Коробка перемещена на пал.' + newPallet, 'success'); });
-}
-
-function addItemToBox(boxId, palletNumber, side) { var a = prompt('Артикул товара:'); if (!a) return; var c = prompt('Цвет:') || '', s = prompt('Размер:') || '', q = parseInt(prompt('Количество:') || '1') || 1; if (q <= 0) return; dbSave('warehouse', { id: Date.now(), type: 'item', warehouse: currentWarehouse, pallet: palletNumber, side: side, box: boxId, article: a, color: c, size: s, quantity: q, status: 'active', created: getYesterdayStr(), history: [] }).then(function() { renderWarehouse(); showToast('✅ Товар добавлен', 'success'); }); }
-
-function removeWarehouseItem(id) { if (!confirm('Удалить этот элемент со склада?')) return; dbDelete('warehouse', id).then(function() { renderWarehouse(); showToast('✅ Удалено', 'success'); }); }
+function deletePallet(pn) { if (!confirm('Удалить палету №' + pn + ' и всё содержимое?')) return; dbGetAll('warehouse').then(function(items) { return Promise.all(items.filter(function(i) { return i.pallet === pn && i.warehouse === currentWarehouse; }).map(function(i) { return dbDelete('warehouse', i.id); })); }).then(function() { renderWarehouse(); showToast('✅ Паллета удалена', 'success'); }); }
+function addBoxToPallet(pn, side) { var bl = prompt('Этикетка коробки:'); if (!bl) return; dbSave('warehouse', { id: Date.now(), type: 'box', warehouse: currentWarehouse, pallet: pn, side: side, box: bl.trim(), created: getYesterdayStr() }).then(function() { renderWarehouse(); showToast('✅ Коробка добавлена', 'success'); }); }
+function deleteBox(bl, pn) { if (!confirm('Удалить коробку ' + bl + ' с палеты №' + pn + '?')) return; dbGetAll('warehouse').then(function(items) { return Promise.all(items.filter(function(i) { return i.box === bl && i.pallet === pn && i.warehouse === currentWarehouse; }).map(function(i) { return dbDelete('warehouse', i.id); })); }).then(function() { renderWarehouse(); showToast('✅ Коробка удалена', 'success'); }); }
+function moveBox(bl, fp) { var np = prompt('Переместить коробку ' + bl + ' с палеты №' + fp + ' на палету №:'); if (!np || np === fp) return; dbGetAll('warehouse').then(function(items) { if (!items.some(function(i) { return i.type === 'pallet' && i.warehouse === currentWarehouse && i.pallet === np; })) { showToast('❌ Паллета №' + np + ' не найдена', 'error'); return; } var bis = items.filter(function(i) { return i.box === bl && i.pallet === fp && i.warehouse === currentWarehouse; }); return Promise.all(bis.map(function(i) { i.pallet = np; if (!i.history) i.history = []; i.history.push(getYesterdayStr() + ': пал.' + fp + ' → пал.' + np); return dbSave('warehouse', i); })); }).then(function() { renderWarehouse(); showToast('✅ Коробка перемещена', 'success'); }); }
+function addItemToBox(bid, pn, side) { var a = prompt('Артикул:'), c = prompt('Цвет:') || '', s = prompt('Размер:') || '', q = parseInt(prompt('Кол-во:') || '1') || 1; if (!a || q <= 0) return; dbSave('warehouse', { id: Date.now(), type: 'item', warehouse: currentWarehouse, pallet: pn, side: side, box: bid, article: a, color: c, size: s, quantity: q, status: 'active', created: getYesterdayStr(), history: [] }).then(function() { renderWarehouse(); showToast('✅ Товар добавлен', 'success'); }); }
+function removeWarehouseItem(id) { if (!confirm('Удалить элемент?')) return; dbDelete('warehouse', id).then(function() { renderWarehouse(); showToast('✅ Удалено', 'success'); }); }
 
 function renderWarehouse() {
     var c = document.getElementById('warehouseContent');
     dbGetAll('warehouse').then(function(items) {
         var pallets = items.filter(function(i) { return i.type === 'pallet' && i.warehouse === currentWarehouse; });
-        if (pallets.length === 0) { c.innerHTML = '<div class="card" style="text-align:center;padding:30px;"><div style="font-size:36px;margin-bottom:10px;">📦</div><div style="font-size:15px;font-weight:600;">Склад пуст</div><div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Создайте первую палету</div></div>'; return; }
+        if (pallets.length === 0) { c.innerHTML = '<div class="card" style="text-align:center;padding:30px;">📦<br>Склад пуст<br>Создайте первую палету</div>'; return; }
         var h = ''; pallets.sort(function(a, b) { return a.pallet.localeCompare(b.pallet); }).forEach(function(pallet) {
             var boxes = items.filter(function(i) { return i.type === 'box' && i.pallet === pallet.pallet && i.warehouse === currentWarehouse; });
             var itemsAll = items.filter(function(i) { return i.type === 'item' && i.pallet === pallet.pallet && i.warehouse === currentWarehouse && i.status === 'active'; });
-            var totalQty = itemsAll.reduce(function(s, i) { return s + (i.quantity || 0); }, 0);
-            h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📦</span><div class="product-group-info"><div class="product-group-name">Паллета №' + pallet.pallet + '</div><div class="product-group-category">' + currentWarehouse + ' · ' + boxes.length + ' коробок · ' + totalQty + ' ед.</div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);"><button class="btn btn-secondary btn-sm" onclick="addBoxToPallet(\'' + pallet.pallet + '\',\'лицевая\')">➕ Коробка (лицо)</button><button class="btn btn-secondary btn-sm" onclick="addBoxToPallet(\'' + pallet.pallet + '\',\'обратная\')">➕ Коробка (оборот)</button><button class="btn btn-danger btn-sm" onclick="deletePallet(\'' + pallet.pallet + '\')" style="margin-left:auto;">🗑️ Удалить палету</button></div>';
+            var tq = itemsAll.reduce(function(s, i) { return s + (i.quantity || 0); }, 0);
+            h += '<div class="product-group"><div class="product-group-header" onclick="toggleGroup(this)"><span class="product-group-icon">📦</span><div class="product-group-info"><div class="product-group-name">Паллета №' + pallet.pallet + '</div><div class="product-group-category">' + currentWarehouse + ' · ' + boxes.length + ' кор. · ' + tq + ' ед.</div></div><span class="product-group-arrow">▶</span></div><div class="product-group-items"><div style="padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);"><button class="btn btn-secondary btn-sm" onclick="addBoxToPallet(\'' + pallet.pallet + '\',\'лицевая\')">➕ Коробка (лицо)</button><button class="btn btn-secondary btn-sm" onclick="addBoxToPallet(\'' + pallet.pallet + '\',\'обратная\')">➕ Коробка (оборот)</button><button class="btn btn-danger btn-sm" onclick="deletePallet(\'' + pallet.pallet + '\')" style="margin-left:auto;">🗑️ Удалить палету</button></div>';
             boxes.forEach(function(box) {
-                var boxItems = itemsAll.filter(function(i) { return i.box === box.box; }), boxQty = boxItems.reduce(function(s, i) { return s + (i.quantity || 0); }, 0);
-h += '<div style="padding:6px 16px 6px 24px;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;"><span><strong>' + box.box + '</strong> (' + box.side + ') — ' + boxQty + ' ед.</span><div style="display:flex;gap:4px;"><button class="btn btn-primary btn-sm" onclick="addItemToBox(\'' + box.box + '\',\'' + pallet.pallet + '\',\'' + box.side + '\')" style="font-size:10px;padding:2px 8px;">➕ Товар</button><button class="btn btn-secondary btn-sm" onclick="moveBox(\'' + box.box + '\',\'' + pallet.pallet + '\')" style="font-size:10px;padding:2px 8px;">↔ Переместить</button><button class="btn btn-danger btn-sm" onclick="deleteBox(\'' + box.box + '\',\'' + pallet.pallet + '\')" style="font-size:10px;padding:2px 8px;">🗑️</button></div></div>';                if (boxItems.length > 0) { h += '<div style="margin-top:4px;font-size:11px;color:var(--text-secondary);">'; boxItems.forEach(function(item) { h += '<div style="padding:2px 0;">' + item.article + ' ' + item.color + ' ' + item.size + ' — ' + item.quantity + ' шт <button class="btn btn-danger btn-sm" onclick="removeWarehouseItem(' + item.id + ')" style="font-size:9px;padding:1px 6px;">✕</button></div>'; }); h += '</div>'; }
+                var bis = itemsAll.filter(function(i) { return i.box === box.box; }), bq = bis.reduce(function(s, i) { return s + (i.quantity || 0); }, 0);
+                h += '<div style="padding:6px 16px 6px 24px;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;"><span><strong>' + box.box + '</strong> (' + box.side + ') — ' + bq + ' ед.</span><div style="display:flex;gap:4px;"><button class="btn btn-primary btn-sm" onclick="addItemToBox(\'' + box.box + '\',\'' + pallet.pallet + '\',\'' + box.side + '\')" style="font-size:10px;padding:2px 8px;">➕ Товар</button><button class="btn btn-secondary btn-sm" onclick="moveBox(\'' + box.box + '\',\'' + pallet.pallet + '\')" style="font-size:10px;padding:2px 8px;">↔</button><button class="btn btn-danger btn-sm" onclick="deleteBox(\'' + box.box + '\',\'' + pallet.pallet + '\')" style="font-size:10px;padding:2px 8px;">🗑️</button></div></div>';
+                if (bis.length > 0) { h += '<div style="margin-top:4px;font-size:11px;color:var(--text-secondary);">'; bis.forEach(function(item) { h += '<div style="padding:2px 0;">' + item.article + ' ' + item.color + ' ' + item.size + ' — ' + item.quantity + ' шт <button class="btn btn-danger btn-sm" onclick="removeWarehouseItem(' + item.id + ')" style="font-size:9px;padding:1px 6px;">✕</button></div>'; }); h += '</div>'; }
                 h += '</div>';
             });
             h += '</div></div>';
@@ -473,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('ordersSearch').addEventListener('input', renderOrders);
     document.getElementById('ordersFilter').addEventListener('change', renderOrders);
     document.getElementById('clearOrdersFilterBtn').addEventListener('click', function() { document.getElementById('ordersSearch').value = ''; document.getElementById('ordersFilter').value = 'all'; renderOrders(); });
-    document.getElementById('exportOrdersBtn').addEventListener('click', function() { showToast('📤 Экспорт будет в следующем обновлении', 'success'); });
+    document.getElementById('exportOrdersBtn').addEventListener('click', function() { showToast('📤 Экспорт в разработке', 'success'); });
     document.getElementById('addToSupplyBtn').addEventListener('click', addToSupplyCart);
     document.getElementById('createSupplyBtn').addEventListener('click', createSupply);
     document.getElementById('addFromWarehouseBtn').addEventListener('click', addFromWarehouseToSupply);
@@ -482,8 +509,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.card-tab').forEach(function(tab) { tab.addEventListener('click', function() { document.querySelectorAll('.card-tab').forEach(function(t) { t.classList.remove('active'); }); this.classList.add('active'); var tn = this.getAttribute('data-card-tab'); document.querySelectorAll('.card-tab-content').forEach(function(c) { c.style.display = 'none'; }); var ct = document.getElementById('cardTab' + tn.charAt(0).toUpperCase() + tn.slice(1)); if (ct) ct.style.display = 'block'; }); });
     document.getElementById('downloadSalesTemplateBtn').addEventListener('click', function() { downloadTemplate('sales'); });
     document.getElementById('downloadStockTemplateBtn').addEventListener('click', function() { downloadTemplate('stock'); });
+    document.getElementById('downloadAdsTemplateBtn').addEventListener('click', function() { downloadTemplate('ads'); });
     setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
     setupImportDropZone('stockDropZone', 'stockFileInput', 'stock');
+    setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
     document.getElementById('createPalletBtn').addEventListener('click', createPallet);
     document.querySelectorAll('.wh-tab').forEach(function(tab) { tab.addEventListener('click', function() { switchWarehouse(this.getAttribute('data-warehouse')); }); });
     updateDashboard();
