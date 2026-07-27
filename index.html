@@ -95,7 +95,11 @@
                     <div id="supplyCart" style="max-height:300px;overflow-y:auto;margin-bottom:12px;"><div style="text-align:center;color:var(--text-secondary);padding:20px;font-size:13px;">Корзина пуста. Добавьте товары.</div></div>
                     <div style="padding:10px;background:var(--bg-hover);border-radius:8px;margin-bottom:12px;font-size:12px;"><div style="display:flex;justify-content:space-between;"><span>📦 Мест:</span><strong id="supplyPlaces">0</strong></div><div style="display:flex;justify-content:space-between;"><span>⚖️ Вес:</span><strong id="supplyWeight">0 кг</strong></div><div style="display:flex;justify-content:space-between;"><span>📐 Объём:</span><strong id="supplyVolume">0 л</strong></div></div>
                     <button class="btn btn-primary" id="createSupplyBtn" style="width:100%;">✅ Сформировать поставку</button>
-                </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+    <button class="btn btn-secondary btn-sm" onclick="exportSupplyForWB()" style="flex:1;">📤 Для WB</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportSupplyPackingList()" style="flex:1;">📋 Сборочный лист</button>
+</div>
+            
                 <div class="card">
                     <div class="card-title">➕ Добавить товар</div>
                     <div style="display:flex;flex-direction:column;gap:8px;"><input type="text" id="supplyArticle" placeholder="Артикул" style="width:100%;"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;"><input type="text" id="supplySize" placeholder="Размер"><input type="number" id="supplyQty" placeholder="Кол-во" value="1" min="1"><input type="text" id="supplyPallet" placeholder="Паллета"></div><button class="btn btn-primary btn-sm" id="addToSupplyBtn">➕ Добавить в корзину</button><button class="btn btn-secondary btn-sm" id="addFromWarehouseBtn">📦 Добавить со склада</button></div>
