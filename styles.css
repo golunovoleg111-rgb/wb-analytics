@@ -201,7 +201,7 @@ body {
     display: flex;
     align-items: center;
     background: var(--bg-input);
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 4px 10px;
     transition: all var(--transition);
@@ -209,7 +209,8 @@ body {
 
 .search-wrapper:focus-within {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-glow);
+    box-shadow: 0 0 0 4px var(--primary-glow);
+    background: var(--bg-card);
 }
 
 .search-icon {
@@ -1078,56 +1079,249 @@ tr:hover td {
     margin-bottom: 4px;
 }
 
-.form-group input,
-.form-group select {
+/* ============================================================
+   ПОЛЯ ВВОДА — ЕДИНЫЙ СТИЛЬ
+   ============================================================ */
+
+/* Все поля ввода */
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="date"],
+input[type="search"],
+select,
+textarea {
     width: 100%;
-    padding: 6px 10px;
+    padding: 8px 12px;
     background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xs);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-size: 13px;
     font-family: var(--font);
     outline: none;
     transition: all var(--transition);
+    box-shadow: 0 1px 3px rgba(108, 43, 217, 0.04);
 }
 
-.form-group input:focus,
-.form-group select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-glow);
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-sm);
-}
-
-/* Список подсказок */
-.suggestions-list {
-    position: absolute;
+/* Состояние :hover */
+input[type="text"]:hover,
+input[type="number"]:hover,
+input[type="password"]:hover,
+input[type="date"]:hover,
+input[type="search"]:hover,
+select:hover,
+textarea:hover {
+    border-color: var(--primary-light);
     background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xs);
-    max-height: 140px;
-    overflow-y: auto;
-    z-index: 100;
-    min-width: 180px;
-    box-shadow: var(--shadow-dropdown);
 }
 
-.suggestions-list div {
-    padding: 4px 10px;
-    cursor: pointer;
+/* Состояние :focus */
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+input[type="search"]:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--primary);
+    background: var(--bg-card);
+    box-shadow: 0 0 0 4px var(--primary-glow), 0 2px 8px rgba(124, 58, 237, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Плейсхолдеры */
+input::placeholder,
+textarea::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
     font-size: 12px;
-    color: var(--text-primary);
+}
+
+/* Специальный стиль для поисковых полей */
+input[type="search"],
+.search-input {
+    padding-left: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 10px center;
+    background-size: 16px;
+}
+
+input[type="search"]:focus,
+.search-input:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+}
+
+/* Стиль для select */
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%239CA3AF'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+select:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%237C3AED'/%3E%3C/svg%3E");
+}
+
+select:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%237C3AED'/%3E%3C/svg%3E");
+}
+
+/* Стиль для текстовых полей (textarea) */
+textarea {
+    resize: vertical;
+    min-height: 60px;
+    font-family: var(--font);
+}
+
+/* Стиль для disabled полей */
+input:disabled,
+select:disabled,
+textarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--bg-hover);
+}
+
+/* Стиль для полей с ошибкой */
+input.error,
+select.error,
+textarea.error {
+    border-color: #EF4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+}
+
+input.error:focus,
+select.error:focus,
+textarea.error:focus {
+    border-color: #EF4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+}
+
+/* Стиль для полей с успехом */
+input.success,
+select.success,
+textarea.success {
+    border-color: #10B981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+
+/* ============================================================
+   ПОИСКОВЫЕ ПОЛЯ В КАРТОЧКАХ
+   ============================================================ */
+
+.card input[type="text"],
+.card input[type="search"],
+.card select {
+    background: var(--bg-input);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 12px;
     transition: all var(--transition);
 }
 
-.suggestions-list div:hover {
-    background: var(--bg-hover);
-    color: var(--primary);
+.card input[type="text"]:focus,
+.card input[type="search"]:focus,
+.card select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-glow);
+    background: var(--bg-card);
+}
+
+.card input[type="text"][placeholder*="Поиск"],
+.card input[type="search"] {
+    padding-left: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 10px center;
+    background-size: 14px;
+}
+
+.card input[type="text"][placeholder*="Поиск"]:focus,
+.card input[type="search"]:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   ПОЛЯ ВВОДА В МОДАЛЬНЫХ ОКНАХ
+   ============================================================ */
+
+.modal-body input[type="text"],
+.modal-body input[type="number"],
+.modal-body input[type="password"],
+.modal-body select {
+    background: var(--bg-input);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-size: 13px;
+    width: 100%;
+    transition: all var(--transition);
+}
+
+.modal-body input[type="text"]:focus,
+.modal-body input[type="number"]:focus,
+.modal-body input[type="password"]:focus,
+.modal-body select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-glow);
+    background: var(--bg-card);
+}
+
+/* ============================================================
+   ЧЕКБОКСЫ И РАДИО
+   ============================================================ */
+
+input[type="checkbox"],
+input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+input[type="checkbox"]:hover,
+input[type="radio"]:hover {
+    transform: scale(1.1);
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+    accent-color: var(--primary);
+}
+
+/* ============================================================
+   ПОЛЯ В ТАБЛИЦАХ
+   ============================================================ */
+
+#adsTable input[type="text"] {
+    background: var(--bg-input);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 4px 8px;
+    font-size: 11px;
+    font-family: var(--font);
+    transition: all var(--transition);
+    width: 100%;
+    min-width: 100px;
+}
+
+#adsTable input[type="text"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+    background: var(--bg-card);
+}
+
+#adsTable input[type="text"]::placeholder {
+    color: var(--text-muted);
+    font-size: 10px;
 }
 
 /* ============================================================
@@ -1171,7 +1365,7 @@ tr:hover td {
 
 #adsPagination select {
     background: var(--bg-input);
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     border-radius: var(--radius-xs);
     color: var(--text-primary);
     padding: 4px 6px;
@@ -1182,7 +1376,7 @@ tr:hover td {
 
 #adsPagination select:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-glow);
+    box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
 /* ============================================================
@@ -1233,7 +1427,6 @@ tr:hover td {
    АДАПТИВНОСТЬ
    ============================================================ */
 
-/* Планшеты */
 @media (max-width: 992px) {
     .grid-2,
     .grid-3,
@@ -1245,13 +1438,8 @@ tr:hover td {
     .ads-summary-grid {
         grid-template-columns: repeat(3, 1fr);
     }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
 }
 
-/* Мобильные устройства */
 @media (max-width: 768px) {
     .topbar {
         padding: 0 var(--spacing-md);
@@ -1332,7 +1520,6 @@ tr:hover td {
     }
 }
 
-/* Маленькие телефоны */
 @media (max-width: 480px) {
     .card-kpi-grid {
         grid-template-columns: 1fr;
