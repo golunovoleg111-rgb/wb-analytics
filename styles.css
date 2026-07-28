@@ -23,14 +23,12 @@
     --bg-hover: #F3F0FF;
     --bg-input: #FAF8FF;
     --bg-topbar: #FFFFFF;
-    --bg-header: #FFFFFF;
 
     /* Текст */
     --text-primary: #1A1A2E;
     --text-secondary: #6B7280;
     --text-muted: #9CA3AF;
     --text-light: #FFFFFF;
-    --text-on-gradient: #FFFFFF;
 
     /* Границы */
     --border: #E5E0F0;
@@ -58,7 +56,6 @@
 
     /* Шрифты */
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-mono: 'SF Mono', 'Fira Code', monospace;
 
     /* Анимации */
     --transition: 0.2s ease;
@@ -88,7 +85,7 @@ body {
 }
 
 /* ============================================================
-   ВЕРХНИЙ САЙДБАР — TOPBAR
+   ВЕРХНИЙ САЙДБАР
    ============================================================ */
 
 .topbar {
@@ -159,94 +156,25 @@ body {
 .topbar-nav {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: var(--spacing-xs);
     flex: 1;
     justify-content: center;
     padding: 0 var(--spacing-lg);
 }
 
-.nav-group {
-    position: relative;
-}
-
-.nav-group-btn {
-    background: none;
-    border: none;
-    padding: 8px 12px;
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.nav-group-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.nav-group-btn:focus {
-    outline: none;
-}
-
-.nav-group-icon {
-    font-size: 14px;
-}
-
-.nav-group-label {
-    font-weight: 500;
-}
-
-.nav-group-arrow {
-    font-size: 8px;
-    color: var(--text-muted);
-    transition: transform var(--transition);
-}
-
-.nav-group-btn.active .nav-group-arrow {
-    transform: rotate(180deg);
-}
-
-.nav-group-items {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 50%;
-    transform: translateX(-50%) translateY(-4px);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-dropdown);
-    padding: 4px 0;
-    min-width: 160px;
-    opacity: 0;
-    pointer-events: none;
-    transition: all var(--transition-slow);
-    z-index: 50;
-}
-
-.nav-group-items.open {
-    opacity: 1;
-    pointer-events: all;
-    transform: translateX(-50%) translateY(0);
-}
-
 .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 16px;
+    padding: 6px 14px;
     font-size: 13px;
+    font-weight: 500;
     color: var(--text-secondary);
     text-decoration: none;
-    transition: all var(--transition);
     cursor: pointer;
-    border-radius: var(--radius-xs);
-    margin: 2px 4px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition);
+    white-space: nowrap;
+    border: none;
+    background: none;
+    font-family: var(--font);
 }
 
 .nav-item:hover {
@@ -311,6 +239,7 @@ body {
     font-weight: 400;
 }
 
+/* Профиль */
 .topbar-profile {
     background: none;
     border: none;
@@ -362,7 +291,6 @@ body {
     }
 }
 
-/* Заголовки страниц */
 .page-header {
     display: flex;
     justify-content: space-between;
@@ -410,6 +338,37 @@ body {
     color: var(--text-primary);
 }
 
+/* Быстрые карточки на главной */
+.quick-card {
+    cursor: pointer;
+    text-align: center;
+    padding: var(--spacing-md);
+    transition: all var(--transition-bounce);
+}
+
+.quick-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--primary-light);
+}
+
+.quick-icon {
+    font-size: 28px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.quick-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.quick-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
 /* ============================================================
    КНОПКИ
    ============================================================ */
@@ -427,7 +386,6 @@ body {
     align-items: center;
     gap: 4px;
     white-space: nowrap;
-    text-decoration: none;
 }
 
 .btn-primary {
@@ -959,18 +917,23 @@ tr:hover td {
 .econ-bar-fill.commission {
     background: #7C3AED;
 }
+
 .econ-bar-fill.logistics {
     background: #3B82F6;
 }
+
 .econ-bar-fill.storage {
     background: #F59E0B;
 }
+
 .econ-bar-fill.cost {
     background: #EF4444;
 }
+
 .econ-bar-fill.returns {
     background: #EC4899;
 }
+
 .econ-bar-fill.tax {
     background: #8B5CF6;
 }
@@ -1245,9 +1208,32 @@ tr:hover td {
 }
 
 /* ============================================================
+   СЕТКИ
+   ============================================================ */
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
+}
+
+/* ============================================================
    АДАПТИВНОСТЬ
    ============================================================ */
 
+/* Планшеты */
 @media (max-width: 992px) {
     .grid-2,
     .grid-3,
@@ -1265,6 +1251,7 @@ tr:hover td {
     }
 }
 
+/* Мобильные устройства */
 @media (max-width: 768px) {
     .topbar {
         padding: 0 var(--spacing-md);
@@ -1284,26 +1271,17 @@ tr:hover td {
         flex-direction: column;
         padding: var(--spacing-sm);
         box-shadow: var(--shadow-dropdown);
+        z-index: 50;
     }
 
     .topbar-nav.open {
         display: flex;
     }
 
-    .nav-group-items {
-        position: static;
-        transform: none;
-        opacity: 1;
-        pointer-events: all;
-        box-shadow: none;
-        border: none;
-        padding: 0;
-        min-width: auto;
-        display: none;
-    }
-
-    .nav-group-items.open {
-        display: block;
+    .nav-item {
+        padding: 8px 12px;
+        width: 100%;
+        text-align: center;
     }
 
     .topbar-right {
@@ -1354,6 +1332,7 @@ tr:hover td {
     }
 }
 
+/* Маленькие телефоны */
 @media (max-width: 480px) {
     .card-kpi-grid {
         grid-template-columns: 1fr;
@@ -1395,4 +1374,70 @@ tr:hover td {
     .menu-toggle {
         display: block;
     }
+}
+
+/* ============================================================
+   ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ
+   ============================================================ */
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gap-sm {
+    gap: var(--spacing-sm);
+}
+
+.gap-md {
+    gap: var(--spacing-md);
+}
+
+.gap-lg {
+    gap: var(--spacing-lg);
+}
+
+.w-full {
+    width: 100%;
+}
+
+.mt-sm {
+    margin-top: var(--spacing-sm);
+}
+
+.mt-md {
+    margin-top: var(--spacing-md);
+}
+
+.mt-lg {
+    margin-top: var(--spacing-lg);
+}
+
+.mb-sm {
+    margin-bottom: var(--spacing-sm);
+}
+
+.mb-md {
+    margin-bottom: var(--spacing-md);
+}
+
+.mb-lg {
+    margin-bottom: var(--spacing-lg);
 }
