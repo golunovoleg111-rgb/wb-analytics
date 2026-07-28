@@ -5,7 +5,7 @@
 var APP_VERSION = '5.0.0';
 var APP_STAGE = 'Beta';
 var DB_NAME = 'BeltaneeDB_v5';
-var DB_VERSION = 5; // Увеличиваем версию для нового store
+var DB_VERSION = 5;
 var STORES = ['sales', 'stock', 'settings', 'shipments', 'warehouse', 'ads', 'products'];
 var currentCardArticle = null;
 var cardChart = null;
@@ -220,7 +220,6 @@ function saveSettings() {
     dbClear('settings').then(function() {
         return Promise.all(s.map(function(x) { return dbSave('settings', x); }));
     }).then(function() {
-        // Обновляем appSettings
         s.forEach(function(item) {
             if (appSettings.hasOwnProperty(item.key)) {
                 appSettings[item.key] = item.value;
@@ -268,43 +267,6 @@ function restoreMenuState() {
                 if (arrow) arrow.classList.add('collapsed');
             }
         }
-    });
-}
-
-// ============================================================
-// ПОДСКАЗКИ
-// ============================================================
-
-function setupTooltips() {
-    document.querySelectorAll('[data-tip]').forEach(function(el) {
-        el.addEventListener('mouseenter', function(e) {
-            var tip = this.getAttribute('data-tip');
-            var tooltip = document.createElement('div');
-            tooltip.className = 'tooltip';
-            tooltip.textContent = tip;
-            tooltip.style.position = 'fixed';
-            var rect = this.getBoundingClientRect();
-            tooltip.style.left = Math.min(rect.left + rect.width / 2 - 100, window.innerWidth - 220) + 'px';
-            tooltip.style.top = (rect.bottom + 8) + 'px';
-            tooltip.style.maxWidth = '200px';
-            tooltip.style.padding = '8px 12px';
-            tooltip.style.background = 'var(--bg-card)';
-            tooltip.style.color = 'var(--text-primary)';
-            tooltip.style.border = '1px solid var(--border)';
-            tooltip.style.borderRadius = '8px';
-            tooltip.style.fontSize = '12px';
-            tooltip.style.boxShadow = 'var(--shadow-card)';
-            tooltip.style.zIndex = '1000';
-            tooltip.style.pointerEvents = 'none';
-            document.body.appendChild(tooltip);
-            this._tooltip = tooltip;
-        });
-        el.addEventListener('mouseleave', function() {
-            if (this._tooltip) {
-                this._tooltip.remove();
-                this._tooltip = null;
-            }
-        });
     });
 }
 
@@ -426,10 +388,11 @@ function updateDashboard() {
         document.getElementById('dashboardEmpty').style.display = 'none';
         document.getElementById('dashboardContent').style.display = 'block';
 
-        // Собираем статистику
-        var stats = collectStats(sales, stock);
-        renderKPIs(stats);
-        renderAttentionBlock(stats);
+        // Собираем статистику асинхронно
+        collectStats(sales, stock).then(function(stats) {
+            renderKPIs(stats);
+            renderAttentionBlock(stats);
+        });
     });
 }
 
@@ -456,11 +419,9 @@ function collectStats(sales, stock) {
         }
     });
 
-    // Собираем информацию по каждому товару
     var productList = Object.keys(arts);
-    var prods = [];
 
-    // Используем Promise.all для асинхронного получения данных о товарах
+    // Параллельно получаем информацию о каждом товаре
     return Promise.all(productList.map(function(a) {
         return getProductInfo(a).then(function(info) {
             var ts = getTotalStock(a, stock);
@@ -494,24 +455,24 @@ function collectStats(sales, stock) {
 }
 
 function renderKPIs(stats) {
-    document.getElementById('kpiProducts').textContent = stats.productsCount;
-    document.getElementById('kpiOrders').textContent = stats.yesterdayOrders;
-    document.getElementById('kpiDelivered').textContent = stats.yesterdayDelivered;
+    document.getElementById('kpiProducts').textContent = stats.productsCount || 0;
+    document.getElementById('kpiOrders').textContent = stats.yesterdayOrders || 0;
+    document.getElementById('kpiDelivered').textContent = stats.yesterdayDelivered || 0;
 
     var am = 0;
-    if (stats.products.length > 0) {
+    if (stats.products && stats.products.length > 0) {
         var sm = 0;
         stats.products.forEach(function(p) {
             sm += p.margin || 0;
         });
         am = parseFloat((sm / stats.products.length).toFixed(1));
     }
-    document.getElementById('kpiAvgMargin').textContent = am + '%';
+    document.getElementById('kpiAvgMargin').textContent = (isNaN(am) ? 0 : am) + '%';
 }
 
 function renderAttentionBlock(stats) {
     var c = document.getElementById('attentionBlock');
-    var probs = getProblems(stats.products);
+    var probs = getProblems(stats.products || []);
 
     if (probs.length === 0) {
         c.innerHTML = '<div style="color:#10B981;font-size:13px;">✅ Все показатели в норме</div>';
@@ -589,19 +550,16 @@ function buildProductList(sales, stock, products) {
     var seen = {};
     var prods = [];
 
-    // Собираем продажи по артикулам
     sales.forEach(function(s) {
         if (!m30[s.article]) m30[s.article] = 0;
         m30[s.article] += s.orders || 0;
     });
 
-    // Создаём карту товаров из products
     var productMap = {};
     products.forEach(function(p) {
         productMap[p.article] = p;
     });
 
-    // Проходим по всем артикулам из продаж
     sales.forEach(function(s) {
         if (!seen[s.article]) {
             seen[s.article] = true;
@@ -639,7 +597,6 @@ function renderGroupedProducts(sales, stock, products) {
     var sq = document.getElementById('productSearch').value.toLowerCase();
     var fl = document.getElementById('productFilter').value;
 
-    // Группировка по базовому артикулу
     var grps = {};
     prods.forEach(function(p) {
         var b = p.baseArticle || p.article;
@@ -657,7 +614,6 @@ function renderGroupedProducts(sales, stock, products) {
         grps[b].totalSales30 += p.sales30;
     });
 
-    // Фильтрация
     var keys = Object.keys(grps).filter(function(k) {
         var g = grps[k];
         if (sq && !g.items.some(function(p) {
@@ -675,19 +631,23 @@ function renderGroupedProducts(sales, stock, products) {
         return;
     }
 
-    var icons = {
-        'Костюмы': '👔',
-        'Платья': '👗',
-        'Жакеты': '🧥',
-        'Брюки': '👖',
-        'Свитеры': '🧶',
-        'Товар': '📦'
-    };
+    // Универсальная функция получения иконки
+    function getCategoryIcon(category) {
+        var icons = {
+            'Костюмы': '👔',
+            'Платья': '👗',
+            'Жакеты': '🧥',
+            'Брюки': '👖',
+            'Свитеры': '🧶',
+            'Товар': '📦'
+        };
+        return icons[category] || '📦';
+    }
 
     var h = '';
     keys.forEach(function(k) {
         var g = grps[k];
-        var icon = icons[g.category] || '📦';
+        var icon = getCategoryIcon(g.category);
         var margins = g.items.map(function(p) { return p.margin; });
         var am = parseFloat((margins.reduce(function(a, b) { return a + b; }, 0) / margins.length).toFixed(1));
         var tio = calculateIO(g.totalStock, g.totalSales30);
@@ -770,9 +730,19 @@ function updateOrdersPage() {
 }
 
 function renderOrders() {
-    var sq = document.getElementById('ordersSearch').value.toLowerCase();
-    var fl = document.getElementById('ordersFilter').value;
-    var period = parseInt(document.getElementById('ordersPeriodSelect').value) || 30;
+    // Проверяем наличие элементов
+    var periodSelect = document.getElementById('ordersPeriodSelect');
+    var searchInput = document.getElementById('ordersSearch');
+    var filterSelect = document.getElementById('ordersFilter');
+
+    if (!periodSelect || !searchInput || !filterSelect) {
+        // Элементы ещё не загружены, выходим
+        return;
+    }
+
+    var sq = searchInput.value.toLowerCase();
+    var fl = filterSelect.value;
+    var period = parseInt(periodSelect.value) || 30;
 
     Promise.all([dbGetAll('sales'), dbGetAll('stock'), dbGetAll('products'), loadAppSettings()]).then(function(r) {
         var sales = r[0],
@@ -780,13 +750,11 @@ function renderOrders() {
             products = r[2],
             settings = r[3];
 
-        // Строим карту товаров
         var productMap = {};
         products.forEach(function(p) {
             productMap[p.article] = p;
         });
 
-        // Собираем уникальные артикулы из продаж и остатков
         var articles = {};
         sales.forEach(function(s) { articles[s.article] = true; });
         stock.forEach(function(s) { articles[s.article] = true; });
@@ -838,7 +806,6 @@ function renderOrders() {
             });
         });
 
-        // Фильтрация
         var filt = prods.filter(function(p) {
             if (sq && p.article.toLowerCase().indexOf(sq) === -1) return false;
             if (fl === 'critical' && p.forecast.urgency !== 'critical') return false;
@@ -861,7 +828,9 @@ function renderOrdersSummary(prods) {
     var sn = prods.filter(function(p) { return p.forecast.urgency === 'soon'; }).length;
     var no = prods.filter(function(p) { return p.forecast.urgency === 'normal'; }).length;
 
-    document.getElementById('ordersSummary').innerHTML =
+    var summaryEl = document.getElementById('ordersSummary');
+    if (!summaryEl) return;
+    summaryEl.innerHTML =
         '<div style="display:flex;gap:14px;">' +
         '<div class="orders-summary-card critical"><div class="orders-summary-value" style="color:#EF4444;">' + cr + '</div><div class="orders-summary-label">🔴 Срочно</div></div>' +
         '<div class="orders-summary-card soon"><div class="orders-summary-value" style="color:#F59E0B;">' + sn + '</div><div class="orders-summary-label">🟡 Скоро</div></div>' +
@@ -871,6 +840,7 @@ function renderOrdersSummary(prods) {
 
 function renderOrdersList(prods) {
     var c = document.getElementById('ordersList');
+    if (!c) return;
     var h = '';
 
     prods.forEach(function(p) {
@@ -935,7 +905,6 @@ function recalculateAdsROI() {
         var products = r[1];
         var settings = r[2];
 
-        // Карта товаров для быстрого доступа
         var productMap = {};
         products.forEach(function(p) {
             productMap[p.article] = p;
@@ -1002,7 +971,6 @@ function renderAds() {
             var ads = r[0];
             var products = r[1];
 
-            // Фильтрация
             var filt = ads.filter(function(a) {
                 var name = (a.campaign || '').toLowerCase();
                 if (sq && name.indexOf(sq) === -1 && (a.linkedArticle || '').toLowerCase().indexOf(sq) === -1) return false;
@@ -1015,7 +983,6 @@ function renderAds() {
                 return true;
             });
 
-            // Сортировка
             filt.sort(function(a, b) {
                 switch (sort) {
                     case 'roi_asc':
@@ -1051,7 +1018,6 @@ function renderAdsSummary(ads) {
     var effective = ads.filter(function(a) { return a._roi > 50; }).length;
     var loss = ads.filter(function(a) { return a._roi < 0; }).length;
 
-    // Топ-3 лучшие и худшие
     var sorted = ads.slice().sort(function(a, b) { return (b._roi || 0) - (a._roi || 0); });
     var best = sorted.filter(function(a) { return a._roi > 0; }).slice(0, 3);
     var worst = sorted.slice().reverse().filter(function(a) { return a._roi < 0; }).slice(0, 3);
@@ -1065,7 +1031,6 @@ function renderAdsSummary(ads) {
     h += '<div class="ads-summary-item"><div class="value">📈 ' + effective + ' 📉 ' + loss + '</div><div class="label">Эффективные / Убыточные</div></div>';
     h += '</div>';
 
-    // Топ-3
     if (best.length > 0 || worst.length > 0) {
         h += '<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;flex-wrap:wrap;">';
         if (best.length > 0) {
@@ -1087,7 +1052,8 @@ function renderAdsSummary(ads) {
         h += '</div>';
     }
 
-    document.getElementById('adsSummary').innerHTML = h;
+    var summaryEl = document.getElementById('adsSummary');
+    if (summaryEl) summaryEl.innerHTML = h;
 }
 
 function renderAdsTable(ads) {
@@ -1095,6 +1061,7 @@ function renderAdsTable(ads) {
     var end = Math.min(start + adsPerPage, ads.length);
     var pageAds = ads.slice(start, end);
     var tbody = document.getElementById('adsTableBody');
+    if (!tbody) return;
 
     if (pageAds.length === 0) {
         tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:20px;color:#9CA3AF;">Нет кампаний</td></tr>';
@@ -1140,18 +1107,24 @@ function renderAdsTable(ads) {
     });
     tbody.innerHTML = h;
 
-    document.getElementById('adsShowing').textContent = pageAds.length;
-    document.getElementById('adsTotal').textContent = ads.length;
+    var showingEl = document.getElementById('adsShowing');
+    var totalEl = document.getElementById('adsTotal');
+    var pageInfoEl = document.getElementById('adsPageInfo');
+    if (showingEl) showingEl.textContent = pageAds.length;
+    if (totalEl) totalEl.textContent = ads.length;
     var totalPages = Math.ceil(ads.length / adsPerPage) || 1;
-    document.getElementById('adsPageInfo').textContent = adsCurrentPage + ' / ' + totalPages;
+    if (pageInfoEl) pageInfoEl.textContent = adsCurrentPage + ' / ' + totalPages;
 }
 
 function renderAdsPagination(total) {
     var totalPages = Math.ceil(total / adsPerPage) || 1;
     if (adsCurrentPage > totalPages) adsCurrentPage = totalPages;
-    document.getElementById('adsPageInfo').textContent = adsCurrentPage + ' / ' + totalPages;
-    document.getElementById('adsShowing').textContent = Math.min(adsPerPage, total - (adsCurrentPage - 1) * adsPerPage);
-    document.getElementById('adsTotal').textContent = total;
+    var pageInfoEl = document.getElementById('adsPageInfo');
+    var showingEl = document.getElementById('adsShowing');
+    var totalEl = document.getElementById('adsTotal');
+    if (pageInfoEl) pageInfoEl.textContent = adsCurrentPage + ' / ' + totalPages;
+    if (showingEl) showingEl.textContent = Math.min(adsPerPage, total - (adsCurrentPage - 1) * adsPerPage);
+    if (totalEl) totalEl.textContent = total;
 }
 
 function adsPrevPage() {
@@ -1766,8 +1739,6 @@ function mapCostsData(data) {
 
         var cost = parseFloat(String(row[kCost] || '0').replace(',', '.')) || 0;
 
-        // Проверяем, есть ли уже такой товар в БД
-        // Если есть, обновляем только себестоимость
         mapped.push({
             id: Date.now() + Math.random(),
             article: article,
@@ -1813,13 +1784,11 @@ function openProductCard(article) {
             products = r[2],
             settings = r[3];
 
-        // Находим товар
         var info = null;
         products.forEach(function(p) {
             if (p.article === article) info = p;
         });
 
-        // Если товара нет в products, создаём базовый объект
         if (!info) {
             info = {
                 article: article,
@@ -1843,16 +1812,20 @@ function openProductCard(article) {
         var m = calculateMargin(info.price || 0, info.cost || 0);
         var dl = calculateDaysLeft(ts, s30);
 
-        var icons = {
-            'Костюмы': '👔',
-            'Платья': '👗',
-            'Жакеты': '🧥',
-            'Брюки': '👖',
-            'Свитеры': '🧶',
-            'Товар': '📦'
-        };
+        // Универсальная иконка категории
+        function getCategoryIcon(category) {
+            var icons = {
+                'Костюмы': '👔',
+                'Платья': '👗',
+                'Жакеты': '🧥',
+                'Брюки': '👖',
+                'Свитеры': '🧶',
+                'Товар': '📦'
+            };
+            return icons[category] || '📦';
+        }
 
-        document.getElementById('cardCategoryIcon').textContent = icons[info.category] || '📦';
+        document.getElementById('cardCategoryIcon').textContent = getCategoryIcon(info.category);
         document.getElementById('cardTitle').textContent = article;
         document.getElementById('cardSubtitle').textContent = (info.category || 'Товар') + ' · FBO';
 
@@ -2629,12 +2602,10 @@ function clearAllData() {
     });
 
     Promise.all(promises).then(function() {
-        // Сбрасываем состояние
         supplyCart = [];
         selectedAds = [];
         adsCurrentPage = 1;
 
-        // Обновляем все страницы
         updateDashboard();
         updateProductList();
         updateOrdersPage();
@@ -2652,10 +2623,7 @@ function clearAllData() {
 function clearCache() {
     if (!confirm('Очистить кеш приложения? Это перезагрузит страницу.')) return;
 
-    // Очищаем localStorage (состояние меню и т.д.)
     localStorage.clear();
-
-    // Перезагружаем страницу
     window.location.reload();
 }
 
@@ -2667,23 +2635,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Версия
     document.querySelector('.sidebar-version').textContent = 'StockFlow v' + APP_VERSION;
 
-    // Навигация по меню
+    // Навигация
     document.querySelectorAll('.menu-item').forEach(function(item) {
         item.addEventListener('click', function() {
             navigateTo(this.getAttribute('data-page'));
         });
     });
 
-    // Логотип → Главная
     document.getElementById('sidebarLogo').addEventListener('click', function() {
         navigateTo('dashboard');
     });
 
-    // Восстановление состояния меню
     restoreMenuState();
-
-    // Подсказки
-    setupTooltips();
 
     // Проверка БД
     checkDatabase();
@@ -2706,7 +2669,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Заказы
-    document.getElementById('ordersPeriodSelect').addEventListener('change', renderOrders);
+    var periodSelect = document.getElementById('ordersPeriodSelect');
+    if (periodSelect) periodSelect.addEventListener('change', renderOrders);
     document.getElementById('ordersSearch').addEventListener('input', renderOrders);
     document.getElementById('ordersFilter').addEventListener('change', renderOrders);
     document.getElementById('clearOrdersFilterBtn').addEventListener('click', function() {
@@ -2723,10 +2687,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('createSupplyBtn').addEventListener('click', createSupply);
     document.getElementById('addFromWarehouseBtn').addEventListener('click', addFromWarehouseToSupply);
 
-    // Карточка товара
+    // Карточка
     document.getElementById('backToProductsBtn').addEventListener('click', closeProductCard);
 
-    // График — переключение периодов
+    // График
     document.querySelectorAll('.card-chart-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.card-chart-btn').forEach(function(b) {
@@ -2763,7 +2727,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Импорт — шаблоны
+    // Импорт
     document.getElementById('downloadSalesTemplateBtn').addEventListener('click', function() {
         downloadTemplate('sales');
     });
@@ -2777,7 +2741,6 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadTemplate('costs');
     });
 
-    // Импорт — drop zones
     setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
     setupImportDropZone('stockDropZone', 'stockFileInput', 'stock');
     setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
@@ -2791,7 +2754,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Модальные окна
+    // Модалки
     document.getElementById('campaignModal').addEventListener('click', function(e) {
         if (e.target === this) closeCampaignModal();
     });
@@ -2799,7 +2762,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target === this) closeEditCampaignModal();
     });
 
-    // Escape для модалок
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeCampaignModal();
@@ -2807,18 +2769,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Пагинация рекламы
     document.getElementById('adsPerPage').addEventListener('change', function() {
         adsPerPage = parseInt(this.value) || 25;
         adsCurrentPage = 1;
         renderAds();
     });
 
-    // Очистка данных
     document.getElementById('clearAllDataBtn').addEventListener('click', clearAllData);
     document.getElementById('clearCacheBtn').addEventListener('click', clearCache);
 
-    // Старт
     updateDashboard();
 });
 
