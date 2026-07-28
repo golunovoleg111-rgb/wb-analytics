@@ -10,10 +10,9 @@
 </head>
 <body>
     <!-- ========================================================== -->
-    <!-- БОКОВОЕ МЕНЮ — НОВАЯ ВЕРСИЯ                                  -->
+    <!-- БОКОВОЕ МЕНЮ                                               -->
     <!-- ========================================================== -->
     <nav class="sidebar" id="sidebar">
-        <!-- Логотип -->
         <div class="sidebar-logo" id="sidebarLogo">
             <span class="logo-icon">S</span>
             <div class="logo-wrapper">
@@ -22,9 +21,8 @@
             </div>
         </div>
 
-        <!-- Меню -->
         <div class="sidebar-menu-container">
-            <!-- Раздел 1: Панель управления -->
+            <!-- Панель управления -->
             <div class="menu-group">
                 <div class="menu-group-header" onclick="toggleMenuGroup(this)">
                     <span class="menu-group-icon">📊</span>
@@ -32,15 +30,14 @@
                     <span class="menu-group-arrow">▼</span>
                 </div>
                 <ul class="menu-group-items">
-                    <li class="menu-item active" data-page="dashboard" data-tip="Главная страница с ключевыми показателями бизнеса">
+                    <li class="menu-item active" data-page="dashboard">
                         <span class="menu-icon">🏠</span>
                         <span class="menu-label">Главная</span>
-                        <span class="menu-tip">?</span>
                     </li>
                 </ul>
             </div>
 
-            <!-- Раздел 2: Товары и заказы -->
+            <!-- Ассортимент -->
             <div class="menu-group">
                 <div class="menu-group-header" onclick="toggleMenuGroup(this)">
                     <span class="menu-group-icon">📦</span>
@@ -48,20 +45,18 @@
                     <span class="menu-group-arrow">▼</span>
                 </div>
                 <ul class="menu-group-items">
-                    <li class="menu-item" data-page="products" data-tip="Управление товарами, группировка по моделям, юнит-экономика">
+                    <li class="menu-item" data-page="products">
                         <span class="menu-icon">📦</span>
                         <span class="menu-label">Товары</span>
-                        <span class="menu-tip">?</span>
                     </li>
-                    <li class="menu-item" data-page="orders" data-tip="Планирование закупок на основе прогноза остатков">
+                    <li class="menu-item" data-page="orders">
                         <span class="menu-icon">📋</span>
                         <span class="menu-label">Заказы</span>
-                        <span class="menu-tip">?</span>
                     </li>
                 </ul>
             </div>
 
-            <!-- Раздел 3: Маркетинг -->
+            <!-- Продвижение -->
             <div class="menu-group">
                 <div class="menu-group-header" onclick="toggleMenuGroup(this)">
                     <span class="menu-group-icon">📢</span>
@@ -69,15 +64,14 @@
                     <span class="menu-group-arrow">▼</span>
                 </div>
                 <ul class="menu-group-items">
-                    <li class="menu-item" data-page="ads" data-tip="Управление рекламными кампаниями, анализ ROI и ДРР">
+                    <li class="menu-item" data-page="ads">
                         <span class="menu-icon">📢</span>
                         <span class="menu-label">Реклама</span>
-                        <span class="menu-tip">?</span>
                     </li>
                 </ul>
             </div>
 
-            <!-- Раздел 4: Логистика -->
+            <!-- Логистика -->
             <div class="menu-group">
                 <div class="menu-group-header" onclick="toggleMenuGroup(this)">
                     <span class="menu-group-icon">🚚</span>
@@ -85,20 +79,18 @@
                     <span class="menu-group-arrow">▼</span>
                 </div>
                 <ul class="menu-group-items">
-                    <li class="menu-item" data-page="supplies" data-tip="Планирование поставок, корзина, история">
+                    <li class="menu-item" data-page="supplies">
                         <span class="menu-icon">🚚</span>
                         <span class="menu-label">Поставки</span>
-                        <span class="menu-tip">?</span>
                     </li>
-                    <li class="menu-item" data-page="warehouse" data-tip="Управление палетами и коробками на складе">
+                    <li class="menu-item" data-page="warehouse">
                         <span class="menu-icon">🏪</span>
                         <span class="menu-label">Мой склад</span>
-                        <span class="menu-tip">?</span>
                     </li>
                 </ul>
             </div>
 
-            <!-- Раздел 5: Система -->
+            <!-- Настройки -->
             <div class="menu-group">
                 <div class="menu-group-header" onclick="toggleMenuGroup(this)">
                     <span class="menu-group-icon">⚙️</span>
@@ -106,15 +98,13 @@
                     <span class="menu-group-arrow">▼</span>
                 </div>
                 <ul class="menu-group-items">
-                    <li class="menu-item" data-page="import" data-tip="Импорт данных из Excel: продажи, остатки, реклама, себестоимость">
+                    <li class="menu-item" data-page="import">
                         <span class="menu-icon">📥</span>
                         <span class="menu-label">Импорт</span>
-                        <span class="menu-tip">?</span>
                     </li>
-                    <li class="menu-item" data-page="settings" data-tip="Настройки тарифов, налогов, API ключей">
+                    <li class="menu-item" data-page="settings">
                         <span class="menu-icon">⚙️</span>
                         <span class="menu-label">Настройки</span>
-                        <span class="menu-tip">?</span>
                     </li>
                 </ul>
             </div>
@@ -131,15 +121,11 @@
     <!-- ========================================================== -->
     <main class="content">
 
-        <!-- ========================================================== -->
-        <!-- ГЛАВНАЯ                                                    -->
-        <!-- ========================================================== -->
+        <!-- ===================== ГЛАВНАЯ ===================== -->
         <section id="page-dashboard" class="page active">
             <div class="page-header">
                 <h1>📊 Главная</h1>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn btn-secondary btn-sm" id="refreshDashboardBtn">🔄 Обновить</button>
-                </div>
+                <button class="btn btn-secondary btn-sm" id="refreshDashboardBtn">🔄 Обновить</button>
             </div>
 
             <div id="dashboardEmpty" class="card" style="text-align:center;">
@@ -208,13 +194,10 @@
             </div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- ТОВАРЫ                                                     -->
-        <!-- ========================================================== -->
+        <!-- ===================== ТОВАРЫ ===================== -->
         <section id="page-products" class="page">
             <div class="page-header">
                 <h1>📦 Товары</h1>
-                <div class="page-tip" data-tip="Здесь собраны все товары с группировкой по моделям. Для расчёта маржинальности необходима себестоимость.">?</div>
             </div>
 
             <div id="productsEmpty" class="card" style="text-align:center;">
@@ -244,13 +227,18 @@
             </div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- ЗАКАЗЫ                                                     -->
-        <!-- ========================================================== -->
+        <!-- ===================== ЗАКАЗЫ ===================== -->
         <section id="page-orders" class="page">
             <div class="page-header">
                 <h1>📋 Планирование заказов</h1>
-                <div class="page-tip" data-tip="Прогноз потребности в товарах на основе продаж и остатков. Уровни срочности: 🔴 Срочно, 🟡 Скоро, 🟢 Норма.">?</div>
+                <div style="display:flex;gap:8px;">
+                    <select id="ordersPeriodSelect" style="min-width:120px;">
+                        <option value="7">Продажи за 7 дней</option>
+                        <option value="14">Продажи за 14 дней</option>
+                        <option value="30" selected>Продажи за 30 дней</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" id="exportOrdersBtn">📤 Экспорт в Excel</button>
+                </div>
             </div>
 
             <div id="ordersEmpty" class="card" style="text-align:center;">
@@ -280,9 +268,7 @@
             </div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- РЕКЛАМА                                                    -->
-        <!-- ========================================================== -->
+        <!-- ===================== РЕКЛАМА ===================== -->
         <section id="page-ads" class="page">
             <div class="page-header">
                 <h1>📢 Реклама</h1>
@@ -290,7 +276,6 @@
                     <button class="btn btn-primary btn-sm" onclick="openCreateCampaignModal()">➕ Создать кампанию</button>
                     <button class="btn btn-secondary btn-sm" onclick="refreshAds()">🔄 Обновить</button>
                 </div>
-                <div class="page-tip" data-tip="Управление рекламными кампаниями. Ключевые метрики: ROI, ДРР, CPC, CPM, CTR, CR.">?</div>
             </div>
 
             <div id="adsEmpty" class="card" style="text-align:center;">
@@ -371,13 +356,10 @@
             </div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- МОЙ СКЛАД                                                  -->
-        <!-- ========================================================== -->
+        <!-- ===================== МОЙ СКЛАД ===================== -->
         <section id="page-warehouse" class="page">
             <div class="page-header">
                 <h1>🏪 Мой склад</h1>
-                <div class="page-tip" data-tip="Управление палетами и коробками. Поддерживается два склада: Основной и Дополнительный.">?</div>
             </div>
 
             <div class="card" style="margin-bottom:14px;">
@@ -395,13 +377,10 @@
             <div id="warehouseContent"></div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- ПОСТАВКИ                                                   -->
-        <!-- ========================================================== -->
+        <!-- ===================== ПОСТАВКИ ===================== -->
         <section id="page-supplies" class="page">
             <div class="page-header">
                 <h1>🚚 Поставки</h1>
-                <div class="page-tip" data-tip="Формирование корзины поставки, создание поставки, экспорт для WB и сборочный лист.">?</div>
             </div>
 
             <div class="grid-2">
@@ -468,13 +447,10 @@
             </div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- ИМПОРТ                                                     -->
-        <!-- ========================================================== -->
+        <!-- ===================== ИМПОРТ ===================== -->
         <section id="page-import" class="page">
             <div class="page-header">
                 <h1>📥 Импорт данных</h1>
-                <div class="page-tip" data-tip="Загрузите данные из Excel-файлов. Поддерживаются: продажи, остатки, реклама, себестоимость.">?</div>
             </div>
 
             <div class="grid-4">
@@ -532,7 +508,7 @@
                     <div id="adsImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
 
-                <!-- Себестоимость (НОВОЕ) -->
+                <!-- Себестоимость -->
                 <div class="card import-card" style="border:2px solid var(--primary-light);">
                     <div class="card-title">💰 Себестоимость</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
@@ -552,13 +528,10 @@
             </div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- НАСТРОЙКИ                                                  -->
-        <!-- ========================================================== -->
+        <!-- ===================== НАСТРОЙКИ ===================== -->
         <section id="page-settings" class="page">
             <div class="page-header">
                 <h1>⚙️ Настройки</h1>
-                <div class="page-tip" data-tip="Настройка тарифов WB, налогов, API ключей для будущей интеграции.">?</div>
             </div>
 
             <!-- Состояние системы -->
@@ -645,7 +618,7 @@
                 </div>
             </div>
 
-            <!-- API ключи (НОВОЕ) -->
+            <!-- API ключи -->
             <div class="card" style="border:2px solid var(--primary-light);">
                 <div class="card-title">🔑 API ключи <span style="font-size:10px;color:var(--text-secondary);">(задел на будущее)</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -663,7 +636,7 @@
                 </div>
             </div>
 
-            <!-- Очистка данных (НОВОЕ) -->
+            <!-- Очистка данных -->
             <div class="card" style="border:2px solid #EF4444;">
                 <div class="card-title">⚠️ Управление данными</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -681,9 +654,7 @@
             <div id="saveStatus" style="text-align:center;margin-top:8px;font-size:12px;"></div>
         </section>
 
-        <!-- ========================================================== -->
-        <!-- КАРТОЧКА ТОВАРА                                            -->
-        <!-- ========================================================== -->
+        <!-- ===================== КАРТОЧКА ТОВАРА ===================== -->
         <section id="page-product-card" class="page">
             <div style="margin-bottom:20px;display:flex;align-items:center;gap:12px;">
                 <button class="btn btn-ghost" id="backToProductsBtn">← Назад к списку</button>
