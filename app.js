@@ -126,28 +126,52 @@ function showToast(message, type) {
 // ============================================================
 
 function navigateTo(pageName) {
-    document.querySelectorAll('.menu-item').forEach(function(item) {
+    // Обновляем активные пункты в горизонтальном меню
+    document.querySelectorAll('.nav-item').forEach(function(item) {
         item.classList.remove('active');
     });
-    var menuItem = document.querySelector('.menu-item[data-page="' + pageName + '"]');
-    if (menuItem) menuItem.classList.add('active');
+    var navItem = document.querySelector('.nav-item[data-page="' + pageName + '"]');
+    if (navItem) navItem.classList.add('active');
 
+    // Скрываем выпадающие меню
+    document.querySelectorAll('.nav-group-items').forEach(function(items) {
+        items.classList.remove('open');
+    });
+    document.querySelectorAll('.nav-group-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+    });
+
+    // Показываем страницу
     document.querySelectorAll('.page').forEach(function(page) {
         page.classList.remove('active');
     });
     var page = document.getElementById('page-' + pageName);
     if (page) page.classList.add('active');
 
-    if (pageName === 'settings') {
-        loadSettings();
-        updateDBStats();
-    }
+    // Обновляем данные
+    if (pageName === 'settings') { loadSettings(); updateDBStats(); }
     if (pageName === 'dashboard') updateDashboard();
     if (pageName === 'products') updateProductList();
     if (pageName === 'orders') updateOrdersPage();
     if (pageName === 'supplies') updateSuppliesPage();
     if (pageName === 'warehouse') updateWarehousePage();
     if (pageName === 'ads') updateAdsPage();
+}
+
+// Функция для toggle выпадающих меню
+function toggleNavGroup(btn) {
+    var items = btn.nextElementSibling;
+    if (items) {
+        items.classList.toggle('open');
+        btn.classList.toggle('active');
+    }
+}
+
+// Глобальный поиск
+function handleGlobalSearch(value) {
+    // Если длина > 2, можно реализовать поиск по всем разделам
+    // Пока просто заглушка
+    console.log('Поиск:', value);
 }
 
 // ============================================================
