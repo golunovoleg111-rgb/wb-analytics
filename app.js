@@ -122,33 +122,25 @@ function showToast(message, type) {
 }
 
 // ============================================================
-// НАВИГАЦИЯ
+// НАВИГАЦИЯ (НОВАЯ ВЕРСИЯ)
 // ============================================================
 
 function navigateTo(pageName) {
-    // Обновляем активные пункты в горизонтальном меню
+    // Обновляем активный пункт в верхнем меню
     document.querySelectorAll('.nav-item').forEach(function(item) {
         item.classList.remove('active');
     });
     var navItem = document.querySelector('.nav-item[data-page="' + pageName + '"]');
     if (navItem) navItem.classList.add('active');
 
-    // Скрываем выпадающие меню
-    document.querySelectorAll('.nav-group-items').forEach(function(items) {
-        items.classList.remove('open');
-    });
-    document.querySelectorAll('.nav-group-btn').forEach(function(btn) {
-        btn.classList.remove('active');
-    });
-
-    // Показываем страницу
+    // Показываем нужную страницу
     document.querySelectorAll('.page').forEach(function(page) {
         page.classList.remove('active');
     });
     var page = document.getElementById('page-' + pageName);
     if (page) page.classList.add('active');
 
-    // Обновляем данные
+    // Загружаем данные для страницы
     if (pageName === 'settings') { loadSettings(); updateDBStats(); }
     if (pageName === 'dashboard') updateDashboard();
     if (pageName === 'products') updateProductList();
@@ -156,22 +148,6 @@ function navigateTo(pageName) {
     if (pageName === 'supplies') updateSuppliesPage();
     if (pageName === 'warehouse') updateWarehousePage();
     if (pageName === 'ads') updateAdsPage();
-}
-
-// Функция для toggle выпадающих меню
-function toggleNavGroup(btn) {
-    var items = btn.nextElementSibling;
-    if (items) {
-        items.classList.toggle('open');
-        btn.classList.toggle('active');
-    }
-}
-
-// Глобальный поиск
-function handleGlobalSearch(value) {
-    // Если длина > 2, можно реализовать поиск по всем разделам
-    // Пока просто заглушка
-    console.log('Поиск:', value);
 }
 
 // ============================================================
@@ -261,38 +237,8 @@ function togglePatentField() {
 }
 
 // ============================================================
-// МЕНЮ — ГРУППИРОВКА
+// СТАРЫЕ ФУНКЦИИ МЕНЮ — УДАЛЕНЫ (toggleMenuGroup, restoreMenuState)
 // ============================================================
-
-function toggleMenuGroup(header) {
-    var items = header.nextElementSibling;
-    var arrow = header.querySelector('.menu-group-arrow');
-    if (items) {
-        items.classList.toggle('collapsed');
-        if (arrow) arrow.classList.toggle('collapsed');
-        var groupLabel = header.querySelector('.menu-group-label');
-        if (groupLabel) {
-            var state = items.classList.contains('collapsed') ? 'collapsed' : 'expanded';
-            localStorage.setItem('menu_group_' + groupLabel.textContent.trim(), state);
-        }
-    }
-}
-
-function restoreMenuState() {
-    document.querySelectorAll('.menu-group').forEach(function(group) {
-        var header = group.querySelector('.menu-group-header');
-        var items = group.querySelector('.menu-group-items');
-        var label = header ? header.querySelector('.menu-group-label') : null;
-        if (label) {
-            var state = localStorage.getItem('menu_group_' + label.textContent.trim());
-            if (state === 'collapsed') {
-                if (items) items.classList.add('collapsed');
-                var arrow = header.querySelector('.menu-group-arrow');
-                if (arrow) arrow.classList.add('collapsed');
-            }
-        }
-    });
-}
 
 // ============================================================
 // РАСЧЁТЫ (ЕДИНЫЕ ФУНКЦИИ)
@@ -412,7 +358,6 @@ function updateDashboard() {
         document.getElementById('dashboardEmpty').style.display = 'none';
         document.getElementById('dashboardContent').style.display = 'block';
 
-        // Собираем статистику асинхронно
         collectStats(sales, stock).then(function(stats) {
             renderKPIs(stats);
             renderAttentionBlock(stats);
@@ -445,7 +390,6 @@ function collectStats(sales, stock) {
 
     var productList = Object.keys(arts);
 
-    // Параллельно получаем информацию о каждом товаре
     return Promise.all(productList.map(function(a) {
         return getProductInfo(a).then(function(info) {
             var ts = getTotalStock(a, stock);
@@ -655,7 +599,6 @@ function renderGroupedProducts(sales, stock, products) {
         return;
     }
 
-    // Универсальная функция получения иконки
     function getCategoryIcon(category) {
         var icons = {
             'Костюмы': '👔',
@@ -754,13 +697,11 @@ function updateOrdersPage() {
 }
 
 function renderOrders() {
-    // Проверяем наличие элементов
     var periodSelect = document.getElementById('ordersPeriodSelect');
     var searchInput = document.getElementById('ordersSearch');
     var filterSelect = document.getElementById('ordersFilter');
 
     if (!periodSelect || !searchInput || !filterSelect) {
-        // Элементы ещё не загружены, выходим
         return;
     }
 
@@ -1792,7 +1733,7 @@ function openProductCard(article) {
 
     var bc = document.getElementById('backContext');
     var cp = '';
-    document.querySelectorAll('.menu-item.active').forEach(function(x) {
+    document.querySelectorAll('.nav-item.active').forEach(function(x) {
         cp = x.getAttribute('data-page');
     });
 
@@ -1836,7 +1777,6 @@ function openProductCard(article) {
         var m = calculateMargin(info.price || 0, info.cost || 0);
         var dl = calculateDaysLeft(ts, s30);
 
-        // Универсальная иконка категории
         function getCategoryIcon(category) {
             var icons = {
                 'Костюмы': '👔',
@@ -2656,21 +2596,22 @@ function clearCache() {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Версия
-    document.querySelector('.sidebar-version').textContent = 'StockFlow v' + APP_VERSION;
-
-    // Навигация
-    document.querySelectorAll('.menu-item').forEach(function(item) {
+    // Навигация по вкладкам
+    document.querySelectorAll('.nav-item').forEach(function(item) {
         item.addEventListener('click', function() {
             navigateTo(this.getAttribute('data-page'));
         });
     });
 
+    // Логотип → Главная
     document.getElementById('sidebarLogo').addEventListener('click', function() {
         navigateTo('dashboard');
     });
 
-    restoreMenuState();
+    // Кнопка профиля (заглушка)
+    document.getElementById('profileBtn').addEventListener('click', function() {
+        showToast('👤 Личный кабинет в разработке', 'success');
+    });
 
     // Проверка БД
     checkDatabase();
