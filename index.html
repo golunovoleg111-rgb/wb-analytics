@@ -14,7 +14,7 @@
 <body>
 
     <!-- ========================================================== -->
-    <!-- ВЕРХНИЙ САЙДБАР — НОВЫЙ ДИЗАЙН                             -->
+    <!-- ВЕРХНИЙ САЙДБАР — КАК WB SELLER                            -->
     <!-- ========================================================== -->
     <header class="topbar">
         <div class="topbar-left">
@@ -37,62 +37,24 @@
             </div>
         </div>
 
+        <!-- Горизонтальное меню -->
         <nav class="topbar-nav">
-            <div class="nav-group">
-                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
-                    <span class="nav-group-icon">📊</span>
-                    <span class="nav-group-label">Аналитика</span>
-                    <span class="nav-group-arrow">▼</span>
-                </button>
-                <div class="nav-group-items">
-                    <a class="nav-item active" data-page="dashboard">🏠 Главная</a>
-                    <a class="nav-item" data-page="products">📦 Товары</a>
-                    <a class="nav-item" data-page="orders">📋 Заказы</a>
-                </div>
-            </div>
-
-            <div class="nav-group">
-                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
-                    <span class="nav-group-icon">📢</span>
-                    <span class="nav-group-label">Маркетинг</span>
-                    <span class="nav-group-arrow">▼</span>
-                </button>
-                <div class="nav-group-items">
-                    <a class="nav-item" data-page="ads">📢 Реклама</a>
-                </div>
-            </div>
-
-            <div class="nav-group">
-                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
-                    <span class="nav-group-icon">🚚</span>
-                    <span class="nav-group-label">Логистика</span>
-                    <span class="nav-group-arrow">▼</span>
-                </button>
-                <div class="nav-group-items">
-                    <a class="nav-item" data-page="supplies">🚚 Поставки</a>
-                    <a class="nav-item" data-page="warehouse">🏪 Мой склад</a>
-                </div>
-            </div>
-
-            <div class="nav-group">
-                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
-                    <span class="nav-group-icon">⚙️</span>
-                    <span class="nav-group-label">Система</span>
-                    <span class="nav-group-arrow">▼</span>
-                </button>
-                <div class="nav-group-items">
-                    <a class="nav-item" data-page="import">📥 Импорт</a>
-                    <a class="nav-item" data-page="settings">⚙️ Настройки</a>
-                </div>
-            </div>
+            <a class="nav-item active" data-page="dashboard">🏠 Главная</a>
+            <a class="nav-item" data-page="products">📦 Товары</a>
+            <a class="nav-item" data-page="orders">📋 Заказы</a>
+            <a class="nav-item" data-page="ads">📢 Реклама</a>
+            <a class="nav-item" data-page="supplies">🚚 Поставки</a>
+            <a class="nav-item" data-page="warehouse">🏪 Склад</a>
+            <a class="nav-item" data-page="import">📥 Импорт</a>
+            <a class="nav-item" data-page="settings">⚙️ Настройки</a>
         </nav>
 
         <div class="topbar-right">
             <div class="search-wrapper">
                 <span class="search-icon">🔍</span>
-                <input type="text" class="search-input" id="globalSearch" placeholder="Поиск..." oninput="handleGlobalSearch(this.value)">
+                <input type="text" class="search-input" id="globalSearch" placeholder="Поиск...">
             </div>
-            <button class="topbar-profile" onclick="navigateTo('settings')">
+            <button class="topbar-profile" id="profileBtn" title="Личный кабинет">
                 <span class="profile-avatar">👤</span>
             </button>
         </div>
