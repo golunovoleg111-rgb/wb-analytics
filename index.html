@@ -5,116 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StockFlow v5.0 — Управление бизнесом на Wildberries</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
+
     <!-- ========================================================== -->
-    <!-- БОКОВОЕ МЕНЮ                                               -->
+    <!-- ВЕРХНИЙ САЙДБАР — НОВЫЙ ДИЗАЙН                             -->
     <!-- ========================================================== -->
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-logo" id="sidebarLogo">
-            <span class="logo-icon">S</span>
-            <div class="logo-wrapper">
-                <span class="logo-text">StockFlow</span>
-                <span class="logo-badge">v5.0</span>
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo" id="sidebarLogo">
+                <svg class="logo-svg" width="36" height="36" viewBox="0 0 36 36" fill="none">
+                    <rect x="0" y="0" width="36" height="36" rx="8" fill="url(#logoGrad)"/>
+                    <text x="18" y="24" font-family="Inter, sans-serif" font-size="16" font-weight="800" fill="white" text-anchor="middle" letter-spacing="-0.5">SF</text>
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0" y1="0" x2="36" y2="36">
+                            <stop offset="0%" stop-color="#6C2BD9"/>
+                            <stop offset="50%" stop-color="#C850C0"/>
+                            <stop offset="100%" stop-color="#FF6B6B"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <div class="logo-wrapper">
+                    <span class="logo-text">StockFlow</span>
+                    <span class="logo-badge">v5.0</span>
+                </div>
             </div>
         </div>
 
-        <div class="sidebar-menu-container">
-            <!-- Панель управления -->
-            <div class="menu-group">
-                <div class="menu-group-header" onclick="toggleMenuGroup(this)">
-                    <span class="menu-group-icon">📊</span>
-                    <span class="menu-group-label">Панель управления</span>
-                    <span class="menu-group-arrow">▼</span>
+        <nav class="topbar-nav">
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
+                    <span class="nav-group-icon">📊</span>
+                    <span class="nav-group-label">Аналитика</span>
+                    <span class="nav-group-arrow">▼</span>
+                </button>
+                <div class="nav-group-items">
+                    <a class="nav-item active" data-page="dashboard">🏠 Главная</a>
+                    <a class="nav-item" data-page="products">📦 Товары</a>
+                    <a class="nav-item" data-page="orders">📋 Заказы</a>
                 </div>
-                <ul class="menu-group-items">
-                    <li class="menu-item active" data-page="dashboard">
-                        <span class="menu-icon">🏠</span>
-                        <span class="menu-label">Главная</span>
-                    </li>
-                </ul>
             </div>
 
-            <!-- Ассортимент -->
-            <div class="menu-group">
-                <div class="menu-group-header" onclick="toggleMenuGroup(this)">
-                    <span class="menu-group-icon">📦</span>
-                    <span class="menu-group-label">Ассортимент</span>
-                    <span class="menu-group-arrow">▼</span>
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
+                    <span class="nav-group-icon">📢</span>
+                    <span class="nav-group-label">Маркетинг</span>
+                    <span class="nav-group-arrow">▼</span>
+                </button>
+                <div class="nav-group-items">
+                    <a class="nav-item" data-page="ads">📢 Реклама</a>
                 </div>
-                <ul class="menu-group-items">
-                    <li class="menu-item" data-page="products">
-                        <span class="menu-icon">📦</span>
-                        <span class="menu-label">Товары</span>
-                    </li>
-                    <li class="menu-item" data-page="orders">
-                        <span class="menu-icon">📋</span>
-                        <span class="menu-label">Заказы</span>
-                    </li>
-                </ul>
             </div>
 
-            <!-- Продвижение -->
-            <div class="menu-group">
-                <div class="menu-group-header" onclick="toggleMenuGroup(this)">
-                    <span class="menu-group-icon">📢</span>
-                    <span class="menu-group-label">Продвижение</span>
-                    <span class="menu-group-arrow">▼</span>
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
+                    <span class="nav-group-icon">🚚</span>
+                    <span class="nav-group-label">Логистика</span>
+                    <span class="nav-group-arrow">▼</span>
+                </button>
+                <div class="nav-group-items">
+                    <a class="nav-item" data-page="supplies">🚚 Поставки</a>
+                    <a class="nav-item" data-page="warehouse">🏪 Мой склад</a>
                 </div>
-                <ul class="menu-group-items">
-                    <li class="menu-item" data-page="ads">
-                        <span class="menu-icon">📢</span>
-                        <span class="menu-label">Реклама</span>
-                    </li>
-                </ul>
             </div>
 
-            <!-- Логистика -->
-            <div class="menu-group">
-                <div class="menu-group-header" onclick="toggleMenuGroup(this)">
-                    <span class="menu-group-icon">🚚</span>
-                    <span class="menu-group-label">Логистика</span>
-                    <span class="menu-group-arrow">▼</span>
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">
+                    <span class="nav-group-icon">⚙️</span>
+                    <span class="nav-group-label">Система</span>
+                    <span class="nav-group-arrow">▼</span>
+                </button>
+                <div class="nav-group-items">
+                    <a class="nav-item" data-page="import">📥 Импорт</a>
+                    <a class="nav-item" data-page="settings">⚙️ Настройки</a>
                 </div>
-                <ul class="menu-group-items">
-                    <li class="menu-item" data-page="supplies">
-                        <span class="menu-icon">🚚</span>
-                        <span class="menu-label">Поставки</span>
-                    </li>
-                    <li class="menu-item" data-page="warehouse">
-                        <span class="menu-icon">🏪</span>
-                        <span class="menu-label">Мой склад</span>
-                    </li>
-                </ul>
             </div>
+        </nav>
 
-            <!-- Настройки -->
-            <div class="menu-group">
-                <div class="menu-group-header" onclick="toggleMenuGroup(this)">
-                    <span class="menu-group-icon">⚙️</span>
-                    <span class="menu-group-label">Настройки</span>
-                    <span class="menu-group-arrow">▼</span>
-                </div>
-                <ul class="menu-group-items">
-                    <li class="menu-item" data-page="import">
-                        <span class="menu-icon">📥</span>
-                        <span class="menu-label">Импорт</span>
-                    </li>
-                    <li class="menu-item" data-page="settings">
-                        <span class="menu-icon">⚙️</span>
-                        <span class="menu-label">Настройки</span>
-                    </li>
-                </ul>
+        <div class="topbar-right">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="globalSearch" placeholder="Поиск..." oninput="handleGlobalSearch(this.value)">
             </div>
+            <button class="topbar-profile" onclick="navigateTo('settings')">
+                <span class="profile-avatar">👤</span>
+            </button>
         </div>
-
-        <div class="sidebar-footer">
-            <div class="sidebar-version">StockFlow v5.0</div>
-            <div class="sidebar-status" id="dbStatus">● База данных: готова</div>
-        </div>
-    </nav>
+    </header>
 
     <!-- ========================================================== -->
     <!-- ОСНОВНОЙ КОНТЕНТ                                          -->
