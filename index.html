@@ -182,6 +182,12 @@
                     <div class="card-title">⚠️ Требует внимания</div>
                     <div id="attentionBlock"></div>
                 </div>
+                <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">📈 Продажи за 7 дней</div>
+    <div style="height:180px;">
+        <canvas id="dashboardChart"></canvas>
+    </div>
+</div>
 
                 <div class="grid-3">
                     <div class="card quick-card" onclick="navigateTo('products')">
@@ -893,6 +899,7 @@
         import { renderProductList } from './src/ui/productList.js';
         import { renderOrderList } from './src/ui/orderList.js';
         import { renderSupplyHistory } from './src/ui/supplyHistory.js';
+        import renderDashboard from './src/ui/dashboard.js';
 
         // Делаем ImportService глобальным для onclick
         window.ImportService = ImportService;
@@ -943,6 +950,9 @@
             if (pageName === 'supplies') {
                 setTimeout(() => renderSupplyHistory(), 50);
             }
+            if (pageName === 'dashboard') {
+    setTimeout(() => renderDashboard(), 50);
+}
         };
 
         // ============================================================
@@ -1043,6 +1053,7 @@
                     if (id === 'products') renderProductList();
                     if (id === 'supply-planning') renderOrderList();
                     if (id === 'supplies') renderSupplyHistory();
+                    if (id === 'dashboard') renderDashboard();
                 }
             }, 100);
         }).catch(err => {
