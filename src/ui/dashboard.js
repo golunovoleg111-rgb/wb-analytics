@@ -12,27 +12,24 @@ import InventoryAggregate from '../core/stock/InventoryAggregate.js';
 // ============================================================
 
 async function getDashboardData() {
-    // Получаем данные параллельно
     const [products, salesAggregated, stockAggregated] = await Promise.all([
         ProductService.getAll(),
         SalesService.getAllAggregated(30),
         StockService.getAllAggregated()
     ]);
 
-    // 1. Общее количество товаров
     const totalProducts = products.length;
 
-    // 2. Выручка вчера
+    // Выручка вчера
     const yesterday = getYesterdayStr();
-    const sales = await SalesService.getByProduct(products[0]?.id || '');
-    const yesterdaySales = sales.filter(s => s.date === yesterday);
+    const allSales = await SalesService.getAll();
+    const yesterdaySales = allSales.filter(s => s.date === yesterday);
     const yesterdayRevenue = yesterdaySales.reduce((sum, s) => sum + s.amount, 0);
     const yesterdayOrders = yesterdaySales.reduce((sum, s) => sum + s.orders, 0);
 
-    // 3. Средняя маржа (пока заглушка, позже из Calculation Engine)
     const avgMargin = 0;
 
-    // 4. Проблемные товары (ИО < 0.2)
+    // Проблемные товары (ИО < 0.2)
     const criticalProducts = [];
     for (const product of products) {
         const stock = stockAggregated[product.id] || { available: 0 };
@@ -47,13 +44,13 @@ async function getDashboardData() {
         }
     }
 
-    // 5. Продажи за 7 дней (для графика)
+    // Продажи за 7 дней
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const dateStr = formatDate(d);
-        const daySales = sales.filter(s => s.date === dateStr);
+        const daySales = allSales.filter(s => s.date === dateStr);
         last7Days.push({
             date: dateStr,
             revenue: daySales.reduce((sum, s) => sum + s.amount, 0),
@@ -84,7 +81,6 @@ export async function renderDashboard() {
     try {
         const data = await getDashboardData();
 
-        // Если нет товаров — показываем заглушку
         if (data.totalProducts === 0) {
             if (emptyContainer) emptyContainer.style.display = 'block';
             if (contentContainer) contentContainer.style.display = 'none';
@@ -94,13 +90,8 @@ export async function renderDashboard() {
         if (emptyContainer) emptyContainer.style.display = 'none';
         if (contentContainer) contentContainer.style.display = 'block';
 
-        // 1. KPI
         renderKPIs(data);
-
-        // 2. Проблемы
         renderAttentionBlock(data.criticalProducts);
-
-        // 3. График продаж за 7 дней (если есть canvas)
         renderMiniChart(data.last7Days);
 
     } catch (error) {
@@ -121,10 +112,17 @@ export async function renderDashboard() {
 // ============================================================
 
 function renderKPIs(data) {
-    document.getElementById('kpiProducts').textContent = data.totalProducts;
-    document.getElementById('kpiOrders').textContent = data.yesterdayOrders;
-    document.getElementById('kpiDelivered').textContent = '—';
-    document.getElementById('kpiAvgMargin').textContent = data.avgMargin + '%';
+    const el = document.getElementById('kpiProducts');
+    if (el) el.textContent = data.totalProducts;
+    
+    const elOrders = document.getElementById('kpiOrders');
+    if (elOrders) elOrders.textContent = data.yesterdayOrders;
+    
+    const elDelivered = document.getElementById('kpiDelivered');
+    if (elDelivered) elDelivered.textContent = '—';
+    
+    const elMargin = document.getElementById('kpiAvgMargin');
+    if (elMargin) elMargin.textContent = data.avgMargin + '%';
 }
 
 // ============================================================
@@ -167,86 +165,101 @@ function renderAttentionBlock(criticalProducts) {
 
 function renderMiniChart(last7Days) {
     const canvas = document.getElementById('dashboardChart');
-    if (!canvas) return;
+    if (!canvas) {
+        console.warn('⚠️ Canvas dashboardChart не найден');
+        return;
+    }
 
-    // Проверяем, есть ли уже Chart.js
+    // Безопасное уничтожение старого графика
     if (window.dashboardChart) {
-        window.dashboardChart.destroy();
+        try {
+            if (typeof window.dashboardChart.destroy === 'function') {
+                window.dashboardChart.destroy();
+            }
+        } catch (e) {
+            console.warn('⚠️ Не удалось уничтожить старый график:', e.message);
+        }
+        window.dashboardChart = null;
     }
 
     const ctx = canvas.getContext('2d');
-    const labels = last7Days.map(d => d.date.slice(0, 5)); // ДД.ММ
+    const labels = last7Days.map(d => d.date.slice(0, 5));
     const revenueData = last7Days.map(d => d.revenue);
     const orderData = last7Days.map(d => d.orders);
 
-    window.dashboardChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Выручка',
-                    data: revenueData,
-                    borderColor: '#7C3AED',
-                    backgroundColor: 'rgba(124,58,237,0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 2,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Заказы',
-                    data: orderData,
-                    borderColor: '#EC4899',
-                    borderDash: [4, 3],
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 2,
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: '#6B7280',
-                        usePointStyle: true,
-                        font: { size: 10 }
+    try {
+        window.dashboardChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Выручка',
+                        data: revenueData,
+                        borderColor: '#7C3AED',
+                        backgroundColor: 'rgba(124,58,237,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Заказы',
+                        data: orderData,
+                        borderColor: '#EC4899',
+                        borderDash: [4, 3],
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        yAxisID: 'y1'
                     }
-                }
+                ]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: {
-                        color: '#6B7280',
-                        font: { size: 9 },
-                        callback: function(value) {
-                            if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
-                            return value;
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#6B7280',
+                            usePointStyle: true,
+                            font: { size: 10 }
                         }
                     }
                 },
-                y1: {
-                    position: 'right',
-                    beginAtZero: true,
-                    grid: { display: false },
-                    ticks: {
-                        color: '#6B7280',
-                        font: { size: 9 }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: {
+                            color: '#6B7280',
+                            font: { size: 9 },
+                            callback: function(value) {
+                                if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+                                return value;
+                            }
+                        }
+                    },
+                    y1: {
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: '#6B7280',
+                            font: { size: 9 }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#6B7280', font: { size: 9 }, maxTicksLimit: 10 }
                     }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#6B7280', font: { size: 9 } }
                 }
             }
-        }
-    });
+        });
+        console.log('✅ График создан');
+    } catch (error) {
+        console.error('❌ Ошибка создания графика:', error.message);
+    }
 }
 
 // ============================================================
