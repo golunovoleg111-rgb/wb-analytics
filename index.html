@@ -14,7 +14,7 @@
 <body>
 
     <!-- ========================================================== -->
-    <!-- ВЕРХНИЙ САЙДБАР                                             -->
+    <!-- ВЕРХНИЙ САЙДБАР — НОВАЯ СТРУКТУРА                         -->
     <!-- ========================================================== -->
     <header class="topbar">
         <div class="topbar-left">
@@ -37,14 +37,70 @@
             </div>
         </div>
 
+        <!-- Горизонтальное меню с подменю -->
         <nav class="topbar-nav">
+            <!-- Главная -->
             <a class="nav-item active" data-page="dashboard">🏠 Главная</a>
-            <a class="nav-item" data-page="products">📦 Товары</a>
-            <a class="nav-item" data-page="orders">📋 Заказы</a>
-            <a class="nav-item" data-page="ads">📢 Реклама</a>
-            <a class="nav-item" data-page="supplies">🚚 Поставки</a>
-            <a class="nav-item" data-page="warehouse">🏪 Склад</a>
+
+            <!-- Товары ▼ -->
+            <div class="nav-dropdown">
+                <span class="nav-item nav-dropdown-trigger" data-page="products">📦 Товары ▼</span>
+                <div class="nav-dropdown-menu">
+                    <a class="nav-dropdown-item" data-page="products">📋 Карточки товаров</a>
+                    <a class="nav-dropdown-item" data-page="price-management">💰 Управление ценами</a>
+                    <a class="nav-dropdown-item" data-page="stock-analytics">📊 Аналитика остатков</a>
+                </div>
+            </div>
+
+            <!-- Продажи ▼ -->
+            <div class="nav-dropdown">
+                <span class="nav-item nav-dropdown-trigger">📊 Продажи ▼</span>
+                <div class="nav-dropdown-menu">
+                    <a class="nav-dropdown-item" data-page="sales-analytics">📈 Аналитика продаж</a>
+                    <a class="nav-dropdown-item" data-page="sales-geography">📍 География заказов</a>
+                    <a class="nav-dropdown-item" data-page="sales-seasonality">📅 Сезонность</a>
+                    <a class="nav-dropdown-item" data-page="sales-reports">📄 Отчёты</a>
+                </div>
+            </div>
+
+            <!-- Маркетинг ▼ -->
+            <div class="nav-dropdown">
+                <span class="nav-item nav-dropdown-trigger">📢 Маркетинг ▼</span>
+                <div class="nav-dropdown-menu">
+                    <a class="nav-dropdown-item" data-page="ads">📢 Реклама</a>
+                    <a class="nav-dropdown-item" data-page="campaigns">📋 Кампании</a>
+                    <a class="nav-dropdown-item" data-page="promotion-analytics">📊 Аналитика продвижения</a>
+                    <a class="nav-dropdown-item" data-page="external-ads">🌐 Внешняя реклама</a>
+                </div>
+            </div>
+
+            <!-- Склад ▼ -->
+            <div class="nav-dropdown">
+                <span class="nav-item nav-dropdown-trigger">🏪 Склад ▼</span>
+                <div class="nav-dropdown-menu">
+                    <a class="nav-dropdown-item" data-page="supplier-stock">📦 Склад поставщика</a>
+                    <a class="nav-dropdown-item" data-page="wb-stock">🏪 Остатки WB</a>
+                    <a class="nav-dropdown-item" data-page="supply-planning">📋 Планирование поставок</a>
+                    <a class="nav-dropdown-item" data-page="warehouse">📦 Мой склад</a>
+                </div>
+            </div>
+
+            <!-- Импорт -->
             <a class="nav-item" data-page="import">📥 Импорт</a>
+
+            <!-- Аналитика ▼ -->
+            <div class="nav-dropdown">
+                <span class="nav-item nav-dropdown-trigger">📈 Аналитика ▼</span>
+                <div class="nav-dropdown-menu">
+                    <a class="nav-dropdown-item" data-page="unit-economics">💰 Юнит-экономика</a>
+                    <a class="nav-dropdown-item" data-page="logistics-calc">🚚 Логистика</a>
+                    <a class="nav-dropdown-item" data-page="data-settings">⚙️ Настройка данных</a>
+                    <a class="nav-dropdown-item" data-page="stock-analytics-deep">📊 Аналитика остатков</a>
+                    <a class="nav-dropdown-item" data-page="reports">📄 Отчёты</a>
+                </div>
+            </div>
+
+            <!-- Настройки -->
             <a class="nav-item" data-page="settings">⚙️ Настройки</a>
         </nav>
 
@@ -123,7 +179,7 @@
                         <div class="quick-title">Товары</div>
                         <div class="quick-desc">Список товаров с группировкой</div>
                     </div>
-                    <div class="card quick-card" onclick="navigateTo('orders')">
+                    <div class="card quick-card" onclick="navigateTo('supply-planning')">
                         <div class="quick-icon">📋</div>
                         <div class="quick-title">Заказы</div>
                         <div class="quick-desc">Планирование закупок</div>
@@ -140,14 +196,15 @@
         <!-- ===================== ТОВАРЫ ===================== -->
         <section id="page-products" class="page">
             <div class="page-header">
-                <h1>📦 Товары</h1>
+                <h1>📋 Карточки товаров</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Управление ассортиментом</span>
             </div>
 
             <div id="productsEmpty" class="card" style="text-align:center;">
                 <div style="font-size:48px;margin-bottom:12px;">📥</div>
                 <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
                 <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
-                    Импортируйте <strong>продажи</strong>, <strong>остатки</strong> и <strong>себестоимость</strong> в разделе «Импорт»
+                    Импортируйте <strong>продажи</strong>, <strong>остатки</strong> и <strong>закупочные цены</strong> в разделе «Импорт»
                 </div>
                 <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
             </div>
@@ -170,22 +227,15 @@
             </div>
         </section>
 
-        <!-- ===================== ЗАКАЗЫ ===================== -->
-        <section id="page-orders" class="page">
+        <!-- ===================== ПЛАНИРОВАНИЕ ПОСТАВОК ===================== -->
+        <section id="page-supply-planning" class="page">
             <div class="page-header">
-                <h1>📋 Планирование закупок</h1>
-                <div style="display:flex;gap:8px;">
-                    <select id="ordersPeriodSelect" style="min-width:120px;">
-                        <option value="7">Продажи за 7 дней</option>
-                        <option value="14">Продажи за 14 дней</option>
-                        <option value="30" selected>Продажи за 30 дней</option>
-                    </select>
-                    <button class="btn btn-secondary btn-sm" id="exportOrdersBtn">📤 Экспорт в Excel</button>
-                </div>
+                <h1>📋 Планирование поставок</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Рекомендации по закупкам</span>
             </div>
 
             <div id="ordersEmpty" class="card" style="text-align:center;">
-                <div style="font-size:48px;margin-bottom:12px;">📥</div>
+                <div style="font-size:48px;margin-bottom:12px;">📦</div>
                 <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
                 <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
                     Импортируйте <strong>продажи</strong> и <strong>остатки</strong> в разделе «Импорт»
@@ -194,20 +244,42 @@
             </div>
 
             <div id="ordersContent" style="display:none;">
-                <div class="card" style="margin-bottom:14px;">
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <input type="text" id="ordersSearch" placeholder="🔍 Поиск по артикулу..." style="flex:1;min-width:180px;" oninput="renderOrders()">
-                        <select id="ordersFilter" style="min-width:120px;" onchange="renderOrders()">
-                            <option value="all">Все товары</option>
-                            <option value="critical">🔴 Срочно</option>
-                            <option value="soon">🟡 Скоро</option>
-                            <option value="normal">🟢 Норма</option>
-                        </select>
-                        <button class="btn btn-secondary btn-sm" id="clearOrdersFilterBtn">Сбросить</button>
-                    </div>
-                </div>
                 <div id="ordersSummary" style="margin-bottom:14px;"></div>
                 <div id="ordersList"></div>
+            </div>
+        </section>
+
+        <!-- ===================== ПОСТАВКИ (ИСТОРИЯ) ===================== -->
+        <section id="page-supplies" class="page">
+            <div class="page-header">
+                <h1>🚚 История поставок</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Все созданные поставки</span>
+            </div>
+
+            <div class="card" style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Название</th>
+                            <th>Позиций</th>
+                            <th>Мест</th>
+                            <th>Статус</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody id="supplyHistoryBody">
+                        <tr>
+                            <td colspan="6" style="text-align:center;padding:30px;color:var(--text-secondary);">
+                                <div style="font-size:36px;margin-bottom:8px;">📦</div>
+                                <div style="font-size:14px;font-weight:500;">Нет поставок</div>
+                                <div style="font-size:12px;color:var(--text-secondary);">
+                                    Создайте поставку в разделе «Планирование поставок»
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
@@ -299,10 +371,11 @@
             </div>
         </section>
 
-        <!-- ===================== МОЙ СКЛАД ===================== -->
+        <!-- ===================== СКЛАД (МОЙ СКЛАД) ===================== -->
         <section id="page-warehouse" class="page">
             <div class="page-header">
                 <h1>🏪 Мой склад</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Управление палетами и коробками</span>
             </div>
 
             <div class="card" style="margin-bottom:14px;">
@@ -320,80 +393,11 @@
             <div id="warehouseContent"></div>
         </section>
 
-        <!-- ===================== ПОСТАВКИ ===================== -->
-        <section id="page-supplies" class="page">
-            <div class="page-header">
-                <h1>🚚 Поставки</h1>
-            </div>
-
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-title">📦 Корзина поставки</div>
-                    <div id="supplyCart" style="max-height:300px;overflow-y:auto;margin-bottom:12px;">
-                        <div style="text-align:center;color:var(--text-secondary);padding:20px;">Корзина пуста</div>
-                    </div>
-                    <div style="padding:10px;background:var(--bg-hover);border-radius:8px;margin-bottom:12px;font-size:12px;">
-                        <div style="display:flex;justify-content:space-between;">
-                            <span>📦 Мест:</span>
-                            <strong id="supplyPlaces">0</strong>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;">
-                            <span>⚖️ Вес:</span>
-                            <strong id="supplyWeight">0 кг</strong>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;">
-                            <span>📐 Объём:</span>
-                            <strong id="supplyVolume">0 л</strong>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary" id="createSupplyBtn" style="width:100%;">✅ Сформировать поставку</button>
-                    <div style="display:flex;gap:8px;margin-top:8px;">
-                        <button class="btn btn-secondary btn-sm" onclick="exportSupplyForWB()" style="flex:1;">📤 Для WB</button>
-                        <button class="btn btn-secondary btn-sm" onclick="exportSupplyPackingList()" style="flex:1;">📋 Сборочный лист</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">➕ Добавить товар</div>
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <input type="text" id="supplyArticle" placeholder="Артикул" style="width:100%;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
-                            <input type="text" id="supplySize" placeholder="Размер">
-                            <input type="number" id="supplyQty" placeholder="Кол-во" value="1" min="1">
-                            <input type="text" id="supplyPallet" placeholder="Паллета">
-                        </div>
-                        <button class="btn btn-primary btn-sm" id="addToSupplyBtn">➕ Добавить в корзину</button>
-                        <button class="btn btn-secondary btn-sm" id="addFromWarehouseBtn">📦 Добавить со склада</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card" style="margin-top:14px;">
-                <div class="card-title">📋 История поставок</div>
-                <div style="overflow-x:auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Дата</th>
-                                <th>Название</th>
-                                <th>Позиций</th>
-                                <th>Мест</th>
-                                <th>Статус</th>
-                                <th>Действие</th>
-                            </tr>
-                        </thead>
-                        <tbody id="supplyHistoryBody">
-                            <tr><td colspan="6" style="text-align:center;padding:20px;">Нет поставок</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
         <!-- ===================== ИМПОРТ ===================== -->
         <section id="page-import" class="page">
             <div class="page-header">
                 <h1>📥 Импорт данных</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Загрузка отчётов Wildberries</span>
             </div>
 
             <div class="grid-4">
@@ -449,9 +453,9 @@
                 </div>
 
                 <div class="card import-card" style="border:2px solid var(--primary-light);">
-                    <div class="card-title">💰 Себестоимость</div>
+                    <div class="card-title">💰 Закупочные цены</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
-                        Загрузка себестоимости товаров
+                        Загрузка цен поставщиков
                     </div>
                     <button class="btn btn-secondary btn-sm" id="downloadCostsTemplateBtn" style="margin-bottom:10px;">
                         📥 Шаблон
@@ -471,6 +475,7 @@
         <section id="page-settings" class="page">
             <div class="page-header">
                 <h1>⚙️ Настройки</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Системные настройки</span>
             </div>
 
             <div class="card" style="margin-bottom:14px;">
@@ -487,74 +492,8 @@
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-title">📦 Тарифы Wildberries</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Комиссия FBO (%)</label>
-                        <input type="number" id="fboCommission" value="15" min="1" max="50" step="1" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Комиссия FBS (%)</label>
-                        <input type="number" id="fbsCommission" value="10" min="1" max="50" step="1" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Ставка хранения (₽/л/день)</label>
-                        <input type="number" id="storageBaseRate" value="0.07" step="0.01" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Ставка хранения повыш. (₽/л/день)</label>
-                        <input type="number" id="storageOverRate" value="0.15" step="0.01" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Объём единицы (литров)</label>
-                        <input type="number" id="volumePerUnit" value="5" step="0.5" style="width:100%;">
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">📋 Планирование заказов</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Целевой запас (дней)</label>
-                        <input type="number" id="targetStockDays" value="60" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Страховой запас (дней)</label>
-                        <input type="number" id="safetyStockDays" value="30" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Срок производства (дней)</label>
-                        <input type="number" id="productionDays" value="14" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Срок доставки до WB (дней)</label>
-                        <input type="number" id="deliveryDays" value="7" style="width:100%;">
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">🧾 Налоги</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Система налогообложения</label>
-                        <select id="taxSystem" style="width:100%;" onchange="togglePatentField()">
-                            <option value="usn6">УСН 6% (доходы)</option>
-                            <option value="usn15">УСН 15% (доходы − расходы)</option>
-                            <option value="patent">Патент</option>
-                        </select>
-                    </div>
-                    <div id="patentBlock" style="display:none;">
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Стоимость патента в год (₽)</label>
-                        <input type="number" id="patentCost" value="30000" step="1000" style="width:100%;">
-                    </div>
-                </div>
-            </div>
-
             <div class="card" style="border:2px solid var(--primary-light);">
-                <div class="card-title">🔑 API ключи <span style="font-size:10px;color:var(--text-secondary);">(задел на будущее)</span></div>
+                <div class="card-title">🔑 API ключи</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div>
                         <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Wildberries API ключ</label>
@@ -580,11 +519,151 @@
                     ⚠️ Очистка всех данных удалит все импортированные файлы. Очистка кеша перезагрузит приложение.
                 </div>
             </div>
+        </section>
 
-            <button class="btn btn-primary" id="saveSettingsBtn" style="width:100%;padding:10px;font-size:14px;margin-top:14px;">
-                💾 Сохранить настройки
-            </button>
-            <div id="saveStatus" style="text-align:center;margin-top:8px;font-size:12px;"></div>
+        <!-- ===================== ЗАГЛУШКИ ДЛЯ НОВЫХ СТРАНИЦ ===================== -->
+        <section id="page-price-management" class="page">
+            <div class="page-header"><h1>💰 Управление ценами</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-stock-analytics" class="page">
+            <div class="page-header"><h1>📊 Аналитика остатков</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-sales-analytics" class="page">
+            <div class="page-header"><h1>📈 Аналитика продаж</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-sales-geography" class="page">
+            <div class="page-header"><h1>📍 География заказов</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-sales-seasonality" class="page">
+            <div class="page-header"><h1>📅 Сезонность</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-sales-reports" class="page">
+            <div class="page-header"><h1>📄 Отчёты по продажам</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-campaigns" class="page">
+            <div class="page-header"><h1>📋 Кампании</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-promotion-analytics" class="page">
+            <div class="page-header"><h1>📊 Аналитика продвижения</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-external-ads" class="page">
+            <div class="page-header"><h1>🌐 Внешняя реклама</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-supplier-stock" class="page">
+            <div class="page-header"><h1>📦 Склад поставщика</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-wb-stock" class="page">
+            <div class="page-header"><h1>🏪 Остатки WB</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-unit-economics" class="page">
+            <div class="page-header"><h1>💰 Юнит-экономика</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-logistics-calc" class="page">
+            <div class="page-header"><h1>🚚 Логистика</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-data-settings" class="page">
+            <div class="page-header"><h1>⚙️ Настройка данных</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-stock-analytics-deep" class="page">
+            <div class="page-header"><h1>📊 Аналитика остатков</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
+        </section>
+
+        <section id="page-reports" class="page">
+            <div class="page-header"><h1>📄 Отчёты</h1></div>
+            <div class="card" style="text-align:center;padding:60px;">
+                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
+                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
+            </div>
         </section>
 
         <!-- ===================== КАРТОЧКА ТОВАРА ===================== -->
@@ -801,46 +880,101 @@
         import { renderSupplyHistory } from './src/ui/supplyHistory.js';
 
         console.log('✅ StockFlow v5.0 — Новая архитектура загружена');
-        console.log('📦 ProductService доступен:', ProductService);
-        console.log('📊 SalesService доступен:', SalesService);
-        console.log('📦 StockService доступен:', StockService);
-        console.log('📦 SupplyService доступен:', SupplyService);
-        console.log('📋 renderOrderList доступен:', renderOrderList);
-        console.log('📋 renderSupplyHistory доступен:', renderSupplyHistory);
 
         // ============================================================
         // ГЛОБАЛЬНАЯ НАВИГАЦИЯ
         // ============================================================
+
+        // Страница по умолчанию для некоторых подменю
+        const pageMap = {
+            'products': 'products',
+            'price-management': 'price-management',
+            'stock-analytics': 'stock-analytics',
+            'sales-analytics': 'sales-analytics',
+            'sales-geography': 'sales-geography',
+            'sales-seasonality': 'sales-seasonality',
+            'sales-reports': 'sales-reports',
+            'ads': 'ads',
+            'campaigns': 'campaigns',
+            'promotion-analytics': 'promotion-analytics',
+            'external-ads': 'external-ads',
+            'supplier-stock': 'supplier-stock',
+            'wb-stock': 'wb-stock',
+            'supply-planning': 'supply-planning',
+            'warehouse': 'warehouse',
+            'import': 'import',
+            'unit-economics': 'unit-economics',
+            'logistics-calc': 'logistics-calc',
+            'data-settings': 'data-settings',
+            'stock-analytics-deep': 'stock-analytics-deep',
+            'reports': 'reports',
+            'settings': 'settings',
+            'dashboard': 'dashboard'
+        };
+
         window.navigateTo = function(pageName) {
             console.log('🔀 Переход на страницу:', pageName);
 
+            // Обновляем активный пункт меню (основные)
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
             const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
             if (navItem) navItem.classList.add('active');
 
+            // Обновляем активный пункт в подменю
+            document.querySelectorAll('.nav-dropdown-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            const dropdownItem = document.querySelector(`.nav-dropdown-item[data-page="${pageName}"]`);
+            if (dropdownItem) dropdownItem.classList.add('active');
+
+            // Показываем страницу
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
             });
             const page = document.getElementById(`page-${pageName}`);
             if (page) page.classList.add('active');
 
+            // Загружаем данные для страницы
             if (pageName === 'products') {
                 setTimeout(() => renderProductList(), 50);
             }
-            if (pageName === 'orders') {
+            if (pageName === 'supply-planning') {
                 setTimeout(() => renderOrderList(), 50);
             }
             if (pageName === 'supplies') {
                 setTimeout(() => renderSupplyHistory(), 50);
+            }
+            if (pageName === 'warehouse') {
+                // старая страница склада
+            }
+            if (pageName === 'ads') {
+                // старая страница рекламы
+            }
+            if (pageName === 'settings') {
+                // настройки
+            }
+            if (pageName === 'import') {
+                // импорт
             }
         };
 
         // ============================================================
         // ПОДКЛЮЧАЕМ НАВИГАЦИЮ К МЕНЮ
         // ============================================================
-        document.querySelectorAll('.nav-item').forEach(item => {
+
+        // Основные пункты
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const pageName = this.getAttribute('data-page');
+                window.navigateTo(pageName);
+            });
+        });
+
+        // Пункты подменю
+        document.querySelectorAll('.nav-dropdown-item').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.preventDefault();
                 const pageName = this.getAttribute('data-page');
@@ -849,39 +983,58 @@
         });
 
         // ============================================================
+        // ВЫПАДАЮЩИЕ МЕНЮ (НАВЕЛ → ПОЯВИЛОСЬ, УБРАЛ → ПРОПАЛО)
+        // ============================================================
+
+        document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+            const trigger = dropdown.querySelector('.nav-dropdown-trigger');
+            const menu = dropdown.querySelector('.nav-dropdown-menu');
+
+            dropdown.addEventListener('mouseenter', function() {
+                menu.classList.add('open');
+                this.classList.add('active');
+            });
+
+            dropdown.addEventListener('mouseleave', function() {
+                menu.classList.remove('open');
+                this.classList.remove('active');
+            });
+        });
+
+        // ============================================================
         // ЛОГОТИП → ГЛАВНАЯ
         // ============================================================
+
         document.getElementById('sidebarLogo').addEventListener('click', function() {
             window.navigateTo('dashboard');
         });
 
         // ============================================================
-        // КНОПКА ПРОФИЛЯ (заглушка)
+        // КНОПКА ПРОФИЛЯ
         // ============================================================
+
         document.getElementById('profileBtn').addEventListener('click', function() {
-            alert('👤 Личный кабинет в разработке');
+            showToast('👤 Личный кабинет в разработке', 'success');
         });
 
         // ============================================================
-        // ЗАГРУЗКА ТЕСТОВЫХ ДАННЫХ
+        // ЗАГРУЗКА
         // ============================================================
+
         import('./src/init.js').then(() => {
-            console.log('✅ Тестовые данные загружены');
+            console.log('✅ Инициализация завершена');
 
             setTimeout(() => {
                 const currentPage = document.querySelector('.page.active');
-                if (currentPage && currentPage.id === 'page-products') {
-                    renderProductList();
-                }
-                if (currentPage && currentPage.id === 'page-orders') {
-                    renderOrderList();
-                }
-                if (currentPage && currentPage.id === 'page-supplies') {
-                    renderSupplyHistory();
+                if (currentPage) {
+                    const id = currentPage.id.replace('page-', '');
+                    if (id === 'products') renderProductList();
+                    if (id === 'supply-planning') renderOrderList();
+                    if (id === 'supplies') renderSupplyHistory();
                 }
             }, 100);
         }).catch(err => {
-            console.error('❌ Ошибка загрузки тестовых данных:', err.message);
+            console.error('❌ Ошибка инициализации:', err.message);
         });
     </script>
 
