@@ -1628,3 +1628,128 @@ input[type="radio"]:checked {
 .mb-lg {
     margin-bottom: var(--spacing-lg);
 }
+/* ============================================================
+   ВЫПАДАЮЩИЕ ПОДМЕНЮ
+   ============================================================ */
+
+.nav-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.nav-dropdown-trigger {
+    cursor: pointer;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    font-family: var(--font);
+}
+
+.nav-dropdown-trigger:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.nav-dropdown-trigger.active {
+    background: var(--gradient-subtle);
+    color: var(--primary);
+}
+
+.nav-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-dropdown);
+    padding: 6px 0;
+    min-width: 200px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all var(--transition-slow);
+    z-index: 1000;
+}
+
+.nav-dropdown-menu.open {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(-50%) translateY(0);
+}
+
+.nav-dropdown-item {
+    display: block;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition);
+    border-radius: var(--radius-xs);
+    margin: 2px 6px;
+    white-space: nowrap;
+}
+
+.nav-dropdown-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.nav-dropdown-item.active {
+    background: var(--gradient-subtle);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* ============================================================
+   АДАПТИВНОСТЬ ДЛЯ ПОДМЕНЮ
+   ============================================================ */
+
+@media (max-width: 992px) {
+    .nav-dropdown-menu {
+        left: 0;
+        transform: none;
+        min-width: 180px;
+    }
+    
+    .nav-dropdown-menu.open {
+        transform: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-dropdown {
+        position: static;
+    }
+    
+    .nav-dropdown-menu {
+        position: static;
+        transform: none;
+        opacity: 1;
+        pointer-events: all;
+        display: none;
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        padding: 0 0 0 16px;
+    }
+    
+    .nav-dropdown-menu.open {
+        display: block;
+        transform: none;
+    }
+    
+    .nav-dropdown-item {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
