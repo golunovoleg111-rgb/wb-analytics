@@ -1,43 +1,35 @@
 // ============================================================
-// UI: ORDER LIST — СТРАНИЦА "ЗАКАЗЫ"
-// Отображает рекомендации по закупкам + корзина
+// UI: ORDER LIST — ПЛАНИРОВАНИЕ ЗАКУПОК
 // ============================================================
 
 import SupplyService from '../services/SupplyService.js';
 import ProductService from '../services/ProductService.js';
-import SalesService from '../services/SalesService.js';
-import StockService from '../services/StockService.js';
 
 // ============================================================
-// СОСТОЯНИЕ: КОРЗИНА ЗАКАЗОВ
+// СОСТОЯНИЕ
 // ============================================================
 
 let orderCart = [];
+let recommendationsCache = [];
 
 // ============================================================
-// ОТРИСОВКА СТРАНИЦЫ
+// ОТРИСОВКА
 // ============================================================
 
 export async function renderOrderList() {
-    console.log('📋 Рендеринг страницы "Заказы"...');
+    console.log('📋 Рендеринг страницы "Планирование закупок"...');
     
     const container = document.getElementById('ordersList');
-    if (!container) {
-        console.warn('⚠️ Контейнер ordersList не найден');
-        return;
-    }
+    if (!container) return;
     
     const summaryContainer = document.getElementById('ordersSummary');
     const emptyContainer = document.getElementById('ordersEmpty');
     const contentContainer = document.getElementById('ordersContent');
     
     try {
-        // Загружаем рекомендации
-        const recommendations = await SupplyService.calculateRecommendations();
+        recommendationsCache = await SupplyService.calculateRecommendations();
         
-        console.log(`📋 Найдено ${recommendations.length} рекомендаций`);
-        
-        if (recommendations.length === 0) {
+        if (recommendationsCache.length === 0) {
             if (emptyContainer) emptyContainer.style.display = 'block';
             if (contentContainer) contentContainer.style.display = 'none';
             return;
@@ -46,15 +38,15 @@ export async function renderOrderList() {
         if (emptyContainer) emptyContainer.style.display = 'none';
         if (contentContainer) contentContainer.style.display = 'block';
         
-        // Считаем статистику по срочности
-        const critical = recommendations.filter(r => r.urgency === 'critical');
-        const soon = recommendations.filter(r => r.urgency === 'soon');
-        const normal = recommendations.filter(r => r.urgency === 'normal');
+        // Сводка
+        const critical = recommendationsCache.filter(r => r.urgency === 'critical');
+        const soon = recommendationsCache.filter(r => r.urgency === 'soon');
+        const normal = recommendationsCache.filter(r => r.urgency === 'normal');
+        const totalItems = orderCart.reduce((sum, item) => sum + item.quantity, 0);
         
-        // Рендерим сводку
         if (summaryContainer) {
             summaryContainer.innerHTML = `
-                <div style="display:flex;gap:14px;flex-wrap:wrap;">
+                <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
                     <div class="orders-summary-card critical">
                         <div class="orders-summary-value" style="color:#EF4444;">${critical.length}</div>
                         <div class="orders-summary-label">🔴 Срочно</div>
@@ -67,27 +59,33 @@ export async function renderOrderList() {
                         <div class="orders-summary-value" style="color:#10B981;">${normal.length}</div>
                         <div class="orders-summary-label">🟢 Норма</div>
                     </div>
-                    <div style="flex:1;text-align:right;padding:10px 14px;">
+                    <div style="flex:1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" onclick="window.addAllToCart()">
+                            ➕ Добавить все
+                        </button>
                         <button class="btn btn-primary btn-sm" onclick="window.createSupplyOrderFromCart()">
-                            🛒 Создать поставку (${orderCart.length})
+                            🛒 Создать поставку (${orderCart.length} / ${totalItems} шт)
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="window.exportSupplyOrder()">
+                            📤 Экспорт для WB
                         </button>
                     </div>
                 </div>
             `;
         }
         
-        // Рендерим список рекомендаций
+        // Список рекомендаций
         let html = '';
         
-        recommendations.forEach((rec, index) => {
-            const urgencyIcon = rec.urgency === 'critical' ? '🔴' : 
-                               rec.urgency === 'soon' ? '🟡' : '🟢';
-            const urgencyLabel = rec.urgency === 'critical' ? 'Срочно' : 
-                                rec.urgency === 'soon' ? 'Скоро' : 'Норма';
+        recommendationsCache.forEach((rec) => {
             const borderColor = rec.urgency === 'critical' ? '#EF4444' : 
                                rec.urgency === 'soon' ? '#F59E0B' : '#10B981';
+            const urgencyIcon = rec.urgency === 'critical' ? '🔴' : 
+                               rec.urgency === 'soon' ? '🟡' : '🟢';
             
-            const inCart = orderCart.some(item => item.productId === rec.productId);
+            const cartItem = orderCart.find(item => item.productId === rec.productId);
+            const cartQuantity = cartItem ? cartItem.quantity : 0;
+            const inCart = cartQuantity > 0;
             
             html += `
                 <div class="product-group" style="border-left:4px solid ${borderColor};">
@@ -97,13 +95,11 @@ export async function renderOrderList() {
                             <div class="product-group-name">
                                 ${rec.article || 'Без артикула'}
                                 <span style="font-size:10px;color:var(--text-muted);font-weight:400;margin-left:8px;">
-                                    ${urgencyLabel}
+                                    ${rec.urgency === 'critical' ? 'Срочно' : rec.urgency === 'soon' ? 'Скоро' : 'Норма'}
                                 </span>
                             </div>
                             <div class="product-group-category">
-                                Остаток: ${rec.currentStock} шт · 
-                                Продажи/д: ${rec.dailyDemand} · 
-                                Дней до 0: ${rec.daysToStockout}
+                                Остаток: ${rec.currentStock} шт · Продажи/д: ${rec.dailyDemand} · Дней: ${rec.daysToStockout}
                             </div>
                         </div>
                         <div class="product-group-metrics">
@@ -112,8 +108,10 @@ export async function renderOrderList() {
                                 <div class="product-group-metric-value">${rec.recommendedQuantity} шт</div>
                             </div>
                             <div class="product-group-metric">
-                                <div class="product-group-metric-label">ИО</div>
-                                <div class="product-group-metric-value" style="color:${rec.io < 0.5 ? '#EF4444' : rec.io < 1 ? '#F59E0B' : '#10B981'};">${rec.io}</div>
+                                <div class="product-group-metric-label">В корзине</div>
+                                <div class="product-group-metric-value" style="color:${inCart ? '#10B981' : '#9CA3AF'};">
+                                    ${inCart ? cartQuantity + ' шт' : '—'}
+                                </div>
                             </div>
                         </div>
                         <span class="product-group-arrow">▶</span>
@@ -125,13 +123,18 @@ export async function renderOrderList() {
                                 <div>📦 Страховой запас: <strong>${rec.safetyStock || 0}</strong></div>
                                 <div>📈 Дневной спрос: <strong>${rec.dailyDemand.toFixed(1)}</strong></div>
                             </div>
-                            <div style="display:flex;gap:6px;">
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <button class="btn btn-sm btn-secondary" onclick="window.adjustOrderQuantity('${rec.productId}', -5)">−5</button>
+                                <input type="number" id="qty_${rec.productId}" 
+                                       value="${inCart ? cartQuantity : rec.recommendedQuantity}" 
+                                       min="0" max="999"
+                                       style="width:60px;text-align:center;padding:4px;font-size:12px;"
+                                       onchange="window.updateCartQuantity('${rec.productId}', this.value)">
+                                <button class="btn btn-sm btn-secondary" onclick="window.adjustOrderQuantity('${rec.productId}', 5)">+5</button>
                                 <button class="btn ${inCart ? 'btn-success' : 'btn-primary'} btn-sm" 
-                                        onclick="window.toggleOrderCart('${rec.productId}', '${rec.article || ''}', ${rec.recommendedQuantity})">
+                                        onclick="window.toggleOrderCart('${rec.productId}', '${rec.article || ''}', document.getElementById('qty_${rec.productId}').value)">
                                     ${inCart ? '✅ В корзине' : '➕ Добавить'}
                                 </button>
-                                <button class="btn btn-secondary btn-sm" onclick="window.adjustOrderQuantity('${rec.productId}', -5)">−5</button>
-                                <button class="btn btn-secondary btn-sm" onclick="window.adjustOrderQuantity('${rec.productId}', 5)">+5</button>
                             </div>
                         </div>
                     </div>
@@ -140,10 +143,10 @@ export async function renderOrderList() {
         });
         
         container.innerHTML = html;
-        console.log('✅ Страница "Заказы" отрендерена');
+        console.log('✅ Страница "Планирование закупок" отрендерена');
         
     } catch (error) {
-        console.error('❌ Ошибка при рендеринге заказов:', error.message);
+        console.error('❌ Ошибка:', error.message);
         container.innerHTML = `
             <div class="card" style="text-align:center;padding:30px;color:#EF4444;">
                 <div style="font-size:36px;margin-bottom:10px;">❌</div>
@@ -159,47 +162,80 @@ export async function renderOrderList() {
 // ============================================================
 
 window.toggleOrderCart = function(productId, article, quantity) {
+    const qty = parseInt(quantity) || 10;
     const index = orderCart.findIndex(item => item.productId === productId);
     
     if (index >= 0) {
         orderCart.splice(index, 1);
-        console.log(`❌ Убран из корзины: ${article}`);
     } else {
-        orderCart.push({
-            productId,
-            article,
-            quantity: quantity || 10
-        });
-        console.log(`✅ Добавлен в корзину: ${article} (${quantity} шт)`);
+        orderCart.push({ productId, article, quantity: qty });
     }
     
-    // Обновляем страницу
+    renderOrderList();
+};
+
+window.updateCartQuantity = function(productId, value) {
+    const qty = parseInt(value) || 0;
+    const item = orderCart.find(i => i.productId === productId);
+    if (item) {
+        if (qty <= 0) {
+            orderCart = orderCart.filter(i => i.productId !== productId);
+        } else {
+            item.quantity = qty;
+        }
+    }
     renderOrderList();
 };
 
 window.adjustOrderQuantity = function(productId, delta) {
     const item = orderCart.find(i => i.productId === productId);
     if (item) {
-        const newQuantity = Math.max(1, item.quantity + delta);
-        item.quantity = newQuantity;
-        console.log(`📦 ${item.article}: количество ${newQuantity} шт`);
-        renderOrderList();
+        const newQty = Math.max(0, item.quantity + delta);
+        if (newQty <= 0) {
+            orderCart = orderCart.filter(i => i.productId !== productId);
+        } else {
+            item.quantity = newQty;
+        }
+    } else {
+        // Если товара нет в корзине, добавляем с базовым количеством
+        const rec = recommendationsCache.find(r => r.productId === productId);
+        if (rec) {
+            const qty = Math.max(1, rec.recommendedQuantity + delta);
+            orderCart.push({ 
+                productId, 
+                article: rec.article || '', 
+                quantity: qty 
+            });
+        }
     }
+    renderOrderList();
+};
+
+window.addAllToCart = function() {
+    recommendationsCache.forEach(rec => {
+        const existing = orderCart.find(item => item.productId === rec.productId);
+        if (!existing) {
+            orderCart.push({
+                productId: rec.productId,
+                article: rec.article || '',
+                quantity: rec.recommendedQuantity
+            });
+        }
+    });
+    renderOrderList();
 };
 
 // ============================================================
-// СОЗДАНИЕ ПОСТАВКИ ИЗ КОРЗИНЫ
+// СОЗДАНИЕ ПОСТАВКИ
 // ============================================================
 
 window.createSupplyOrderFromCart = async function() {
     if (orderCart.length === 0) {
-        alert('Корзина пуста. Добавьте товары в корзину.');
+        alert('Корзина пуста');
         return;
     }
     
-    if (!confirm(`Создать поставку из ${orderCart.length} товаров?`)) {
-        return;
-    }
+    if (!confirm(`Создать поставку из ${orderCart.length} товаров?`)) return;
     
     try {
         const recommendations = orderCart.map(item => ({
@@ -209,17 +245,37 @@ window.createSupplyOrderFromCart = async function() {
         
         const order = await SupplyService.createOrderFromRecommendations(recommendations);
         
-        console.log('✅ Поставка создана:', order);
         alert(`✅ Поставка #${order.number} создана!`);
-        
-        // Очищаем корзину
         orderCart = [];
         renderOrderList();
         
     } catch (error) {
-        console.error('❌ Ошибка создания поставки:', error.message);
         alert('❌ Ошибка: ' + error.message);
     }
+};
+
+// ============================================================
+// ЭКСПОРТ В EXCEL
+// ============================================================
+
+window.exportSupplyOrder = function() {
+    if (orderCart.length === 0) {
+        alert('Корзина пуста');
+        return;
+    }
+    
+    const data = orderCart.map(item => ({
+        'Артикул': item.article || '',
+        'Количество': item.quantity,
+        'Примечание': ''
+    }));
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Поставка');
+    XLSX.writeFile(wb, `Поставка_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    alert('✅ Файл экспортирован');
 };
 
 // ============================================================
