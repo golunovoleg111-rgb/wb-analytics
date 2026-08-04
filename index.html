@@ -428,55 +428,14 @@
             </div>
         </section>
 
-        <!-- ===================== НАСТРОЙКИ ===================== -->
-        <section id="page-settings" class="page">
-            <div class="page-header">
-                <h1>⚙️ Настройки</h1>
-                <span style="font-size:12px;color:var(--text-secondary);">Системные настройки</span>
-            </div>
-
-            <div class="card" style="margin-bottom:14px;">
-                <div class="card-title">📊 Состояние системы</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div>
-                        <div style="font-size:11px;color:var(--text-secondary);">База данных</div>
-                        <div id="dbStatus" style="font-weight:500;">Проверка...</div>
-                    </div>
-                    <div>
-                        <div style="font-size:11px;color:var(--text-secondary);">Статистика</div>
-                        <div id="dbStats" style="font-weight:500;">—</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card" style="border:2px solid var(--primary-light);">
-                <div class="card-title">🔑 API ключи</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Wildberries API ключ</label>
-                        <input type="password" id="wbApiKey" placeholder="Введите API ключ WB" style="width:100%;">
-                    </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;display:block;margin-bottom:3px;">Ozon API ключ</label>
-                        <input type="password" id="ozonApiKey" placeholder="Введите API ключ Ozon" style="width:100%;">
-                    </div>
-                </div>
-                <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">
-                    🔒 Ключи хранятся только в вашем браузере и не передаются на сервер
-                </div>
-            </div>
-
-            <div class="card" style="border:2px solid #EF4444;">
-                <div class="card-title">⚠️ Управление данными</div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                    <button class="btn btn-danger" id="clearAllDataBtn">🗑️ Очистить все данные</button>
-                    <button class="btn btn-secondary" id="clearCacheBtn">🔄 Очистить кеш</button>
-                </div>
-                <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">
-                    ⚠️ Очистка всех данных удалит все импортированные файлы. Очистка кеша перезагрузит приложение.
-                </div>
-            </div>
-        </section>
+      <!-- ===================== НАСТРОЙКИ ===================== -->
+<section id="page-settings" class="page">
+    <div class="page-header">
+        <h1>⚙️ Настройки</h1>
+        <span style="font-size:12px;color:var(--text-secondary);">Управление системой</span>
+    </div>
+    <div id="settingsContent"></div>
+</section>
 
         <!-- ===================== ЗАГЛУШКИ ===================== -->
         <section id="page-price-management" class="page">
@@ -839,6 +798,7 @@
         import renderSalesAnalytics from './src/ui/salesAnalytics.js';
         import AdvertisingService from './src/services/AdvertisingService.js';
 import renderAdsList from './src/ui/adsList.js';
+        import renderSettings from './src/ui/settings.js';
 
         // Делаем ImportService глобальным для onclick
         window.ImportService = ImportService;
@@ -897,6 +857,9 @@ import renderAdsList from './src/ui/adsList.js';
 }
             if (pageName === 'ads') {
     setTimeout(() => renderAdsList(), 50);
+}
+            if (pageName === 'settings') {
+    setTimeout(() => renderSettings(), 50);
 }
         };
 
@@ -1001,6 +964,7 @@ import renderAdsList from './src/ui/adsList.js';
                     if (id === 'dashboard') renderDashboard();
                     if (id === 'sales-analytics') renderSalesAnalytics();
                     if (id === 'ads') renderAdsList();
+                    if (id === 'settings') renderSettings();
                 }
             }, 100);
         }).catch(err => {
