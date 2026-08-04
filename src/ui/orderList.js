@@ -27,10 +27,41 @@ export async function renderOrderList() {
     const contentContainer = document.getElementById('ordersContent');
     
     try {
+        // Проверяем, есть ли товары в базе
+        const products = await ProductService.getActive();
+        if (products.length === 0) {
+            if (emptyContainer) {
+                emptyContainer.style.display = 'block';
+                emptyContainer.innerHTML = `
+                    <div style="text-align:center;padding:30px;">
+                        <div style="font-size:48px;margin-bottom:12px;">📦</div>
+                        <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
+                        <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
+                            Импортируйте <strong>продажи</strong> и <strong>остатки</strong> в разделе «Импорт»
+                        </div>
+                        <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
+                    </div>
+                `;
+            }
+            if (contentContainer) contentContainer.style.display = 'none';
+            return;
+        }
+        
         recommendationsCache = await SupplyService.calculateRecommendations();
         
         if (recommendationsCache.length === 0) {
-            if (emptyContainer) emptyContainer.style.display = 'block';
+            if (emptyContainer) {
+                emptyContainer.style.display = 'block';
+                emptyContainer.innerHTML = `
+                    <div style="text-align:center;padding:30px;">
+                        <div style="font-size:48px;margin-bottom:12px;">✅</div>
+                        <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Все товары в норме</div>
+                        <div style="font-size:14px;color:var(--text-secondary);">
+                            Нет товаров, требующих закупки
+                        </div>
+                    </div>
+                `;
+            }
             if (contentContainer) contentContainer.style.display = 'none';
             return;
         }
@@ -149,9 +180,9 @@ export async function renderOrderList() {
         console.error('❌ Ошибка:', error.message);
         container.innerHTML = `
             <div class="card" style="text-align:center;padding:30px;color:#EF4444;">
-                <div style="font-size:36px;margin-bottom:10px;">❌</div>
-                <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Ошибка загрузки</div>
-                <div style="font-size:13px;color:var(--text-secondary);">${error.message}</div>
+                <div style="font-size:48px;margin-bottom:12px;">❌</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Ошибка загрузки</div>
+                <div style="font-size:14px;color:var(--text-secondary);">${error.message}</div>
             </div>
         `;
     }
@@ -197,7 +228,6 @@ window.adjustOrderQuantity = function(productId, delta) {
             item.quantity = newQty;
         }
     } else {
-        // Если товара нет в корзине, добавляем с базовым количеством
         const rec = recommendationsCache.find(r => r.productId === productId);
         if (rec) {
             const qty = Math.max(1, rec.recommendedQuantity + delta);
