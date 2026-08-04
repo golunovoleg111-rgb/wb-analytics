@@ -37,7 +37,6 @@
             </div>
         </div>
 
-        <!-- Горизонтальное меню -->
         <nav class="topbar-nav">
             <a class="nav-item active" data-page="dashboard">🏠 Главная</a>
             <a class="nav-item" data-page="products">📦 Товары</a>
@@ -398,7 +397,6 @@
             </div>
 
             <div class="grid-4">
-                <!-- Продажи -->
                 <div class="card import-card">
                     <div class="card-title">🛒 Продажи</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
@@ -416,7 +414,6 @@
                     <div id="salesImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
 
-                <!-- Остатки -->
                 <div class="card import-card">
                     <div class="card-title">📦 Остатки</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
@@ -434,7 +431,6 @@
                     <div id="stockImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
 
-                <!-- Реклама -->
                 <div class="card import-card">
                     <div class="card-title">📢 Реклама</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
@@ -452,7 +448,6 @@
                     <div id="adsImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
 
-                <!-- Себестоимость -->
                 <div class="card import-card" style="border:2px solid var(--primary-light);">
                     <div class="card-title">💰 Себестоимость</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
@@ -478,7 +473,6 @@
                 <h1>⚙️ Настройки</h1>
             </div>
 
-            <!-- Состояние системы -->
             <div class="card" style="margin-bottom:14px;">
                 <div class="card-title">📊 Состояние системы</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -493,7 +487,6 @@
                 </div>
             </div>
 
-            <!-- Тарифы WB -->
             <div class="card">
                 <div class="card-title">📦 Тарифы Wildberries</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -520,7 +513,6 @@
                 </div>
             </div>
 
-            <!-- Планирование -->
             <div class="card">
                 <div class="card-title">📋 Планирование заказов</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -543,7 +535,6 @@
                 </div>
             </div>
 
-            <!-- Налоги -->
             <div class="card">
                 <div class="card-title">🧾 Налоги</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -562,7 +553,6 @@
                 </div>
             </div>
 
-            <!-- API ключи -->
             <div class="card" style="border:2px solid var(--primary-light);">
                 <div class="card-title">🔑 API ключи <span style="font-size:10px;color:var(--text-secondary);">(задел на будущее)</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -580,7 +570,6 @@
                 </div>
             </div>
 
-            <!-- Очистка данных -->
             <div class="card" style="border:2px solid #EF4444;">
                 <div class="card-title">⚠️ Управление данными</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -691,7 +680,6 @@
     <!-- МОДАЛЬНЫЕ ОКНА                                             -->
     <!-- ========================================================== -->
 
-    <!-- Создание кампании -->
     <div id="campaignModal" class="modal" style="display:none;">
         <div class="modal-overlay" onclick="closeCampaignModal()"></div>
         <div class="modal-content">
@@ -755,7 +743,6 @@
         </div>
     </div>
 
-    <!-- Редактирование кампании -->
     <div id="editCampaignModal" class="modal" style="display:none;">
         <div class="modal-overlay" onclick="closeEditCampaignModal()"></div>
         <div class="modal-content">
@@ -799,31 +786,52 @@
         </div>
     </div>
 
-    <!-- Toast уведомления -->
     <div id="toast" class="toast"></div>
 
     <!-- ========================================================== -->
-    <!-- СТАРЫЙ КОД (app.js) — пока работает параллельно            -->
-    <!-- ========================================================== -->
-    <script src="app.js"></script>
-
-    <!-- ========================================================== -->
-    <!-- НОВАЯ АРХИТЕКТУРА                                          -->
+    <!-- НОВАЯ АРХИТЕКТУРА — ВСЯ ЛОГИКА ЗДЕСЬ                     -->
     <!-- ========================================================== -->
     <script type="module">
         // Импортируем сервисы
         import ProductService from './src/services/ProductService.js';
+        import { renderProductList } from './src/ui/productList.js';
         
-        // Проверяем, что всё работает
         console.log('✅ StockFlow v5.0 — Новая архитектура загружена');
         console.log('📦 ProductService доступен:', ProductService);
+        console.log('📋 renderProductList доступен:', renderProductList);
         
-        // Пример: получить все товары (если есть)
-        ProductService.getActive().then(products => {
-            console.log('📦 Активные товары:', products.length);
+        // ОБЪЯВЛЯЕМ navigateTo ГЛОБАЛЬНО (для onclick в HTML)
+        window.navigateTo = function(pageName) {
+            // Обновляем активный пункт меню
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
+            if (navItem) navItem.classList.add('active');
+            
+            // Показываем страницу
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            const page = document.getElementById(`page-${pageName}`);
+            if (page) page.classList.add('active');
+            
+            // Если перешли на "Товары" — рендерим новый список
+            if (pageName === 'products') {
+                setTimeout(() => renderProductList(), 50);
+            }
+        };
+        
+        // Загружаем тестовые данные
+        import('./src/init.js').then(() => {
+            console.log('✅ Тестовые данные загружены');
+            // Если сейчас открыта страница "Товары" — рендерим
+            setTimeout(() => {
+                const currentPage = document.querySelector('.page.active');
+                if (currentPage && currentPage.id === 'page-products') {
+                    renderProductList();
+                }
+            }, 100);
         }).catch(err => {
-            console.log('📦 Нет товаров в базе (это нормально)');
+            console.error('❌ Ошибка загрузки тестовых данных:', err.message);
         });
     </script>
+
 </body>
 </html>
