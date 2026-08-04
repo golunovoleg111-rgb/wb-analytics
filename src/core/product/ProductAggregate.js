@@ -1,117 +1,97 @@
 // ============================================================
-// PRODUCT AGGREGATE
-// Агрегат товара — управляет правилами и инвариантами
+// PRODUCT AGGREGATE — АГРЕГАТ ДЛЯ РАБОТЫ С ТОВАРАМИ
 // ============================================================
 
 import ProductEntity from './ProductEntity.js';
-import Database from '../../infrastructure/db.js';
+import { Database } from '../../infrastructure/db.js';
 
-/**
- * ProductAggregate — управляет товарами
- * 
- * Отвечает за:
- *   - создание товаров (с проверкой уникальности артикула)
- *   - обновление товаров
- *   - архивацию товаров (с проверкой правил)
- *   - получение товаров
- * 
- * Инварианты:
- *   - Артикул уникален
- *   - Товар нельзя архивировать, если есть остатки > 0
- *   - Товар нельзя удалить (только архивировать)
- */
 class ProductAggregate {
     
     // ============================================================
     // СОЗДАНИЕ
     // ============================================================
 
-    /**
-     * Создать новый товар
-     */
     static async create(data) {
-        // Проверяем, существует ли товар с таким артикулом
-        const existing = await this.findByArticle(data.article);
+        // Проверяем, существует ли товар с таким же articleKey
+        const existing = await this.findByArticleKey(data.articleKey);
         if (existing) {
-            throw new Error(`Товар с артикулом "${data.article}" уже существует`);
+            throw new Error(
+                `Товар с артикулом "${data.article}", размером "${data.size}" и цветом "${data.color}" уже существует`
+            );
         }
 
-        // Создаём сущность
         const product = ProductEntity.createFromImport(data);
-        
-        // Сохраняем в БД
         await Database.save(Database.STORES.PRODUCTS, product);
-        
         return product;
     }
 
-    /**
-     * Создать товар вручную
-     */
     static async createManual(data) {
-        const existing = await this.findByArticle(data.article);
+        const existing = await this.findByArticleKey(data.articleKey);
         if (existing) {
-            throw new Error(`Товар с артикулом "${data.article}" уже существует`);
+            throw new Error(
+                `Товар с артикулом "${data.article}", размером "${data.size}" и цветом "${data.color}" уже существует`
+            );
         }
 
         const product = ProductEntity.createManual(data);
         await Database.save(Database.STORES.PRODUCTS, product);
-        
         return product;
+    }
+
+    static async createMany(items) {
+        const results = [];
+        const errors = [];
+
+        for (const item of items) {
+            try {
+                // Генерируем articleKey если не передан
+                if (!item.articleKey) {
+                    const size = item.size || 'NOSIZE';
+                    const color = item.color || 'NOCOLOR';
+                    item.articleKey = `${item.article}_${size}_${color}`;
+                }
+                const product = await this.create(item);
+                results.push(product);
+            } catch (error) {
+                errors.push({ data: item, error: error.message });
+            }
+        }
+
+        return { results, errors };
     }
 
     // ============================================================
     // ЧТЕНИЕ
     // ============================================================
 
-    /**
-     * Получить товар по ID
-     */
     static async getById(id) {
         const data = await Database.getById(Database.STORES.PRODUCTS, id);
         if (!data) return null;
         return new ProductEntity(data);
     }
 
-    /**
-     * Получить товар по артикулу
-     */
+    // Поиск по article (не уникальный, возвращает массив)
     static async findByArticle(article) {
-        const products = await Database.getByIndex(
-            Database.STORES.PRODUCTS,
-            'article',
-            article
-        );
+        const products = await Database.getByIndex(Database.STORES.PRODUCTS, 'article', article);
+        return products.map(p => new ProductEntity(p));
+    }
+
+    // Поиск по articleKey (уникальный, возвращает один товар)
+    static async findByArticleKey(articleKey) {
+        const products = await Database.getByIndex(Database.STORES.PRODUCTS, 'articleKey', articleKey);
         return products.length > 0 ? new ProductEntity(products[0]) : null;
     }
 
-    /**
-     * Получить все активные товары
-     */
     static async getActive() {
-        const products = await Database.getByIndex(
-            Database.STORES.PRODUCTS,
-            'status',
-            'active'
-        );
+        const products = await Database.getByIndex(Database.STORES.PRODUCTS, 'status', 'active');
         return products.map(p => new ProductEntity(p));
     }
 
-    /**
-     * Получить все архивированные товары
-     */
     static async getArchived() {
-        const products = await Database.getByIndex(
-            Database.STORES.PRODUCTS,
-            'status',
-            'archived'
-        );
+        const products = await Database.getByIndex(Database.STORES.PRODUCTS, 'status', 'archived');
         return products.map(p => new ProductEntity(p));
     }
 
-    /**
-     * Получить все товары
-     */
     static async getAll() {
         const products = await Database.getAll(Database.STORES.PRODUCTS);
         return products.map(p => new ProductEntity(p));
@@ -121,26 +101,32 @@ class ProductAggregate {
     // ОБНОВЛЕНИЕ
     // ============================================================
 
-    /**
-     * Обновить товар
-     */
     static async update(id, data) {
         const product = await this.getById(id);
         if (!product) {
             throw new Error(`Товар с ID "${id}" не найден`);
         }
 
-        // Проверяем, не занят ли новый артикул другим товаром
-        if (data.article && data.article !== product.article) {
-            const existing = await this.findByArticle(data.article);
-            if (existing && existing.id !== id) {
-                throw new Error(`Артикул "${data.article}" уже используется другим товаром`);
+        // Проверяем уникальность articleKey при изменении
+        if (data.article || data.size || data.color) {
+            const newArticleKey = product._generateArticleKey(
+                data.article || product.article,
+                data.size || product.size,
+                data.color || product.color
+            );
+            
+            if (newArticleKey !== product.articleKey) {
+                const existing = await this.findByArticleKey(newArticleKey);
+                if (existing && existing.id !== id) {
+                    throw new Error(
+                        `Товар с артикулом "${data.article || product.article}", размером "${data.size || product.size}" и цветом "${data.color || product.color}" уже существует`
+                    );
+                }
             }
         }
 
         product.update(data);
         await Database.save(Database.STORES.PRODUCTS, product);
-        
         return product;
     }
 
@@ -148,10 +134,6 @@ class ProductAggregate {
     // АРХИВАЦИЯ
     // ============================================================
 
-    /**
-     * Архивировать товар
-     * Проверяет, что остатки равны 0 и нет активных поставок
-     */
     static async archive(id, options = {}) {
         const product = await this.getById(id);
         if (!product) {
@@ -162,7 +144,7 @@ class ProductAggregate {
             throw new Error(`Товар "${product.article}" уже архивирован`);
         }
 
-        // Проверяем остатки (если передан колбэк для проверки)
+        // Проверка остатков (если передана функция)
         if (options.checkStock && typeof options.checkStock === 'function') {
             const stock = await options.checkStock(id);
             if (stock && stock.total > 0) {
@@ -170,23 +152,11 @@ class ProductAggregate {
             }
         }
 
-        // Проверяем поставки (если передан колбэк для проверки)
-        if (options.checkSupply && typeof options.checkSupply === 'function') {
-            const hasActiveSupply = await options.checkSupply(id);
-            if (hasActiveSupply) {
-                throw new Error('Нельзя архивировать товар с активными поставками');
-            }
-        }
-
         product.archive();
         await Database.save(Database.STORES.PRODUCTS, product);
-        
         return product;
     }
 
-    /**
-     * Восстановить товар из архива
-     */
     static async restore(id) {
         const product = await this.getById(id);
         if (!product) {
@@ -199,40 +169,34 @@ class ProductAggregate {
 
         product.restore();
         await Database.save(Database.STORES.PRODUCTS, product);
-        
         return product;
-    }
-
-    // ============================================================
-    // УДАЛЕНИЕ (запрещено)
-    // ============================================================
-
-    /**
-     * Удалить товар нельзя — только архивировать
-     */
-    static async delete() {
-        throw new Error('Товар нельзя удалить. Используйте archive() для архивации.');
     }
 
     // ============================================================
     // ПОИСК
     // ============================================================
 
-    /**
-     * Поиск товаров по части артикула
-     */
     static async search(query) {
         const products = await this.getAll();
         const lowerQuery = query.toLowerCase();
         return products.filter(p => 
             p.article.toLowerCase().includes(lowerQuery) ||
-            p.baseArticle.toLowerCase().includes(lowerQuery)
+            p.baseModel.toLowerCase().includes(lowerQuery) ||
+            p.name.toLowerCase().includes(lowerQuery)
         );
     }
-}
 
-// ============================================================
-// ЭКСПОРТ
-// ============================================================
+    // ============================================================
+    // УДАЛЕНИЕ (запрещено)
+    // ============================================================
+
+    static async delete() {
+        throw new Error('Товар нельзя удалить. Используйте archive() для архивации.');
+    }
+
+    static async clearAll() {
+        await Database.clear(Database.STORES.PRODUCTS);
+    }
+}
 
 export default ProductAggregate;
