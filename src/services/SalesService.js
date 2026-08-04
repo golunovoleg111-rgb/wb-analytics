@@ -3,7 +3,7 @@
 // ============================================================
 
 import SalesAggregate from '../core/sales/SalesAggregate.js';
-import SalesRecord from '../core/sales/SalesRecord.js';  // ← ДОБАВЛЯЕМ
+import SalesRecord from '../core/sales/SalesRecord.js';
 
 class SalesService {
     
@@ -50,6 +50,18 @@ class SalesService {
         return await SalesAggregate.aggregateByProduct(productId, startStr, endStr);
     }
 
+    // ============================================================
+    // ПОЛУЧИТЬ ВСЕ ПРОДАЖИ (СЫРЫЕ ДАННЫЕ) — НОВЫЙ МЕТОД
+    // ============================================================
+
+    static async getAll() {
+        return await SalesAggregate.getAll();
+    }
+
+    // ============================================================
+    // ПОЛУЧИТЬ АГРЕГИРОВАННЫЕ ПРОДАЖИ ПО ВСЕМ ТОВАРАМ
+    // ============================================================
+
     static async getAllAggregated(days = 30) {
         const today = new Date();
         const startDate = new Date(today);
@@ -71,7 +83,6 @@ class SalesService {
         
         const result = {};
         Object.keys(groups).forEach(productId => {
-            // ИСПРАВЛЕНО: используем SalesRecord.aggregate
             const agg = SalesRecord.aggregate(groups[productId]);
             result[productId] = {
                 productId,
