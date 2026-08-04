@@ -4,6 +4,8 @@
 
 import ProductService from '../services/ProductService.js';
 import SalesService from '../services/SalesService.js';
+import StockService from '../services/StockService.js';
+import InventoryAggregate from '../core/stock/InventoryAggregate.js';
 
 // ============================================================
 // ОТКРЫТИЕ КАРТОЧКИ ТОВАРА
@@ -28,13 +30,16 @@ export async function renderProductList() {
     }
     
     try {
-        const [products, salesAggregated] = await Promise.all([
+        // Загружаем все данные параллельно
+        const [products, salesAggregated, stockAggregated] = await Promise.all([
             ProductService.getActive(),
-            SalesService.getAllAggregated(30)
+            SalesService.getAllAggregated(30),
+            StockService.getAllAggregated()
         ]);
         
         console.log(`📦 Найдено ${products.length} товаров`);
         console.log(`📊 Продажи: ${Object.keys(salesAggregated).length} товаров с продажами`);
+        console.log(`📦 Остатки: ${Object.keys(stockAggregated).length} товаров с остатками`);
         
         if (products.length === 0) {
             container.innerHTML = `
@@ -49,6 +54,7 @@ export async function renderProductList() {
             return;
         }
         
+        // Группируем товары по baseArticle
         const groups = {};
         products.forEach(product => {
             const key = product.baseArticle || product.article;
@@ -74,6 +80,9 @@ export async function renderProductList() {
             return icons[category] || '📦';
         }
         
+        // Получаем все склады для отображения
+        const warehouses = await StockService.getWarehouses();
+        
         let html = '';
         Object.keys(groups).forEach(key => {
             const group = groups[key];
@@ -96,23 +105,42 @@ export async function renderProductList() {
                         <span class="product-group-arrow">▶</span>
                     </div>
                     <div class="product-group-items">
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;padding:8px 14px;font-size:10px;color:var(--text-muted);border-bottom:1px solid var(--border);font-weight:600;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;padding:8px 14px;font-size:10px;color:var(--text-muted);border-bottom:1px solid var(--border);font-weight:600;">
                             <span>Артикул</span>
                             <span>Цена</span>
                             <span>Продажи 30д</span>
                             <span>Выручка</span>
-                            <span>Маржа</span>
+                            <span>Остаток</span>
+                            <span>ИО</span>
+                            <span>Локализация</span>
                             <span>Статус</span>
                         </div>
                         ${group.items.map(product => {
                             const sales = salesAggregated[product.id] || { orders: 0, revenue: 0 };
+                            const stock = stockAggregated[product.id] || { total: 0, available: 0, byWarehouse: {} };
+                            
+                            // Рассчитываем ИО
+                            const sales30 = sales.orders || 0;
+                            const wbStock = stock.available || 0;
+                            const io = InventoryAggregate.calculateIO(wbStock, sales30);
+                            const ioStatus = InventoryAggregate.getIOStatus(io);
+                            
+                            // Индекс локализации (упрощённо)
+                            const totalSales = sales30;
+                            const salesFromStock = Object.values(stock.byWarehouse || {}).reduce((sum, w) => sum + (w.available || 0), 0);
+                            const localizationIndex = totalSales > 0 
+                                ? Math.min(100, Math.round((salesFromStock / totalSales) * 100)) 
+                                : 0;
+                            
                             return `
-                                <div class="product-group-item" onclick="window.openProductCard('${product.article}')" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;padding:6px 14px;gap:0;">
+                                <div class="product-group-item" onclick="window.openProductCard('${product.article}')" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;padding:6px 14px;gap:0;cursor:pointer;border-bottom:1px solid var(--border-light);">
                                     <span class="product-group-item-name" style="font-weight:500;">${product.article}</span>
                                     <span>—</span>
                                     <span style="color:${sales.orders > 0 ? '#10B981' : '#9CA3AF'};">${sales.orders || 0}</span>
                                     <span style="color:${sales.revenue > 0 ? '#10B981' : '#9CA3AF'};">${sales.revenue.toLocaleString()} ₽</span>
-                                    <span>—</span>
+                                    <span style="color:${wbStock > 0 ? '#10B981' : '#EF4444'};">${wbStock}</span>
+                                    <span style="color:${ioStatus.color};">${io > 0 ? io.toFixed(1) : '—'}</span>
+                                    <span style="color:${localizationIndex > 70 ? '#10B981' : localizationIndex > 30 ? '#F59E0B' : '#EF4444'};">${localizationIndex}%</span>
                                     <span>${product.isActive() ? '🟢' : '🔴'}</span>
                                 </div>
                             `;
