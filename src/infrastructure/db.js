@@ -1,12 +1,10 @@
 // ============================================================
 // INFRASTRUCTURE: IndexedDB
-// Новая обёртка для работы с базой данных
 // ============================================================
 
 const DB_NAME = 'BeltaneeDB_v5';
-const DB_VERSION = 6; // Увеличиваем версию для новых хранилищ
+const DB_VERSION = 6;
 
-// Список всех хранилищ
 const STORES = {
     PRODUCTS: 'products',
     SALES: 'sales',
@@ -16,27 +14,17 @@ const STORES = {
     ADVERTISING: 'advertising',
     FINANCE: 'finance',
     SETTINGS: 'settings',
-    IMPORTS: 'imports',
-    EVENTS: 'events'
+    IMPORTS: 'imports'
 };
-
-// ============================================================
-// ОТКРЫТИЕ БАЗЫ ДАННЫХ
-// ============================================================
 
 function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
-        
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            
-            // Создаём все хранилища, если их нет
             Object.values(STORES).forEach((storeName) => {
                 if (!db.objectStoreNames.contains(storeName)) {
                     const store = db.createObjectStore(storeName, { keyPath: 'id' });
-                    
-                    // Создаём индексы для частых запросов
                     if (storeName === STORES.PRODUCTS) {
                         store.createIndex('article', 'article', { unique: true });
                         store.createIndex('status', 'status', { unique: false });
@@ -53,10 +41,6 @@ function openDB() {
                         store.createIndex('productId', 'productId', { unique: false });
                         store.createIndex('status', 'status', { unique: false });
                     }
-                    if (storeName === STORES.WAREHOUSE) {
-                        store.createIndex('productId', 'productId', { unique: false });
-                        store.createIndex('palletNumber', 'palletNumber', { unique: false });
-                    }
                     if (storeName === STORES.ADVERTISING) {
                         store.createIndex('campaignId', 'campaignId', { unique: true });
                         store.createIndex('productId', 'productId', { unique: false });
@@ -64,16 +48,11 @@ function openDB() {
                 }
             });
         };
-        
         request.onsuccess = (event) => resolve(event.target.result);
         request.onerror = (event) => reject(event.target.error);
         request.onblocked = () => reject(new Error('База данных заблокирована'));
     });
 }
-
-// ============================================================
-// БАЗОВЫЕ ОПЕРАЦИИ
-// ============================================================
 
 function dbSave(storeName, data) {
     return openDB().then((db) => {
@@ -154,23 +133,6 @@ function dbClear(storeName) {
     });
 }
 
-// ============================================================
-// ЭКСПОРТ
-// ============================================================
-
-// Старая версия для обратной совместимости
-window.Database = {
-    openDB,
-    dbSave,
-    dbGetAll,
-    dbGetByIndex,
-    dbGetById,
-    dbDelete,
-    dbClear,
-    STORES
-};
-
-// Новая версия (будем использовать в новых модулях)
 export const Database = {
     openDB,
     save: dbSave,
@@ -181,4 +143,5 @@ export const Database = {
     clear: dbClear,
     STORES
 };
+
 export default Database;
