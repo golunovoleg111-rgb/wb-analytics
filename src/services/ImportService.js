@@ -279,23 +279,29 @@ class ImportService {
             let finalRecord = {};
 
             switch (type) {
-                case ImportTypes.NOMENCLATURE:
-                    finalRecord = {
-                        article,
-                        baseModel: parsed ? parsed.baseModel : article,
-                        color: parsed ? parsed.color : null,
-                        size: parsed ? parsed.size : null,
-                        name: String(row['Название карточки'] || '').trim() || parsed?.baseModel || article,
-                        barcode: String(row['Баркод'] || '').trim(),
-                        tnved: String(row['ТН ВЭД'] || '').trim(),
-                        fabric: String(row['Состав ткани'] || '').trim(),
-                        gtin: String(row['GTIN'] || '').trim(),
-                        category: '',
-                        purchasePrice: 0,
-                        price: 0,
-                        status: 'active'
-                    };
-                    break;
+               case ImportTypes.NOMENCLATURE:
+    // Собираем уникальный ключ из артикула + размера + цвета
+    const size = String(row['Размер'] || '').trim() || (parsed ? parsed.size : '');
+    const color = (parsed ? parsed.color : '') || '';
+    const articleKey = [article, size || 'NOSIZE', color || 'NOCOLOR'].join('_');
+
+    finalRecord = {
+        article,
+        articleKey, // ← УНИКАЛЬНЫЙ КЛЮЧ
+        baseModel: parsed ? parsed.baseModel : article,
+        color: color,
+        size: size,
+        name: String(row['Название карточки'] || '').trim() || parsed?.baseModel || article,
+        barcode: String(row['Баркод'] || '').trim(),
+        tnved: String(row['ТН ВЭД'] || '').trim(),
+        fabric: String(row['Состав ткани'] || '').trim(),
+        gtin: String(row['GTIN'] || '').trim(),
+        category: '',
+        purchasePrice: 0,
+        price: 0,
+        status: 'active'
+    };
+    break;
 
                 case ImportTypes.SALES:
                     finalRecord = {
