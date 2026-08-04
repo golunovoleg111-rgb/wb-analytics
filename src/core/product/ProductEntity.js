@@ -1,36 +1,23 @@
 // ============================================================
-// PRODUCT ENTITY
-// Сущность товара — только данные, без логики
+// PRODUCT ENTITY — СУЩНОСТЬ ТОВАРА
 // ============================================================
 
-/**
- * Product — сущность товара
- * 
- * Содержит только собственные данные товара.
- * Нет вычисляемых полей (margin, profit, stock, sales).
- * 
- * Поля:
- *   id          — уникальный идентификатор (UUID)
- *   article     — артикул продавца (WB)
- *   baseArticle — базовая модель (из артикула)
- *   category    — категория
- *   color       — цвет
- *   size        — размер
- *   barcode     — штрихкод
- *   status      — active / archived
- *   createdAt   — дата создания
- *   updatedAt   — дата последнего обновления
- *   archivedAt  — дата архивации (если архивирован)
- */
 class ProductEntity {
     constructor(data) {
         this.id = data.id || this._generateId();
         this.article = data.article || '';
-        this.baseArticle = data.baseArticle || this._extractBaseArticle(data.article);
+        this.articleKey = data.articleKey || this._generateArticleKey(data.article, data.size, data.color);
+        this.baseModel = data.baseArticle || data.baseModel || this._extractBaseArticle(data.article);
         this.category = data.category || 'Товар';
         this.color = data.color || '';
         this.size = data.size || '';
         this.barcode = data.barcode || '';
+        this.tnved = data.tnved || '';
+        this.gtin = data.gtin || '';
+        this.fabric = data.fabric || '';
+        this.name = data.name || '';
+        this.price = data.price || 0;
+        this.purchasePrice = data.purchasePrice || 0;
         this.status = data.status || 'active';
         this.createdAt = data.createdAt || new Date().toISOString();
         this.updatedAt = new Date().toISOString();
@@ -38,11 +25,17 @@ class ProductEntity {
     }
 
     // ============================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    // ГЕНЕРАТОРЫ ID
     // ============================================================
 
     _generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    }
+
+    _generateArticleKey(article, size, color) {
+        const s = size || 'NOSIZE';
+        const c = color || 'NOCOLOR';
+        return `${article}_${s}_${c}`;
     }
 
     _extractBaseArticle(article) {
@@ -58,88 +51,84 @@ class ProductEntity {
     // МЕТОДЫ ДЛЯ РАБОТЫ С СУЩНОСТЬЮ
     // ============================================================
 
-    /**
-     * Обновить данные товара
-     */
     update(data) {
         Object.assign(this, data);
         this.updatedAt = new Date().toISOString();
+        if (data.article || data.size || data.color) {
+            this.articleKey = this._generateArticleKey(
+                data.article || this.article,
+                data.size || this.size,
+                data.color || this.color
+            );
+        }
         return this;
     }
 
-    /**
-     * Архивировать товар
-     */
     archive() {
-        if (this.status === 'archived') return;
+        if (this.status === 'archived') return this;
         this.status = 'archived';
         this.archivedAt = new Date().toISOString();
         this.updatedAt = new Date().toISOString();
         return this;
     }
 
-    /**
-     * Восстановить товар из архива
-     */
     restore() {
-        if (this.status === 'active') return;
+        if (this.status === 'active') return this;
         this.status = 'active';
         this.archivedAt = null;
         this.updatedAt = new Date().toISOString();
         return this;
     }
 
-    /**
-     * Проверить, активен ли товар
-     */
     isActive() {
         return this.status === 'active';
     }
 
-    /**
-     * Проверить, архивирован ли товар
-     */
     isArchived() {
         return this.status === 'archived';
     }
 
     // ============================================================
-    // СТАТИЧЕСКИЕ МЕТОДЫ
+    // СТАТИЧЕСКИЕ МЕТОДЫ — СОЗДАНИЕ
     // ============================================================
 
-    /**
-     * Создать новый товар из данных импорта
-     */
     static createFromImport(data) {
         return new ProductEntity({
             article: data.article,
-            baseArticle: data.baseArticle,
+            articleKey: data.articleKey,
+            baseArticle: data.baseModel || data.baseArticle,
             category: data.category || 'Товар',
             color: data.color || '',
             size: data.size || '',
             barcode: data.barcode || '',
+            tnved: data.tnved || '',
+            gtin: data.gtin || '',
+            fabric: data.fabric || '',
+            name: data.name || data.baseModel || data.article,
+            price: data.price || 0,
+            purchasePrice: data.purchasePrice || 0,
             status: 'active'
         });
     }
 
-    /**
-     * Создать новый товар вручную
-     */
     static createManual(data) {
         return new ProductEntity({
             article: data.article,
+            articleKey: data.articleKey,
             baseArticle: data.baseArticle,
             category: data.category || 'Товар',
             color: data.color || '',
             size: data.size || '',
             barcode: data.barcode || '',
+            tnved: data.tnved || '',
+            gtin: data.gtin || '',
+            fabric: data.fabric || '',
+            name: data.name || data.article,
+            price: data.price || 0,
+            purchasePrice: data.purchasePrice || 0,
             status: 'active'
         });
     }
 }
-
-// ============================================================
-// ЭКСПОРТ
-// ============================================================
 
 export default ProductEntity;
