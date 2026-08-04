@@ -3,7 +3,7 @@
 // ============================================================
 
 const DB_NAME = 'BeltaneeDB_v5';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 const STORES = {
     PRODUCTS: 'products',
@@ -25,8 +25,11 @@ function openDB() {
             Object.values(STORES).forEach((storeName) => {
                 if (!db.objectStoreNames.contains(storeName)) {
                     const store = db.createObjectStore(storeName, { keyPath: 'id' });
+                    
+                    // Индексы для каждого хранилища
                     if (storeName === STORES.PRODUCTS) {
                         store.createIndex('article', 'article', { unique: false });
+                        store.createIndex('articleKey', 'articleKey', { unique: true });
                         store.createIndex('status', 'status', { unique: false });
                     }
                     if (storeName === STORES.SALES) {
