@@ -786,36 +786,44 @@
     <!-- НОВАЯ АРХИТЕКТУРА — ВСЯ ЛОГИКА ЗДЕСЬ                     -->
     <!-- ========================================================== -->
     <script type="module">
-        import ProductService from './src/services/ProductService.js';
-        import SalesService from './src/services/SalesService.js';
-        import StockService from './src/services/StockService.js';
-        import SupplyService from './src/services/SupplyService.js';
-        import ImportService from './src/services/ImportService.js';
-        import { renderProductList } from './src/ui/productList.js';
-        import { renderOrderList } from './src/ui/orderList.js';
-        import { renderSupplyHistory } from './src/ui/supplyHistory.js';
-        import renderDashboard from './src/ui/dashboard.js';
-        import renderSalesAnalytics from './src/ui/salesAnalytics.js';
-        import AdvertisingService from './src/services/AdvertisingService.js';
-import renderAdsList from './src/ui/adsList.js';
-        import renderSettings from './src/ui/settings.js';
+    import ProductService from './src/services/ProductService.js';
+    import SalesService from './src/services/SalesService.js';
+    import StockService from './src/services/StockService.js';
+    import SupplyService from './src/services/SupplyService.js';
+    import ImportService from './src/services/ImportService.js';
+    import AdvertisingService from './src/services/AdvertisingService.js';
+    import { renderProductList } from './src/ui/productList.js';
+    import { renderOrderList } from './src/ui/orderList.js';
+    import { renderSupplyHistory } from './src/ui/supplyHistory.js';
+    import renderDashboard from './src/ui/dashboard.js';
+    import renderSalesAnalytics from './src/ui/salesAnalytics.js';
+    import renderAdsList from './src/ui/adsList.js';
+    import renderSettings from './src/ui/settings.js';
 
-        // Делаем ImportService глобальным для onclick
-        window.ImportService = ImportService;
+    window.ImportService = ImportService;
+    window.AdvertisingService = AdvertisingService;
 
-        console.log('✅ StockFlow v5.0 — Новая архитектура загружена');
-        console.log('📦 ProductService доступен:', ProductService);
-        console.log('📊 SalesService доступен:', SalesService);
-        console.log('🏪 StockService доступен:', StockService);
-        console.log('📦 SupplyService доступен:', SupplyService);
-        console.log('📥 ImportService доступен:', ImportService);
+    // ============================================================
+    // TOAST (ГЛОБАЛЬНЫЙ)
+    // ============================================================
 
-        // ============================================================
-        // ГЛОБАЛЬНАЯ НАВИГАЦИЯ
-        // ============================================================
+    window.showToast = function(message, type) {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.className = 'toast ' + (type || 'success') + ' show';
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(function() {
+            toast.classList.remove('show');
+        }, 3000);
+    };
 
-        window.navigateTo = function(pageName) {
-            console.log('🔀 Переход на страницу:', pageName);
+    // ============================================================
+    // НАВИГАЦИЯ
+    // ============================================================
+
+    window.navigateTo = function(pageName) {
+        console.log('🔀 Переход на страницу:', pageName);
 
             document.querySelectorAll('.nav-item[data-page]').forEach(item => {
                 item.classList.remove('active');
