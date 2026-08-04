@@ -787,48 +787,45 @@
     </div>
 
     <div id="toast" class="toast"></div>
-    <!-- ========================================================== -->
+       <!-- ========================================================== -->
     <!-- НОВАЯ АРХИТЕКТУРА — ВСЯ ЛОГИКА ЗДЕСЬ                     -->
     <!-- ========================================================== -->
     <script type="module">
-        // Импортируем сервисы
         import ProductService from './src/services/ProductService.js';
-        import SalesService from './src/services/SalesService.js'
+        import SalesService from './src/services/SalesService.js';
+        import StockService from './src/services/StockService.js';
+        import SupplyService from './src/services/SupplyService.js';
         import { renderProductList } from './src/ui/productList.js';
+        import { renderOrderList } from './src/ui/orderList.js';
         
         console.log('✅ StockFlow v5.0 — Новая архитектура загружена');
-        console.log('📦 ProductService доступен:', ProductService);
-        console.log('📋 renderProductList доступен:', renderProductList);
         
         // ============================================================
-        // ГЛОБАЛЬНАЯ НАВИГАЦИЯ (для onclick в HTML)
+        // ГЛОБАЛЬНАЯ НАВИГАЦИЯ
         // ============================================================
         window.navigateTo = function(pageName) {
             console.log('🔀 Переход на страницу:', pageName);
             
-            // Обновляем активный пункт меню
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
             const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
             if (navItem) navItem.classList.add('active');
             
-            // Показываем страницу
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
             });
             const page = document.getElementById(`page-${pageName}`);
             if (page) page.classList.add('active');
             
-            // Если перешли на "Товары" — рендерим новый список
             if (pageName === 'products') {
                 setTimeout(() => renderProductList(), 50);
             }
+            if (pageName === 'orders') {
+                setTimeout(() => renderOrderList(), 50);
+            }
         };
         
-        // ============================================================
-        // ПОДКЛЮЧАЕМ НАВИГАЦИЮ К МЕНЮ
-        // ============================================================
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -837,9 +834,6 @@
             });
         });
         
-        // ============================================================
-        // ЛОГОТИП → ГЛАВНАЯ
-        // ============================================================
         document.getElementById('sidebarLogo').addEventListener('click', function() {
             window.navigateTo('dashboard');
         });
@@ -850,11 +844,13 @@
         import('./src/init.js').then(() => {
             console.log('✅ Тестовые данные загружены');
             
-            // Если сейчас открыта страница "Товары" — рендерим
             setTimeout(() => {
                 const currentPage = document.querySelector('.page.active');
                 if (currentPage && currentPage.id === 'page-products') {
                     renderProductList();
+                }
+                if (currentPage && currentPage.id === 'page-orders') {
+                    renderOrderList();
                 }
             }, 100);
         }).catch(err => {
