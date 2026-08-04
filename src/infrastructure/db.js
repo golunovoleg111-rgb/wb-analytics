@@ -26,7 +26,7 @@ function openDB() {
                 if (!db.objectStoreNames.contains(storeName)) {
                     const store = db.createObjectStore(storeName, { keyPath: 'id' });
                     if (storeName === STORES.PRODUCTS) {
-                        store.createIndex('article', 'article', { unique: true });
+                        store.createIndex('article', 'article', { unique: false });
                         store.createIndex('status', 'status', { unique: false });
                     }
                     if (storeName === STORES.SALES) {
