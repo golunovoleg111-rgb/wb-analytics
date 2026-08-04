@@ -1,5 +1,5 @@
 /* ============================================================
-   StockFlow v5.0 — ВЕРХНИЙ САЙДБАР
+   StockFlow v5.0 — ФИОЛЕТОВО-РОЗОВЫЙ ГРАДИЕНТ
    ============================================================ */
 
 :root {
@@ -103,7 +103,6 @@ body {
     z-index: 100;
 }
 
-/* Левая часть */
 .topbar-left {
     display: flex;
     align-items: center;
@@ -152,18 +151,21 @@ body {
     text-transform: uppercase;
 }
 
-/* Навигация */
+/* ============================================================
+   НАВИГАЦИЯ
+   ============================================================ */
+
 .topbar-nav {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 2px;
     flex: 1;
     justify-content: center;
     padding: 0 var(--spacing-lg);
 }
 
 .nav-item {
-    padding: 6px 14px;
+    padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
     color: var(--text-secondary);
@@ -188,7 +190,105 @@ body {
     font-weight: 600;
 }
 
-/* Правая часть */
+/* ============================================================
+   ВЫПАДАЮЩИЕ ПОДМЕНЮ
+   ============================================================ */
+
+.nav-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.nav-dropdown-trigger {
+    cursor: pointer;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    font-family: var(--font);
+    user-select: none;
+}
+
+.nav-dropdown-trigger:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.nav-dropdown-trigger .arrow {
+    font-size: 8px;
+    color: var(--text-muted);
+    transition: transform var(--transition-slow);
+    margin-left: 2px;
+}
+
+.nav-dropdown-trigger.active .arrow {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-dropdown);
+    padding: 6px 0;
+    min-width: 200px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all var(--transition-slow);
+    z-index: 1000;
+}
+
+.nav-dropdown-menu.open {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Задержка для плавного закрытия */
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown-menu:hover {
+    transition-delay: 0s;
+}
+
+.nav-dropdown-item {
+    display: block;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition);
+    border-radius: var(--radius-xs);
+    margin: 2px 6px;
+    white-space: nowrap;
+}
+
+.nav-dropdown-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.nav-dropdown-item.active {
+    background: var(--gradient-subtle);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* ============================================================
+   ПРАВАЯ ЧАСТЬ ТОПБАРА
+   ============================================================ */
+
 .topbar-right {
     display: flex;
     align-items: center;
@@ -196,7 +296,6 @@ body {
     flex-shrink: 0;
 }
 
-/* Поиск */
 .search-wrapper {
     display: flex;
     align-items: center;
@@ -240,7 +339,6 @@ body {
     font-weight: 400;
 }
 
-/* Профиль */
 .topbar-profile {
     background: none;
     border: none;
@@ -1080,10 +1178,9 @@ tr:hover td {
 }
 
 /* ============================================================
-   ПОЛЯ ВВОДА — ЕДИНЫЙ СТИЛЬ
+   ПОЛЯ ВВОДА
    ============================================================ */
 
-/* Все поля ввода */
 input[type="text"],
 input[type="number"],
 input[type="password"],
@@ -1104,7 +1201,6 @@ textarea {
     box-shadow: 0 1px 3px rgba(108, 43, 217, 0.04);
 }
 
-/* Состояние :hover */
 input[type="text"]:hover,
 input[type="number"]:hover,
 input[type="password"]:hover,
@@ -1116,7 +1212,6 @@ textarea:hover {
     background: var(--bg-card);
 }
 
-/* Состояние :focus */
 input[type="text"]:focus,
 input[type="number"]:focus,
 input[type="password"]:focus,
@@ -1130,7 +1225,6 @@ textarea:focus {
     transform: translateY(-1px);
 }
 
-/* Плейсхолдеры */
 input::placeholder,
 textarea::placeholder {
     color: var(--text-muted);
@@ -1138,7 +1232,6 @@ textarea::placeholder {
     font-size: 12px;
 }
 
-/* Специальный стиль для поисковых полей */
 input[type="search"],
 .search-input {
     padding-left: 32px;
@@ -1153,7 +1246,6 @@ input[type="search"]:focus,
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
 }
 
-/* Стиль для select */
 select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%239CA3AF'/%3E%3C/svg%3E");
@@ -1172,14 +1264,12 @@ select:focus {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%237C3AED'/%3E%3C/svg%3E");
 }
 
-/* Стиль для текстовых полей (textarea) */
 textarea {
     resize: vertical;
     min-height: 60px;
     font-family: var(--font);
 }
 
-/* Стиль для disabled полей */
 input:disabled,
 select:disabled,
 textarea:disabled {
@@ -1188,7 +1278,6 @@ textarea:disabled {
     background: var(--bg-hover);
 }
 
-/* Стиль для полей с ошибкой */
 input.error,
 select.error,
 textarea.error {
@@ -1203,17 +1292,12 @@ textarea.error:focus {
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
 }
 
-/* Стиль для полей с успехом */
 input.success,
 select.success,
 textarea.success {
     border-color: #10B981;
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
 }
-
-/* ============================================================
-   ПОИСКОВЫЕ ПОЛЯ В КАРТОЧКАХ
-   ============================================================ */
 
 .card input[type="text"],
 .card input[type="search"],
@@ -1248,10 +1332,6 @@ textarea.success {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
 }
 
-/* ============================================================
-   ПОЛЯ ВВОДА В МОДАЛЬНЫХ ОКНАХ
-   ============================================================ */
-
 .modal-body input[type="text"],
 .modal-body input[type="number"],
 .modal-body input[type="password"],
@@ -1275,7 +1355,7 @@ textarea.success {
 }
 
 /* ============================================================
-   ЧЕКБОКСЫ И РАДИО
+   ЧЕКБОКСЫ
    ============================================================ */
 
 input[type="checkbox"],
@@ -1295,33 +1375,6 @@ input[type="radio"]:hover {
 input[type="checkbox"]:checked,
 input[type="radio"]:checked {
     accent-color: var(--primary);
-}
-
-/* ============================================================
-   ПОЛЯ В ТАБЛИЦАХ
-   ============================================================ */
-
-#adsTable input[type="text"] {
-    background: var(--bg-input);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-xs);
-    padding: 4px 8px;
-    font-size: 11px;
-    font-family: var(--font);
-    transition: all var(--transition);
-    width: 100%;
-    min-width: 100px;
-}
-
-#adsTable input[type="text"]:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-glow);
-    background: var(--bg-card);
-}
-
-#adsTable input[type="text"]::placeholder {
-    color: var(--text-muted);
-    font-size: 10px;
 }
 
 /* ============================================================
@@ -1438,6 +1491,16 @@ input[type="radio"]:checked {
     .ads-summary-grid {
         grid-template-columns: repeat(3, 1fr);
     }
+    
+    .nav-dropdown-menu {
+        left: 0;
+        transform: none;
+        min-width: 180px;
+    }
+    
+    .nav-dropdown-menu.open {
+        transform: none;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1470,6 +1533,39 @@ input[type="radio"]:checked {
         padding: 8px 12px;
         width: 100%;
         text-align: center;
+    }
+    
+    .nav-dropdown {
+        position: static;
+        width: 100%;
+    }
+    
+    .nav-dropdown-menu {
+        position: static;
+        transform: none;
+        opacity: 1;
+        pointer-events: all;
+        display: none;
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        padding: 0 0 0 16px;
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .nav-dropdown-menu.open {
+        display: block;
+        transform: none;
+    }
+    
+    .nav-dropdown-item {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .nav-dropdown-trigger .arrow {
+        font-size: 10px;
     }
 
     .topbar-right {
@@ -1627,129 +1723,4 @@ input[type="radio"]:checked {
 
 .mb-lg {
     margin-bottom: var(--spacing-lg);
-}
-/* ============================================================
-   ВЫПАДАЮЩИЕ ПОДМЕНЮ
-   ============================================================ */
-
-.nav-dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.nav-dropdown-trigger {
-    cursor: pointer;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    border-radius: var(--radius-sm);
-    transition: all var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    border: none;
-    font-family: var(--font);
-}
-
-.nav-dropdown-trigger:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.nav-dropdown-trigger.active {
-    background: var(--gradient-subtle);
-    color: var(--primary);
-}
-
-.nav-dropdown-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%) translateY(-8px);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-dropdown);
-    padding: 6px 0;
-    min-width: 200px;
-    opacity: 0;
-    pointer-events: none;
-    transition: all var(--transition-slow);
-    z-index: 1000;
-}
-
-.nav-dropdown-menu.open {
-    opacity: 1;
-    pointer-events: all;
-    transform: translateX(-50%) translateY(0);
-}
-
-.nav-dropdown-item {
-    display: block;
-    padding: 8px 16px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    text-decoration: none;
-    cursor: pointer;
-    transition: all var(--transition);
-    border-radius: var(--radius-xs);
-    margin: 2px 6px;
-    white-space: nowrap;
-}
-
-.nav-dropdown-item:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.nav-dropdown-item.active {
-    background: var(--gradient-subtle);
-    color: var(--primary);
-    font-weight: 600;
-}
-
-/* ============================================================
-   АДАПТИВНОСТЬ ДЛЯ ПОДМЕНЮ
-   ============================================================ */
-
-@media (max-width: 992px) {
-    .nav-dropdown-menu {
-        left: 0;
-        transform: none;
-        min-width: 180px;
-    }
-    
-    .nav-dropdown-menu.open {
-        transform: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .nav-dropdown {
-        position: static;
-    }
-    
-    .nav-dropdown-menu {
-        position: static;
-        transform: none;
-        opacity: 1;
-        pointer-events: all;
-        display: none;
-        box-shadow: none;
-        border: none;
-        background: transparent;
-        padding: 0 0 0 16px;
-    }
-    
-    .nav-dropdown-menu.open {
-        display: block;
-        transform: none;
-    }
-    
-    .nav-dropdown-item {
-        padding: 6px 12px;
-        font-size: 12px;
-    }
 }
