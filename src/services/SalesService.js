@@ -3,6 +3,7 @@
 // ============================================================
 
 import SalesAggregate from '../core/sales/SalesAggregate.js';
+import SalesRecord from '../core/sales/SalesRecord.js';  // ← ДОБАВЛЯЕМ
 
 class SalesService {
     
@@ -14,7 +15,6 @@ class SalesService {
         try {
             const result = await SalesAggregate.createMany(data);
             
-            // Генерируем событие
             this._emitEvent('SalesImported', {
                 recordsCount: result.results.length,
                 errors: result.errors
@@ -50,7 +50,6 @@ class SalesService {
         return await SalesAggregate.aggregateByProduct(productId, startStr, endStr);
     }
 
-    // Получить продажи для всех товаров (для Dashboard)
     static async getAllAggregated(days = 30) {
         const today = new Date();
         const startDate = new Date(today);
@@ -62,7 +61,6 @@ class SalesService {
         const all = await SalesAggregate.getAll();
         const filtered = all.filter(r => r.date >= startStr && r.date <= endStr);
         
-        // Группируем по productId
         const groups = {};
         filtered.forEach(r => {
             if (!groups[r.productId]) {
@@ -71,10 +69,10 @@ class SalesService {
             groups[r.productId].push(r);
         });
         
-        // Агрегируем
         const result = {};
         Object.keys(groups).forEach(productId => {
-            const agg = SalesAggregate.aggregate(groups[productId]);
+            // ИСПРАВЛЕНО: используем SalesRecord.aggregate
+            const agg = SalesRecord.aggregate(groups[productId]);
             result[productId] = {
                 productId,
                 orders: agg.totalOrders,
