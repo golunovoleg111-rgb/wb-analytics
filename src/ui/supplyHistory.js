@@ -14,7 +14,17 @@ export async function renderSupplyHistory() {
         const orders = await SupplyService.getOrders();
         
         if (orders.length === 0) {
-            container.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Нет поставок</td></tr>';
+            container.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:30px;color:var(--text-secondary);">
+                        <div style="font-size:36px;margin-bottom:8px;">📦</div>
+                        <div style="font-size:14px;font-weight:500;">Нет поставок</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">
+                            Создайте поставку в разделе «Планирование закупок»
+                        </div>
+                    </td>
+                </tr>
+            `;
             return;
         }
         
@@ -25,7 +35,7 @@ export async function renderSupplyHistory() {
             html += `
                 <tr>
                     <td>${order.orderDate || order.createdAt.split('T')[0]}</td>
-                    <td>${order.number}</td>
+                    <td><strong>${order.number}</strong></td>
                     <td>${order.items.length}</td>
                     <td>${order.getTotalItems()}</td>
                     <td>${order.getStatusLabel()}</td>
@@ -45,7 +55,13 @@ export async function renderSupplyHistory() {
         
     } catch (error) {
         console.error('❌ Ошибка:', error.message);
-        container.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#EF4444;">Ошибка: ${error.message}</td></tr>`;
+        container.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center;padding:20px;color:#EF4444;">
+                    ❌ Ошибка: ${error.message}
+                </td>
+            </tr>
+        `;
     }
 }
 
