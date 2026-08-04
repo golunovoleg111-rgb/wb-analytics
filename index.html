@@ -113,16 +113,16 @@
             <a class="nav-item" data-page="settings">⚙️ Настройки</a>
         </nav>
 
-       <div class="topbar-right">
-    <button class="menu-toggle" id="menuToggle" title="Меню">☰</button>
-    <div class="search-wrapper">
-        <span class="search-icon">🔍</span>
-        <input type="text" class="search-input" id="globalSearch" placeholder="Поиск...">
-    </div>
-    <button class="topbar-profile" id="profileBtn" title="Личный кабинет">
-        <span class="profile-avatar">👤</span>
-    </button>
-</div>
+        <div class="topbar-right">
+            <button class="menu-toggle" id="menuToggle" title="Меню">☰</button>
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="globalSearch" placeholder="Поиск...">
+            </div>
+            <button class="topbar-profile" id="profileBtn" title="Личный кабинет">
+                <span class="profile-avatar">👤</span>
+            </button>
+        </div>
     </header>
 
     <!-- ========================================================== -->
@@ -214,7 +214,7 @@
                 <div style="font-size:48px;margin-bottom:12px;">📥</div>
                 <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
                 <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
-                    Импортируйте <strong>продажи</strong>, <strong>остатки</strong> и <strong>закупочные цены</strong> в разделе «Импорт»
+                    Импортируйте <strong>номенклатуру</strong>, <strong>продажи</strong> и <strong>остатки</strong> в разделе «Импорт»
                 </div>
                 <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
             </div>
@@ -411,12 +411,31 @@
             </div>
 
             <div class="grid-4">
+                <!-- Номенклатура -->
+                <div class="card import-card" style="border:2px solid var(--primary-light);">
+                    <div class="card-title">📦 Номенклатура</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                        Загрузка товаров и их характеристик
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('nomenclature')" style="margin-bottom:10px;">
+                        📥 Шаблон
+                    </button>
+                    <div class="drop-zone" id="nomenclatureDropZone">
+                        <div style="font-size:28px;">📤</div>
+                        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
+                        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
+                    </div>
+                    <input type="file" id="nomenclatureFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+                    <div id="nomenclatureImportStatus" style="margin-top:8px;font-size:12px;"></div>
+                </div>
+
+                <!-- Продажи -->
                 <div class="card import-card">
                     <div class="card-title">🛒 Продажи</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
                         Отчёт WB по продажам
                     </div>
-                    <button class="btn btn-secondary btn-sm" id="downloadSalesTemplateBtn" style="margin-bottom:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('sales')" style="margin-bottom:10px;">
                         📥 Шаблон
                     </button>
                     <div class="drop-zone" id="salesDropZone">
@@ -428,12 +447,13 @@
                     <div id="salesImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
 
+                <!-- Остатки -->
                 <div class="card import-card">
                     <div class="card-title">📦 Остатки</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
                         Отчёт WB по остаткам
                     </div>
-                    <button class="btn btn-secondary btn-sm" id="downloadStockTemplateBtn" style="margin-bottom:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock')" style="margin-bottom:10px;">
                         📥 Шаблон
                     </button>
                     <div class="drop-zone" id="stockDropZone">
@@ -445,12 +465,13 @@
                     <div id="stockImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
 
+                <!-- Реклама -->
                 <div class="card import-card">
                     <div class="card-title">📢 Реклама</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
                         Отчёт WB по рекламе
                     </div>
-                    <button class="btn btn-secondary btn-sm" id="downloadAdsTemplateBtn" style="margin-bottom:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('ads')" style="margin-bottom:10px;">
                         📥 Шаблон
                     </button>
                     <div class="drop-zone" id="adsDropZone">
@@ -460,23 +481,6 @@
                     </div>
                     <input type="file" id="adsFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
                     <div id="adsImportStatus" style="margin-top:8px;font-size:12px;"></div>
-                </div>
-
-                <div class="card import-card" style="border:2px solid var(--primary-light);">
-                    <div class="card-title">💰 Закупочные цены</div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
-                        Загрузка цен поставщиков
-                    </div>
-                    <button class="btn btn-secondary btn-sm" id="downloadCostsTemplateBtn" style="margin-bottom:10px;">
-                        📥 Шаблон
-                    </button>
-                    <div class="drop-zone" id="costsDropZone">
-                        <div style="font-size:28px;">📤</div>
-                        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
-                        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
-                    </div>
-                    <input type="file" id="costsFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-                    <div id="costsImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
             </div>
         </section>
@@ -531,7 +535,7 @@
             </div>
         </section>
 
-        <!-- ===================== ЗАГЛУШКИ ДЛЯ НОВЫХ СТРАНИЦ ===================== -->
+        <!-- ===================== ЗАГЛУШКИ ===================== -->
         <section id="page-price-management" class="page">
             <div class="page-header"><h1>💰 Управление ценами</h1></div>
             <div class="card" style="text-align:center;padding:60px;">
@@ -885,13 +889,20 @@
         import SalesService from './src/services/SalesService.js';
         import StockService from './src/services/StockService.js';
         import SupplyService from './src/services/SupplyService.js';
+        import ImportService from './src/services/ImportService.js';
         import { renderProductList } from './src/ui/productList.js';
         import { renderOrderList } from './src/ui/orderList.js';
         import { renderSupplyHistory } from './src/ui/supplyHistory.js';
-        import ImportService from './src/services/ImportService.js';
-window.ImportService = ImportService;
+
+        // Делаем ImportService глобальным для onclick
+        window.ImportService = ImportService;
 
         console.log('✅ StockFlow v5.0 — Новая архитектура загружена');
+        console.log('📦 ProductService доступен:', ProductService);
+        console.log('📊 SalesService доступен:', SalesService);
+        console.log('🏪 StockService доступен:', StockService);
+        console.log('📦 SupplyService доступен:', SupplyService);
+        console.log('📥 ImportService доступен:', ImportService);
 
         // ============================================================
         // ГЛОБАЛЬНАЯ НАВИГАЦИЯ
@@ -900,34 +911,29 @@ window.ImportService = ImportService;
         window.navigateTo = function(pageName) {
             console.log('🔀 Переход на страницу:', pageName);
 
-            // Обновляем активный пункт в основном меню
             document.querySelectorAll('.nav-item[data-page]').forEach(item => {
                 item.classList.remove('active');
             });
             const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
             if (navItem) navItem.classList.add('active');
 
-            // Обновляем активный пункт в подменю
             document.querySelectorAll('.nav-dropdown-item').forEach(item => {
                 item.classList.remove('active');
             });
             const dropdownItem = document.querySelector(`.nav-dropdown-item[data-page="${pageName}"]`);
             if (dropdownItem) dropdownItem.classList.add('active');
 
-            // Закрываем все подменю
             document.querySelectorAll('.nav-dropdown-menu.open').forEach(menu => {
                 menu.classList.remove('open');
                 menu.closest('.nav-dropdown').classList.remove('active');
             });
 
-            // Показываем страницу
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
             });
             const page = document.getElementById(`page-${pageName}`);
             if (page) page.classList.add('active');
 
-            // Загружаем данные для страницы
             if (pageName === 'products') {
                 setTimeout(() => renderProductList(), 50);
             }
@@ -949,7 +955,6 @@ window.ImportService = ImportService;
                 const dropdown = this.closest('.nav-dropdown');
                 const menu = dropdown.querySelector('.nav-dropdown-menu');
                 
-                // Закрываем все другие подменю
                 document.querySelectorAll('.nav-dropdown-menu.open').forEach(m => {
                     if (m !== menu) {
                         m.classList.remove('open');
@@ -957,15 +962,10 @@ window.ImportService = ImportService;
                     }
                 });
                 
-                // Открываем/закрываем текущее
                 menu.classList.toggle('open');
                 dropdown.classList.toggle('active');
             });
         });
-
-        // ============================================================
-        // ЗАКРЫТИЕ ПОДМЕНЮ ПРИ КЛИКЕ ВНЕ МЕНЮ
-        // ============================================================
 
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.nav-dropdown')) {
@@ -994,6 +994,23 @@ window.ImportService = ImportService;
                 const pageName = this.getAttribute('data-page');
                 window.navigateTo(pageName);
             });
+        });
+
+        // ============================================================
+        // ГАМБУРГЕР-МЕНЮ
+        // ============================================================
+
+        document.getElementById('menuToggle').addEventListener('click', function() {
+            const nav = document.querySelector('.topbar-nav');
+            nav.classList.toggle('open');
+        });
+
+        document.addEventListener('click', function(e) {
+            const nav = document.querySelector('.topbar-nav');
+            const toggle = document.getElementById('menuToggle');
+            if (!nav.contains(e.target) && !toggle.contains(e.target)) {
+                nav.classList.remove('open');
+            }
         });
 
         // ============================================================
@@ -1031,23 +1048,93 @@ window.ImportService = ImportService;
         }).catch(err => {
             console.error('❌ Ошибка инициализации:', err.message);
         });
+
         // ============================================================
-// ГАМБУРГЕР-МЕНЮ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
-// ============================================================
+        // НАСТРОЙКА DROP ZONE ДЛЯ ИМПОРТА
+        // ============================================================
 
-document.getElementById('menuToggle').addEventListener('click', function() {
-    const nav = document.querySelector('.topbar-nav');
-    nav.classList.toggle('open');
-});
+        function setupImportDropZone(dropZoneId, fileInputId, type) {
+            const dropZone = document.getElementById(dropZoneId);
+            const fileInput = document.getElementById(fileInputId);
+            const statusEl = document.getElementById(type + 'ImportStatus');
 
-// Закрываем меню при клике вне его
-document.addEventListener('click', function(e) {
-    const nav = document.querySelector('.topbar-nav');
-    const toggle = document.getElementById('menuToggle');
-    if (!nav.contains(e.target) && !toggle.contains(e.target)) {
-        nav.classList.remove('open');
-    }
-});
+            if (!dropZone || !fileInput) {
+                console.warn(`Drop zone ${dropZoneId} или input ${fileInputId} не найдены`);
+                return;
+            }
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleImport(files[0], type, statusEl);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleImport(e.target.files[0], type, statusEl);
+                    fileInput.value = '';
+                }
+            });
+        }
+
+        // ============================================================
+        // ОБРАБОТКА ИМПОРТА
+        // ============================================================
+
+        async function handleImport(file, type, statusEl) {
+            if (statusEl) {
+                statusEl.innerHTML = '<span style="color:#F59E0B;">⏳ Обработка...</span>';
+            }
+
+            try {
+                const result = await ImportService.processFile(file, type);
+
+                if (result.success) {
+                    let message = `✅ Импортировано: ${result.valid} записей`;
+                    if (result.invalid > 0) {
+                        message += `, ошибок: ${result.invalid}`;
+                    }
+                    if (statusEl) {
+                        statusEl.innerHTML = `<span style="color:#10B981;">${message}</span>`;
+                    }
+                    showToast(message, 'success');
+                } else {
+                    if (statusEl) {
+                        statusEl.innerHTML = `<span style="color:#EF4444;">❌ ${result.error}</span>`;
+                    }
+                    showToast(`❌ ${result.error}`, 'error');
+                }
+            } catch (error) {
+                if (statusEl) {
+                    statusEl.innerHTML = `<span style="color:#EF4444;">❌ ${error.message}</span>`;
+                }
+                showToast(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        // ============================================================
+        // НАСТРАИВАЕМ DROP ZONES
+        // ============================================================
+
+        setupImportDropZone('nomenclatureDropZone', 'nomenclatureFileInput', 'nomenclature');
+        setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
+        setupImportDropZone('stockDropZone', 'stockFileInput', 'stock');
+        setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
+
     </script>
 
 </body>
