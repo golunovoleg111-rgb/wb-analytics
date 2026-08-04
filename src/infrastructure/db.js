@@ -181,3 +181,4 @@ export const Database = {
     clear: dbClear,
     STORES
 };
+export default Database;
