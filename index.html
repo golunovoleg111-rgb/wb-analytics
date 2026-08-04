@@ -561,13 +561,12 @@
         </section>
 
         <section id="page-sales-analytics" class="page">
-            <div class="page-header"><h1>📈 Аналитика продаж</h1></div>
-            <div class="card" style="text-align:center;padding:60px;">
-                <div style="font-size:48px;margin-bottom:12px;">🚧</div>
-                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">В разработке</div>
-                <div style="font-size:14px;color:var(--text-secondary);">Функция будет доступна в ближайшее время</div>
-            </div>
-        </section>
+    <div class="page-header">
+        <h1>📈 Аналитика продаж</h1>
+        <span style="font-size:12px;color:var(--text-secondary);">Динамика и структура продаж</span>
+    </div>
+    <div id="salesAnalyticsContent"></div>
+</section>
 
         <section id="page-sales-geography" class="page">
             <div class="page-header"><h1>📍 География заказов</h1></div>
@@ -900,6 +899,7 @@
         import { renderOrderList } from './src/ui/orderList.js';
         import { renderSupplyHistory } from './src/ui/supplyHistory.js';
         import renderDashboard from './src/ui/dashboard.js';
+        import renderSalesAnalytics from './src/ui/salesAnalytics.js';
 
         // Делаем ImportService глобальным для onclick
         window.ImportService = ImportService;
@@ -952,6 +952,9 @@
             }
             if (pageName === 'dashboard') {
     setTimeout(() => renderDashboard(), 50);
+}
+            if (pageName === 'sales-analytics') {
+    setTimeout(() => renderSalesAnalytics(), 50);
 }
         };
 
@@ -1054,6 +1057,7 @@
                     if (id === 'supply-planning') renderOrderList();
                     if (id === 'supplies') renderSupplyHistory();
                     if (id === 'dashboard') renderDashboard();
+                    if (id === 'sales-analytics') renderSalesAnalytics();
                 }
             }, 100);
         }).catch(err => {
