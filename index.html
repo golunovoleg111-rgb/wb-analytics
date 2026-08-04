@@ -113,15 +113,16 @@
             <a class="nav-item" data-page="settings">⚙️ Настройки</a>
         </nav>
 
-        <div class="topbar-right">
-            <div class="search-wrapper">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="search-input" id="globalSearch" placeholder="Поиск...">
-            </div>
-            <button class="topbar-profile" id="profileBtn" title="Личный кабинет">
-                <span class="profile-avatar">👤</span>
-            </button>
-        </div>
+       <div class="topbar-right">
+    <button class="menu-toggle" id="menuToggle" title="Меню">☰</button>
+    <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="globalSearch" placeholder="Поиск...">
+    </div>
+    <button class="topbar-profile" id="profileBtn" title="Личный кабинет">
+        <span class="profile-avatar">👤</span>
+    </button>
+</div>
     </header>
 
     <!-- ========================================================== -->
@@ -1028,6 +1029,23 @@
         }).catch(err => {
             console.error('❌ Ошибка инициализации:', err.message);
         });
+        // ============================================================
+// ГАМБУРГЕР-МЕНЮ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
+// ============================================================
+
+document.getElementById('menuToggle').addEventListener('click', function() {
+    const nav = document.querySelector('.topbar-nav');
+    nav.classList.toggle('open');
+});
+
+// Закрываем меню при клике вне его
+document.addEventListener('click', function(e) {
+    const nav = document.querySelector('.topbar-nav');
+    const toggle = document.getElementById('menuToggle');
+    if (!nav.contains(e.target) && !toggle.contains(e.target)) {
+        nav.classList.remove('open');
+    }
+});
     </script>
 
 </body>
