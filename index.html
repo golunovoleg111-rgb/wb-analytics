@@ -299,93 +299,30 @@
             </div>
         </section>
 
-        <!-- ===================== РЕКЛАМА ===================== -->
-        <section id="page-ads" class="page">
-            <div class="page-header">
-                <h1>📢 Реклама</h1>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-primary btn-sm" onclick="openCreateCampaignModal()">➕ Создать кампанию</button>
-                    <button class="btn btn-secondary btn-sm" onclick="refreshAds()">🔄 Обновить</button>
-                </div>
-            </div>
+       <!-- ===================== РЕКЛАМА ===================== -->
+<section id="page-ads" class="page">
+    <div class="page-header">
+        <h1>📢 Реклама</h1>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="window.openCreateCampaignModal()">➕ Создать кампанию</button>
+            <button class="btn btn-secondary btn-sm" onclick="renderAdsList()">🔄 Обновить</button>
+        </div>
+    </div>
 
-            <div id="adsEmpty" class="card" style="text-align:center;">
-                <div style="font-size:48px;margin-bottom:12px;">📥</div>
-                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
-                <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
-                    Импортируйте рекламный отчёт WB в разделе «Импорт»
-                </div>
-                <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
-            </div>
+    <div id="adsEmpty" class="card" style="text-align:center;">
+        <div style="font-size:48px;margin-bottom:12px;">📥</div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
+        <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
+            Импортируйте рекламный отчёт WB в разделе «Импорт»
+        </div>
+        <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
+    </div>
 
-            <div id="adsContent" style="display:none;">
-                <div id="adsSummary" class="card" style="margin-bottom:14px;"></div>
-
-                <div class="card" style="margin-bottom:14px;">
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <input type="text" id="adsSearch" placeholder="🔍 Поиск по названию..." style="flex:1;min-width:150px;" oninput="renderAds()">
-                        <select id="adsFilter" style="min-width:120px;" onchange="renderAds()">
-                            <option value="all">Все кампании</option>
-                            <option value="active">🟢 Активные</option>
-                            <option value="paused">⏸️ Приостановлены</option>
-                            <option value="effective">📈 Эффективные (ROI > 50%)</option>
-                            <option value="loss">📉 Убыточные (ROI < 0)</option>
-                            <option value="unlinked">🔗 Не привязаны</option>
-                        </select>
-                        <select id="adsSort" style="min-width:120px;" onchange="renderAds()">
-                            <option value="roi_desc">По ROI (убыв.)</option>
-                            <option value="roi_asc">По ROI (возр.)</option>
-                            <option value="spent_desc">По затратам (убыв.)</option>
-                            <option value="orders_desc">По заказам (убыв.)</option>
-                            <option value="ctr_desc">По CTR (убыв.)</option>
-                        </select>
-                        <button class="btn btn-secondary btn-sm" onclick="applyBulkAction()">📋 Массовые действия</button>
-                    </div>
-                </div>
-
-                <div class="card" style="overflow-x:auto;padding:0;">
-                    <div id="adsTableWrapper" style="overflow-x:auto;">
-                        <table id="adsTable">
-                            <thead>
-                                <tr>
-                                    <th style="width:30px;"><input type="checkbox" id="adsSelectAll" onchange="toggleAllAds(this)"></th>
-                                    <th>Кампания</th>
-                                    <th>Тип</th>
-                                    <th>Статус</th>
-                                    <th>Затраты</th>
-                                    <th>Показы</th>
-                                    <th>CTR</th>
-                                    <th>Заказы</th>
-                                    <th>ROI</th>
-                                    <th>ДРР</th>
-                                    <th>CPC</th>
-                                    <th>Тренд</th>
-                                    <th style="width:100px;">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adsTableBody">
-                                <tr><td colspan="13" style="text-align:center;padding:20px;">Нет данных</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="adsPagination" style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);">
-                        <div style="font-size:12px;color:var(--text-secondary);">
-                            Показано <span id="adsShowing">0</span> из <span id="adsTotal">0</span>
-                        </div>
-                        <div style="display:flex;gap:6px;">
-                            <button class="btn btn-sm btn-secondary" onclick="adsPrevPage()">◀</button>
-                            <span id="adsPageInfo" style="font-size:12px;color:var(--text-secondary);padding:4px 8px;">1 / 1</span>
-                            <button class="btn btn-sm btn-secondary" onclick="adsNextPage()">▶</button>
-                        </div>
-                        <select id="adsPerPage" style="font-size:11px;padding:4px 8px;" onchange="renderAds()">
-                            <option value="10">10</option>
-                            <option value="25" selected>25</option>
-                            <option value="50">50</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <div id="adsContent" style="display:none;">
+        <div id="adsSummary" class="card" style="margin-bottom:14px;"></div>
+        <div id="adsListContainer"></div>
+    </div>
+</section>
 
         <!-- ===================== СКЛАД (МОЙ СКЛАД) ===================== -->
         <section id="page-warehouse" class="page">
@@ -900,6 +837,8 @@
         import { renderSupplyHistory } from './src/ui/supplyHistory.js';
         import renderDashboard from './src/ui/dashboard.js';
         import renderSalesAnalytics from './src/ui/salesAnalytics.js';
+        import AdvertisingService from './src/services/AdvertisingService.js';
+import renderAdsList from './src/ui/adsList.js';
 
         // Делаем ImportService глобальным для onclick
         window.ImportService = ImportService;
@@ -955,6 +894,9 @@
 }
             if (pageName === 'sales-analytics') {
     setTimeout(() => renderSalesAnalytics(), 50);
+}
+            if (pageName === 'ads') {
+    setTimeout(() => renderAdsList(), 50);
 }
         };
 
@@ -1058,6 +1000,7 @@
                     if (id === 'supplies') renderSupplyHistory();
                     if (id === 'dashboard') renderDashboard();
                     if (id === 'sales-analytics') renderSalesAnalytics();
+                    if (id === 'ads') renderAdsList();
                 }
             }, 100);
         }).catch(err => {
