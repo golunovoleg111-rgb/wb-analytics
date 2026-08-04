@@ -14,7 +14,7 @@
 <body>
 
     <!-- ========================================================== -->
-    <!-- ВЕРХНИЙ САЙДБАР — НОВАЯ СТРУКТУРА                         -->
+    <!-- ВЕРХНИЙ САЙДБАР                                             -->
     <!-- ========================================================== -->
     <header class="topbar">
         <div class="topbar-left">
@@ -37,14 +37,15 @@
             </div>
         </div>
 
-        <!-- Горизонтальное меню с подменю -->
         <nav class="topbar-nav">
             <!-- Главная -->
             <a class="nav-item active" data-page="dashboard">🏠 Главная</a>
 
             <!-- Товары ▼ -->
             <div class="nav-dropdown">
-                <span class="nav-item nav-dropdown-trigger" data-page="products">📦 Товары ▼</span>
+                <span class="nav-item nav-dropdown-trigger">
+                    📦 Товары <span class="arrow">▼</span>
+                </span>
                 <div class="nav-dropdown-menu">
                     <a class="nav-dropdown-item" data-page="products">📋 Карточки товаров</a>
                     <a class="nav-dropdown-item" data-page="price-management">💰 Управление ценами</a>
@@ -54,7 +55,9 @@
 
             <!-- Продажи ▼ -->
             <div class="nav-dropdown">
-                <span class="nav-item nav-dropdown-trigger">📊 Продажи ▼</span>
+                <span class="nav-item nav-dropdown-trigger">
+                    📊 Продажи <span class="arrow">▼</span>
+                </span>
                 <div class="nav-dropdown-menu">
                     <a class="nav-dropdown-item" data-page="sales-analytics">📈 Аналитика продаж</a>
                     <a class="nav-dropdown-item" data-page="sales-geography">📍 География заказов</a>
@@ -65,7 +68,9 @@
 
             <!-- Маркетинг ▼ -->
             <div class="nav-dropdown">
-                <span class="nav-item nav-dropdown-trigger">📢 Маркетинг ▼</span>
+                <span class="nav-item nav-dropdown-trigger">
+                    📢 Маркетинг <span class="arrow">▼</span>
+                </span>
                 <div class="nav-dropdown-menu">
                     <a class="nav-dropdown-item" data-page="ads">📢 Реклама</a>
                     <a class="nav-dropdown-item" data-page="campaigns">📋 Кампании</a>
@@ -76,7 +81,9 @@
 
             <!-- Склад ▼ -->
             <div class="nav-dropdown">
-                <span class="nav-item nav-dropdown-trigger">🏪 Склад ▼</span>
+                <span class="nav-item nav-dropdown-trigger">
+                    🏪 Склад <span class="arrow">▼</span>
+                </span>
                 <div class="nav-dropdown-menu">
                     <a class="nav-dropdown-item" data-page="supplier-stock">📦 Склад поставщика</a>
                     <a class="nav-dropdown-item" data-page="wb-stock">🏪 Остатки WB</a>
@@ -90,7 +97,9 @@
 
             <!-- Аналитика ▼ -->
             <div class="nav-dropdown">
-                <span class="nav-item nav-dropdown-trigger">📈 Аналитика ▼</span>
+                <span class="nav-item nav-dropdown-trigger">
+                    📈 Аналитика <span class="arrow">▼</span>
+                </span>
                 <div class="nav-dropdown-menu">
                     <a class="nav-dropdown-item" data-page="unit-economics">💰 Юнит-экономика</a>
                     <a class="nav-dropdown-item" data-page="logistics-calc">🚚 Логистика</a>
@@ -885,38 +894,11 @@
         // ГЛОБАЛЬНАЯ НАВИГАЦИЯ
         // ============================================================
 
-        // Страница по умолчанию для некоторых подменю
-        const pageMap = {
-            'products': 'products',
-            'price-management': 'price-management',
-            'stock-analytics': 'stock-analytics',
-            'sales-analytics': 'sales-analytics',
-            'sales-geography': 'sales-geography',
-            'sales-seasonality': 'sales-seasonality',
-            'sales-reports': 'sales-reports',
-            'ads': 'ads',
-            'campaigns': 'campaigns',
-            'promotion-analytics': 'promotion-analytics',
-            'external-ads': 'external-ads',
-            'supplier-stock': 'supplier-stock',
-            'wb-stock': 'wb-stock',
-            'supply-planning': 'supply-planning',
-            'warehouse': 'warehouse',
-            'import': 'import',
-            'unit-economics': 'unit-economics',
-            'logistics-calc': 'logistics-calc',
-            'data-settings': 'data-settings',
-            'stock-analytics-deep': 'stock-analytics-deep',
-            'reports': 'reports',
-            'settings': 'settings',
-            'dashboard': 'dashboard'
-        };
-
         window.navigateTo = function(pageName) {
             console.log('🔀 Переход на страницу:', pageName);
 
-            // Обновляем активный пункт меню (основные)
-            document.querySelectorAll('.nav-item').forEach(item => {
+            // Обновляем активный пункт в основном меню
+            document.querySelectorAll('.nav-item[data-page]').forEach(item => {
                 item.classList.remove('active');
             });
             const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
@@ -928,6 +910,12 @@
             });
             const dropdownItem = document.querySelector(`.nav-dropdown-item[data-page="${pageName}"]`);
             if (dropdownItem) dropdownItem.classList.add('active');
+
+            // Закрываем все подменю
+            document.querySelectorAll('.nav-dropdown-menu.open').forEach(menu => {
+                menu.classList.remove('open');
+                menu.closest('.nav-dropdown').classList.remove('active');
+            });
 
             // Показываем страницу
             document.querySelectorAll('.page').forEach(page => {
@@ -946,25 +934,49 @@
             if (pageName === 'supplies') {
                 setTimeout(() => renderSupplyHistory(), 50);
             }
-            if (pageName === 'warehouse') {
-                // старая страница склада
-            }
-            if (pageName === 'ads') {
-                // старая страница рекламы
-            }
-            if (pageName === 'settings') {
-                // настройки
-            }
-            if (pageName === 'import') {
-                // импорт
-            }
         };
+
+        // ============================================================
+        // КЛИК ПО РОДИТЕЛЬСКОМУ ПУНКТУ → ОТКРЫТИЕ/ЗАКРЫТИЕ ПОДМЕНЮ
+        // ============================================================
+
+        document.querySelectorAll('.nav-dropdown-trigger').forEach(trigger => {
+            trigger.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dropdown = this.closest('.nav-dropdown');
+                const menu = dropdown.querySelector('.nav-dropdown-menu');
+                
+                // Закрываем все другие подменю
+                document.querySelectorAll('.nav-dropdown-menu.open').forEach(m => {
+                    if (m !== menu) {
+                        m.classList.remove('open');
+                        m.closest('.nav-dropdown').classList.remove('active');
+                    }
+                });
+                
+                // Открываем/закрываем текущее
+                menu.classList.toggle('open');
+                dropdown.classList.toggle('active');
+            });
+        });
+
+        // ============================================================
+        // ЗАКРЫТИЕ ПОДМЕНЮ ПРИ КЛИКЕ ВНЕ МЕНЮ
+        // ============================================================
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.nav-dropdown')) {
+                document.querySelectorAll('.nav-dropdown-menu.open').forEach(menu => {
+                    menu.classList.remove('open');
+                    menu.closest('.nav-dropdown').classList.remove('active');
+                });
+            }
+        });
 
         // ============================================================
         // ПОДКЛЮЧАЕМ НАВИГАЦИЮ К МЕНЮ
         // ============================================================
 
-        // Основные пункты
         document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -973,31 +985,11 @@
             });
         });
 
-        // Пункты подменю
         document.querySelectorAll('.nav-dropdown-item').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.preventDefault();
                 const pageName = this.getAttribute('data-page');
                 window.navigateTo(pageName);
-            });
-        });
-
-        // ============================================================
-        // ВЫПАДАЮЩИЕ МЕНЮ (НАВЕЛ → ПОЯВИЛОСЬ, УБРАЛ → ПРОПАЛО)
-        // ============================================================
-
-        document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-            const trigger = dropdown.querySelector('.nav-dropdown-trigger');
-            const menu = dropdown.querySelector('.nav-dropdown-menu');
-
-            dropdown.addEventListener('mouseenter', function() {
-                menu.classList.add('open');
-                this.classList.add('active');
-            });
-
-            dropdown.addEventListener('mouseleave', function() {
-                menu.classList.remove('open');
-                this.classList.remove('active');
             });
         });
 
