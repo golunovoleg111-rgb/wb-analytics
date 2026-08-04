@@ -4,6 +4,7 @@
 
 import ProductService from './services/ProductService.js';
 import SalesService from './services/SalesService.js';
+import StockService from './services/StockService.js';
 
 // ============================================================
 // ТЕСТОВЫЕ ТОВАРЫ
@@ -32,13 +33,11 @@ function generateTestSales(products) {
         '15_К_Свитер_бежевый_46': 2800
     };
 
-    // Находим productId для каждого товара
     const productMap = {};
     products.forEach(p => {
         productMap[p.article] = p.id;
     });
 
-    // Генерируем продажи за последние 30 дней
     for (let i = 0; i < 30; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -48,7 +47,6 @@ function generateTestSales(products) {
             const productId = productMap[product.article];
             if (!productId) return;
 
-            // Случайные продажи (0-5 в день)
             const orders = Math.floor(Math.random() * 5);
             if (orders === 0) return;
 
@@ -72,13 +70,58 @@ function generateTestSales(products) {
 }
 
 // ============================================================
+// ТЕСТОВЫЕ ОСТАТКИ
+// ============================================================
+
+function generateTestStock(products) {
+    const stock = [];
+    const productMap = {};
+    products.forEach(p => {
+        productMap[p.article] = p.id;
+    });
+
+    // Остатки по складам WB
+    const warehouses = ['Коледино', 'Казань', 'Новосибирск'];
+    const stockConfig = {
+        '21_К_Вельвет_голубой_40': { Коледино: 45, Казань: 12, Новосибирск: 3 },
+        '27_К_Платье_чёрный_44': { Коледино: 120, Казань: 45, Новосибирск: 0 },
+        '33_К_Жакет_синий_48': { Коледино: 8, Казань: 2, Новосибирск: 0 },
+        '41_К_Брюки_серый_42': { Коледино: 67, Казань: 23, Новосибирск: 5 },
+        '15_К_Свитер_бежевый_46': { Коледино: 150, Казань: 80, Новосибирск: 30 }
+    };
+
+    products.forEach(product => {
+        const productId = productMap[product.article];
+        if (!productId) return;
+
+        const config = stockConfig[product.article] || { Коледино: 50, Казань: 20, Новосибирск: 0 };
+        
+        warehouses.forEach(warehouse => {
+            const quantity = config[warehouse] || 0;
+            if (quantity > 0) {
+                stock.push({
+                    productId: productId,
+                    warehouseName: warehouse,
+                    warehouseType: 'wb',
+                    quantity: quantity,
+                    reserved: Math.floor(quantity * 0.1), // 10% зарезервировано
+                    date: new Date().toISOString().split('T')[0]
+                });
+            }
+        });
+    });
+
+    return stock;
+}
+
+// ============================================================
 // ЗАГРУЗКА ТЕСТОВЫХ ДАННЫХ
 // ============================================================
 
 async function loadTestData() {
     console.log('🔄 Загрузка тестовых данных...');
     
-    // 1. Загружаем товары
+    // 1. Товары
     let products = await ProductService.getActive();
     if (products.length === 0) {
         const result = await ProductService.createManyFromImport(TEST_PRODUCTS);
@@ -88,14 +131,24 @@ async function loadTestData() {
         console.log(`📦 Товаров уже есть: ${products.length}`);
     }
 
-    // 2. Загружаем продажи
+    // 2. Продажи
     const existingSales = await SalesService.getByProduct(products[0]?.id || '');
     if (existingSales.length === 0 && products.length > 0) {
         const salesData = generateTestSales(products);
         await SalesService.loadTestData(salesData);
         console.log(`✅ Загружено ${salesData.length} тестовых продаж`);
     } else {
-        console.log('📦 Продажи уже есть, пропускаем');
+        console.log('📦 Продажи уже есть');
+    }
+
+    // 3. Остатки
+    const existingStock = await StockService.getByProduct(products[0]?.id || '');
+    if (existingStock.length === 0 && products.length > 0) {
+        const stockData = generateTestStock(products);
+        await StockService.loadTestData(stockData);
+        console.log(`✅ Загружено ${stockData.length} записей остатков`);
+    } else {
+        console.log('📦 Остатки уже есть');
     }
 
     return { products, sales: await SalesService.getAllAggregated() };
@@ -116,6 +169,12 @@ async function checkArchitecture() {
         const totalRevenue = await SalesService.getTotalRevenue(30);
         console.log(`📊 Выручка за 30 дней: ${totalRevenue.toLocaleString()} ₽`);
         console.log(`📊 Товаров с продажами: ${Object.keys(sales).length}`);
+
+        // Проверяем остатки
+        const stock = await StockService.getAllAggregated();
+        const warehouses = await StockService.getWarehouses();
+        console.log(`📦 Склады: ${warehouses.join(', ')}`);
+        console.log(`📦 Товаров с остатками: ${Object.keys(stock).length}`);
         
         console.log('✅ Архитектура работает корректно');
         return true;
