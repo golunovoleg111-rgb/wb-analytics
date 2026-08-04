@@ -1724,3 +1724,189 @@ input[type="radio"]:checked {
 .mb-lg {
     margin-bottom: var(--spacing-lg);
 }
+/* ============================================================
+   АДАПТИВНОСТЬ ДЛЯ ПОЛОВИННОГО ЭКРАНА (768-1200px)
+   ============================================================ */
+
+@media (max-width: 1200px) {
+    /* Уменьшаем отступы */
+    .content {
+        padding: 16px 20px;
+    }
+    
+    .topbar {
+        padding: 0 16px;
+        height: 54px;
+    }
+    
+    /* Уменьшаем шрифты в меню */
+    .nav-item,
+    .nav-dropdown-trigger {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    
+    /* Скрываем лого-бейдж */
+    .logo-badge {
+        display: none;
+    }
+    
+    .logo-text {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 992px) {
+    /* Карточки: 4 → 2 колонки */
+    .grid-4 {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .grid-3 {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    /* KPI на главной: 4 → 2 */
+    .card-kpi-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    /* Таблицы с горизонтальным скроллом */
+    #adsTableWrapper,
+    .card table {
+        overflow-x: auto;
+        display: block;
+        white-space: nowrap;
+    }
+    
+    /* Убираем "лишние" колонки в таблице товаров */
+    .product-group-item-price,
+    .product-group-item-io {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Меню сворачивается в гамбургер */
+    .topbar-nav {
+        display: none;
+        position: absolute;
+        top: 54px;
+        left: 0;
+        right: 0;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        flex-direction: column;
+        padding: 8px 0;
+        box-shadow: var(--shadow-dropdown);
+        z-index: 100;
+    }
+    
+    .topbar-nav.open {
+        display: flex;
+    }
+    
+    .nav-item,
+    .nav-dropdown-trigger {
+        padding: 8px 16px;
+        width: 100%;
+        text-align: left;
+    }
+    
+    .nav-dropdown {
+        width: 100%;
+    }
+    
+    .nav-dropdown-menu {
+        position: static;
+        transform: none;
+        opacity: 1;
+        pointer-events: all;
+        display: none;
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        padding: 0 0 0 20px;
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .nav-dropdown-menu.open {
+        display: block;
+    }
+    
+    /* Гамбургер-кнопка */
+    .menu-toggle {
+        display: block !important;
+    }
+    
+    .content {
+        padding: 12px;
+    }
+    
+    .grid-4,
+    .grid-3,
+    .grid-2,
+    .card-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ads-summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .page-header h1 {
+        font-size: 18px;
+    }
+    
+    .modal-content {
+        max-width: 96%;
+        margin: 10px auto;
+    }
+    
+    #adsTable {
+        font-size: 11px;
+    }
+    
+    #adsTable th,
+    #adsTable td {
+        padding: 4px 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ads-summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .kpi-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .logo-text {
+        font-size: 13px;
+    }
+    
+    .search-input {
+        width: 80px;
+    }
+    
+    .search-input:focus {
+        width: 100px;
+    }
+}
