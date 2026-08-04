@@ -5,154 +5,7 @@
 import ProductService from './services/ProductService.js';
 import SalesService from './services/SalesService.js';
 import StockService from './services/StockService.js';
-
-// ============================================================
-// ТЕСТОВЫЕ ТОВАРЫ
-// ============================================================
-
-const TEST_PRODUCTS = [
-    { article: '21_К_Вельвет_голубой_40', baseArticle: '21_К_Вельвет', category: 'Костюмы', color: 'голубой', size: '40', barcode: '4601234567890' },
-    { article: '27_К_Платье_чёрный_44', baseArticle: '27_К_Платье', category: 'Платья', color: 'чёрный', size: '44', barcode: '4601234567891' },
-    { article: '33_К_Жакет_синий_48', baseArticle: '33_К_Жакет', category: 'Жакеты', color: 'синий', size: '48', barcode: '4601234567892' },
-    { article: '41_К_Брюки_серый_42', baseArticle: '41_К_Брюки', category: 'Брюки', color: 'серый', size: '42', barcode: '4601234567893' },
-    { article: '15_К_Свитер_бежевый_46', baseArticle: '15_К_Свитер', category: 'Свитеры', color: 'бежевый', size: '46', barcode: '4601234567894' }
-];
-
-// ============================================================
-// ТЕСТОВЫЕ ПРОДАЖИ
-// ============================================================
-
-function generateTestSales(products) {
-    const sales = [];
-    const today = new Date();
-    const priceMap = {
-        '21_К_Вельвет_голубой_40': 3200,
-        '27_К_Платье_чёрный_44': 2100,
-        '33_К_Жакет_синий_48': 4500,
-        '41_К_Брюки_серый_42': 3800,
-        '15_К_Свитер_бежевый_46': 2800
-    };
-
-    const productMap = {};
-    products.forEach(p => {
-        productMap[p.article] = p.id;
-    });
-
-    for (let i = 0; i < 30; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-
-        products.forEach(product => {
-            const productId = productMap[product.article];
-            if (!productId) return;
-
-            const orders = Math.floor(Math.random() * 5);
-            if (orders === 0) return;
-
-            const delivered = Math.floor(orders * (0.7 + Math.random() * 0.25));
-            const returns = Math.floor(orders * 0.05);
-            const price = priceMap[product.article] || 3000;
-            const amount = delivered * price;
-
-            sales.push({
-                productId: productId,
-                date: dateStr,
-                orders: orders,
-                delivered: delivered,
-                returns: returns,
-                amount: amount
-            });
-        });
-    }
-
-    return sales;
-}
-
-// ============================================================
-// ТЕСТОВЫЕ ОСТАТКИ
-// ============================================================
-
-function generateTestStock(products) {
-    const stock = [];
-    const productMap = {};
-    products.forEach(p => {
-        productMap[p.article] = p.id;
-    });
-
-    // Остатки по складам WB
-    const warehouses = ['Коледино', 'Казань', 'Новосибирск'];
-    const stockConfig = {
-        '21_К_Вельвет_голубой_40': { Коледино: 45, Казань: 12, Новосибирск: 3 },
-        '27_К_Платье_чёрный_44': { Коледино: 120, Казань: 45, Новосибирск: 0 },
-        '33_К_Жакет_синий_48': { Коледино: 8, Казань: 2, Новосибирск: 0 },
-        '41_К_Брюки_серый_42': { Коледино: 67, Казань: 23, Новосибирск: 5 },
-        '15_К_Свитер_бежевый_46': { Коледино: 150, Казань: 80, Новосибирск: 30 }
-    };
-
-    products.forEach(product => {
-        const productId = productMap[product.article];
-        if (!productId) return;
-
-        const config = stockConfig[product.article] || { Коледино: 50, Казань: 20, Новосибирск: 0 };
-        
-        warehouses.forEach(warehouse => {
-            const quantity = config[warehouse] || 0;
-            if (quantity > 0) {
-                stock.push({
-                    productId: productId,
-                    warehouseName: warehouse,
-                    warehouseType: 'wb',
-                    quantity: quantity,
-                    reserved: Math.floor(quantity * 0.1), // 10% зарезервировано
-                    date: new Date().toISOString().split('T')[0]
-                });
-            }
-        });
-    });
-
-    return stock;
-}
-
-// ============================================================
-// ЗАГРУЗКА ТЕСТОВЫХ ДАННЫХ
-// ============================================================
-
-async function loadTestData() {
-    console.log('🔄 Загрузка тестовых данных...');
-    
-    // 1. Товары
-    let products = await ProductService.getActive();
-    if (products.length === 0) {
-        const result = await ProductService.createManyFromImport(TEST_PRODUCTS);
-        products = result.results;
-        console.log(`✅ Загружено ${products.length} товаров`);
-    } else {
-        console.log(`📦 Товаров уже есть: ${products.length}`);
-    }
-
-    // 2. Продажи
-    const existingSales = await SalesService.getByProduct(products[0]?.id || '');
-    if (existingSales.length === 0 && products.length > 0) {
-        const salesData = generateTestSales(products);
-        await SalesService.loadTestData(salesData);
-        console.log(`✅ Загружено ${salesData.length} тестовых продаж`);
-    } else {
-        console.log('📦 Продажи уже есть');
-    }
-
-    // 3. Остатки
-    const existingStock = await StockService.getByProduct(products[0]?.id || '');
-    if (existingStock.length === 0 && products.length > 0) {
-        const stockData = generateTestStock(products);
-        await StockService.loadTestData(stockData);
-        console.log(`✅ Загружено ${stockData.length} записей остатков`);
-    } else {
-        console.log('📦 Остатки уже есть');
-    }
-
-    return { products, sales: await SalesService.getAllAggregated() };
-}
+import SupplyService from './services/SupplyService.js';
 
 // ============================================================
 // ПРОВЕРКА АРХИТЕКТУРЫ
@@ -163,20 +16,19 @@ async function checkArchitecture() {
     
     try {
         const products = await ProductService.getAll();
-        console.log(`📦 Товаров: ${products.length}`);
+        console.log(`📦 Товаров в базе: ${products.length}`);
         
         const sales = await SalesService.getAllAggregated(30);
-        const totalRevenue = await SalesService.getTotalRevenue(30);
-        console.log(`📊 Выручка за 30 дней: ${totalRevenue.toLocaleString()} ₽`);
-        console.log(`📊 Товаров с продажами: ${Object.keys(sales).length}`);
-
-        // Проверяем остатки
+        console.log(`📊 Продаж: ${Object.keys(sales).length} товаров с продажами`);
+        
         const stock = await StockService.getAllAggregated();
-        const warehouses = await StockService.getWarehouses();
-        console.log(`📦 Склады: ${warehouses.join(', ')}`);
-        console.log(`📦 Товаров с остатками: ${Object.keys(stock).length}`);
+        console.log(`📦 Остатков: ${Object.keys(stock).length} товаров с остатками`);
+        
+        const recommendations = await SupplyService.calculateRecommendations();
+        console.log(`📋 Рекомендаций по закупкам: ${recommendations.length}`);
         
         console.log('✅ Архитектура работает корректно');
+        console.log('ℹ️ Данные отсутствуют. Импортируйте отчёты WB.');
         return true;
     } catch (error) {
         console.error('❌ Ошибка:', error.message);
@@ -190,8 +42,8 @@ async function checkArchitecture() {
 
 async function init() {
     console.log('🚀 Запуск StockFlow v5.0 (новая архитектура)');
+    console.log('ℹ️ Система готова к импорту данных');
     
-    await loadTestData();
     await checkArchitecture();
     
     console.log('✅ Инициализация завершена');
@@ -199,4 +51,4 @@ async function init() {
 
 init();
 
-export { loadTestData, checkArchitecture };
+export { checkArchitecture };
