@@ -49,40 +49,30 @@ const EXAMPLES = {
 // УНИВЕРСАЛЬНЫЕ ФУНКЦИИ ПАРСИНГА
 // ============================================================
 
-/**
- * Очистка строки от мусора
- */
 function cleanString(value) {
     if (!value && value !== 0) return '';
     const str = String(value).trim();
-    // Удаляем невидимые символы, кроме пробелов
     return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
 }
 
-/**
- * Универсальный поиск значения в строке по ключам
- */
 function findValue(row, possibleKeys) {
     if (!row || typeof row !== 'object') return null;
     
-    // Нормализуем все ключи строки (убираем мусор)
     const normalizedKeys = {};
     for (const key of Object.keys(row)) {
         const cleanKey = cleanString(key);
-        normalizedKeys[cleanKey] = key; // сохраняем оригинальный ключ
+        normalizedKeys[cleanKey] = key;
     }
     
     for (const searchKey of possibleKeys) {
         const cleanSearchKey = cleanString(searchKey);
         
-        // Ищем точное совпадение
         if (normalizedKeys[cleanSearchKey]) {
             const value = row[normalizedKeys[cleanSearchKey]];
             const cleaned = cleanString(value);
             if (cleaned !== '') return cleaned;
         }
         
-        // Ищем частичное совпадение (игнорируем регистр)
         const lowerSearch = cleanSearchKey.toLowerCase();
         for (const [cleanKey, origKey] of Object.entries(normalizedKeys)) {
             const lowerKey = cleanKey.toLowerCase();
@@ -97,14 +87,28 @@ function findValue(row, possibleKeys) {
     return null;
 }
 
-/**
- * Универсальный парсинг даты — ЛЮБОЙ ФОРМАТ
- */
+// ============================================================
+// ГЛАВНОЕ ИСПРАВЛЕНИЕ: ПАРСИНГ ДАТ
+// ============================================================
+
 function parseDateUniversal(dateStr) {
     if (!dateStr) return null;
     
     const str = cleanString(dateStr);
     if (!str) return null;
+    
+    // ============================================================
+    // ✅ ИСПРАВЛЕНИЕ: Excel числовой формат (46143 → 01.05.2026)
+    // ============================================================
+    const num = parseFloat(str);
+    if (!isNaN(num) && num > 30000 && num < 60000) {
+        // Excel: 01.01.1900 = 1, 01.01.1970 = 25569
+        const date = new Date((num - 25569) * 86400 * 1000);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
     
     // Уже в формате YYYY-MM-DD
     if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -114,19 +118,16 @@ function parseDateUniversal(dateStr) {
     // Определяем разделитель
     const separators = ['.', '/', '-', ' '];
     let parts = null;
-    let separator = null;
     
     for (const sep of separators) {
         const split = str.split(sep);
         if (split.length === 3) {
             parts = split.map(p => cleanString(p));
-            separator = sep;
             break;
         }
     }
     
     if (!parts) {
-        // Пробуем через Date
         const date = new Date(str);
         if (!isNaN(date.getTime())) {
             const year = date.getFullYear();
@@ -142,9 +143,7 @@ function parseDateUniversal(dateStr) {
     const p2 = parseInt(parts[1]);
     const p3 = parseInt(parts[2]);
     
-    // Определяем формат
     if (p3 >= 1900 && p3 <= 2100) {
-        // Год в конце — DD.MM.YYYY или MM.DD.YYYY
         year = p3;
         if (p1 <= 12 && p2 <= 31) {
             month = p1;
@@ -284,7 +283,6 @@ class ImportService {
 
         if (data && data.length > 0) {
             console.log('📋 Колонки в файле:', Object.keys(data[0]));
-            console.log('📋 Пример строки:', data[0]);
         }
 
         const template = TEMPLATES[type];
@@ -328,7 +326,6 @@ class ImportService {
         const actualColumns = Object.keys(data[0]);
         const required = template.required || [];
         
-        // Проверяем наличие обязательных колонок (с учётом возможных вариаций)
         const missing = [];
         for (const req of required) {
             const found = actualColumns.some(col => {
@@ -354,22 +351,19 @@ class ImportService {
     static _parseAndValidate(data, type, template) {
         const records = [];
         const errors = [];
-        const required = template.required || [];
 
         data.forEach((row, index) => {
             const rowNum = index + 1;
             const rowErrors = [];
-            const rowData = {};
 
             if (!row || typeof row !== 'object') {
                 errors.push({ row: rowNum, errors: ['Строка пуста'] });
                 return;
             }
 
-            // Проверяем, есть ли вообще данные в строке
             const hasAnyData = Object.values(row).some(v => v !== null && v !== undefined && cleanString(v) !== '');
             if (!hasAnyData) {
-                return; // полностью пустая строка — пропускаем
+                return;
             }
 
             // ============================================================
@@ -410,10 +404,9 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ ПРОДАЖ — МАКСИМАЛЬНО УНИВЕРСАЛЬНЫЙ
+            // ПАРСИНГ ПРОДАЖ
             // ============================================================
             if (type === ImportTypes.SALES) {
-                // Ищем все возможные варианты названий колонок
                 const article = findValue(row, [
                     'Артикул продавца', 'Артикул', 'article', 'Артикул продавца (артикул)'
                 ]);
@@ -442,16 +435,13 @@ class ImportService {
                     'Сумма заказов минус комиссия WB', 'Сумма заказов, руб.', 'Сумма заказов'
                 ]);
 
-                // ДЕТАЛЬНАЯ ДИАГНОСТИКА по каждой строке с ошибкой
                 const hasError = !article || !dateStr;
                 
                 if (hasError) {
-                    // Сохраняем полную информацию об ошибке
                     const errorDetails = [];
                     if (!article) errorDetails.push('Артикул продавца не найден');
                     if (!dateStr) errorDetails.push('Дата (День) не найдена');
                     
-                    // Добавляем отладочную информацию
                     console.log(`🔴 ОШИБКА в строке ${rowNum}:`, {
                         row,
                         found: { article, dateStr, redeemed, amount, orders, totalAmount },
@@ -462,16 +452,16 @@ class ImportService {
                     return;
                 }
 
-                // Если нет выкупов или суммы — ставим 0 (это нормально)
                 const cleanArticle = cleanString(article);
                 if (!cleanArticle) {
                     errors.push({ row: rowNum, errors: ['Артикул пустой после очистки'] });
                     return;
                 }
 
+                // ✅ ИСПРАВЛЕНИЕ: теперь парсит Excel-числа
                 const parsedDate = parseDateUniversal(dateStr);
                 if (!parsedDate) {
-                    console.log(`🔴 НЕКОРРЕКТНАЯ ДАТА в строке ${rowNum}: "${dateStr}"`);
+                    console.log(`🔴 НЕКОРРЕКТНАЯ ДАТА в строке ${rowNum}: "${dateStr}" (тип: ${typeof dateStr})`);
                     errors.push({ row: rowNum, errors: [`Некорректная дата: "${dateStr}"`] });
                     return;
                 }
@@ -544,7 +534,6 @@ class ImportService {
 
         console.log(`📊 Итоги: всего ${data.length} строк, ✅ ${records.length} валидных, ❌ ${errors.length} ошибок`);
 
-        // Выводим детали ошибок
         if (errors.length > 0) {
             console.log('🔴 ПЕРВЫЕ 10 ОШИБОК:');
             errors.slice(0, 10).forEach(err => {
