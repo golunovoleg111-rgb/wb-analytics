@@ -10,21 +10,20 @@ import StockService from '../services/StockService.js';
 // СОСТОЯНИЕ
 // ============================================================
 
-let currentFilters = {
-    search: '',
-    status: 'all'
-};
-
+let currentFilters = { search: '', status: 'all' };
 let viewMode = 'grid'; // grid | list
 let allProducts = [];
 let allStock = {};
 let allSales = {};
+let cachedGroups = null;
 
 // ============================================================
-// ЗАГРУЗКА ДАННЫХ
+// ЗАГРУЗКА ДАННЫХ (С КЕШИРОВАНИЕМ)
 // ============================================================
 
-async function loadData() {
+async function loadData(force = false) {
+    if (!force && cachedGroups) return cachedGroups;
+    
     console.log('📦 Загрузка данных для товаров...');
     
     const [products, stockAggregated, salesAggregated] = await Promise.all([
@@ -40,52 +39,36 @@ async function loadData() {
     console.log(`📦 Товаров: ${allProducts.length}`);
     console.log(`📦 Записей остатков: ${Object.keys(allStock).length}`);
     console.log(`📦 Записей продаж: ${Object.keys(allSales).length}`);
+    
+    // Группируем и кешируем
+    cachedGroups = buildGroups(allProducts);
+    return cachedGroups;
 }
 
 // ============================================================
-// ПОИСК ДАННЫХ ПО ТОВАРУ (УНИВЕРСАЛЬНЫЙ)
+// ПОИСК ДАННЫХ ПО ТОВАРУ
 // ============================================================
 
 function findDataByProduct(product, dataMap) {
     if (!product || !dataMap) return null;
     
-    // 1. По articleKey
-    if (product.articleKey && dataMap[product.articleKey]) {
-        return dataMap[product.articleKey];
-    }
-    
-    // 2. По id
-    if (product.id && dataMap[product.id]) {
-        return dataMap[product.id];
-    }
-    
-    // 3. По артикулу с вариациями
-    const article = product.article || '';
-    const size = product.size || '';
-    const color = product.color || '';
-    
-    const variants = [
-        `${article}|${size}|${color}`.toLowerCase(),
-        `${article}|${size}`.toLowerCase(),
-        article.toLowerCase(),
-        article
+    const keys = [
+        product.articleKey,
+        product.id,
+        `${product.article}|${product.size || 'NOSIZE'}|${product.color || 'NOCOLOR'}`.toLowerCase(),
+        `${product.article}|${product.size || 'NOSIZE'}`.toLowerCase(),
+        product.article?.toLowerCase(),
+        product.article
     ];
     
-    for (const key of variants) {
-        if (dataMap[key]) {
-            return dataMap[key];
-        }
+    for (const key of keys) {
+        if (key && dataMap[key]) return dataMap[key];
     }
     
-    // 4. Частичное совпадение по артикулу
-    const lowerArticle = article.toLowerCase();
+    const lowerArticle = product.article?.toLowerCase() || '';
     for (const [key, value] of Object.entries(dataMap)) {
-        if (key && key.toLowerCase().includes(lowerArticle)) {
-            return value;
-        }
-        if (key && key.toLowerCase().startsWith(lowerArticle + '|')) {
-            return value;
-        }
+        if (key && key.toLowerCase().includes(lowerArticle)) return value;
+        if (key && key.toLowerCase().startsWith(lowerArticle + '|')) return value;
     }
     
     return null;
@@ -102,10 +85,10 @@ function getSalesForProduct(product) {
 }
 
 // ============================================================
-// ГРУППИРОВКА ПО БАЗЕ АРТИКУЛА
+// ГРУППИРОВКА
 // ============================================================
 
-function groupByBase(products) {
+function buildGroups(products) {
     const groups = {};
     
     products.forEach(product => {
@@ -133,12 +116,8 @@ function groupByBase(products) {
         const group = groups[base];
         group.products.push(product);
         
-        if (product.size && product.size !== 'NOSIZE') {
-            group.sizes.add(product.size);
-        }
-        if (product.color && product.color !== 'NOCOLOR') {
-            group.colors.add(product.color);
-        }
+        if (product.size && product.size !== 'NOSIZE') group.sizes.add(product.size);
+        if (product.color && product.color !== 'NOCOLOR') group.colors.add(product.color);
         
         const stock = getStockForProduct(product);
         const available = stock.available || 0;
@@ -154,9 +133,7 @@ function groupByBase(products) {
         }
         
         const purchase = product.purchasePrice || 0;
-        if (purchase > 0) {
-            group.minPurchase = Math.min(group.minPurchase, purchase);
-        }
+        if (purchase > 0) group.minPurchase = Math.min(group.minPurchase, purchase);
         
         const margin = product.margin || 0;
         if (margin > 0) {
@@ -170,17 +147,13 @@ function groupByBase(products) {
         const io = dailySales > 0 ? group.totalStock / dailySales : (group.totalStock > 0 ? 999 : 0);
         group.io = io;
         
-        if (group.totalStock === 0) {
-            group.status = 'no_stock';
-        } else if (io < 1) {
-            group.status = 'deficit';
-        } else if (io < 3) {
-            group.status = 'warning';
-        } else {
-            group.status = 'normal';
-        }
+        if (group.totalStock === 0) group.status = 'no_stock';
+        else if (io < 1) group.status = 'deficit';
+        else if (io < 3) group.status = 'warning';
+        else group.status = 'normal';
     });
     
+    console.log(`📦 Сгруппировано: ${Object.values(groups).length} групп`);
     return Object.values(groups);
 }
 
@@ -193,18 +166,13 @@ function filterGroups(groups) {
     
     return groups.filter(group => {
         if (search) {
-            const query = search.toLowerCase();
-            const match = 
-                group.baseModel.toLowerCase().includes(query) ||
-                group.name.toLowerCase().includes(query) ||
-                group.products.some(p => p.article.toLowerCase().includes(query));
+            const q = search.toLowerCase();
+            const match = group.baseModel.toLowerCase().includes(q) ||
+                         group.name.toLowerCase().includes(q) ||
+                         group.products.some(p => p.article?.toLowerCase().includes(q));
             if (!match) return false;
         }
-        
-        if (status !== 'all' && group.status !== status) {
-            return false;
-        }
-        
+        if (status !== 'all' && group.status !== status) return false;
         return true;
     });
 }
@@ -213,149 +181,113 @@ function filterGroups(groups) {
 // ФОРМАТИРОВАНИЕ
 // ============================================================
 
-function formatPrice(value) {
-    if (!value || value === Infinity || value === -Infinity) return '0 ₽';
-    return Math.round(value).toLocaleString() + ' ₽';
+function fmtPrice(v) {
+    if (!v || v === Infinity || v === -Infinity) return '0 ₽';
+    return Math.round(v).toLocaleString() + ' ₽';
 }
 
-function formatMargin(value) {
-    if (!value || value === Infinity || value === -Infinity) return '0%';
-    return Math.round(value) + '%';
+function fmtMargin(v) {
+    if (!v || v === Infinity || v === -Infinity) return '0%';
+    return Math.round(v) + '%';
 }
 
-function formatIO(value) {
-    if (value === Infinity || value === -Infinity || value === 0) return '0';
-    return value.toFixed(1);
+function fmtIO(v) {
+    if (v === Infinity || v === -Infinity || v === 0) return '0';
+    return v.toFixed(1);
 }
 
 // ============================================================
-// ОТРИСОВКА КАРТОЧКИ (СЕТКА)
+// РЕНДЕРИНГ КАРТОЧКИ (СЕТКА)
 // ============================================================
 
 function renderGridCard(group) {
-    const statusLabels = {
-        'no_stock': { label: 'Нет остатков', color: '#6B7280', icon: '⚫' },
-        'deficit': { label: 'Дефицит', color: '#EF4444', icon: '🔴' },
-        'warning': { label: 'Внимание', color: '#F59E0B', icon: '🟡' },
-        'normal': { label: 'В наличии', color: '#10B981', icon: '🟢' }
+    const statusMap = {
+        no_stock: { icon: '⚫', color: '#6B7280' },
+        deficit: { icon: '🔴', color: '#EF4444' },
+        warning: { icon: '🟡', color: '#F59E0B' },
+        normal: { icon: '🟢', color: '#10B981' }
     };
+    const st = statusMap[group.status] || statusMap.normal;
     
-    const statusInfo = statusLabels[group.status] || statusLabels['normal'];
     const sizes = Array.from(group.sizes).sort();
     const colorsCount = group.colors.size;
+    const sizesDisplay = sizes.length > 0 ? sizes.slice(0, 5).join(', ') + (sizes.length > 5 ? ` +${sizes.length - 5}` : '') : 'Нет размеров';
     
     let priceDisplay = '0 ₽';
     if (group.minPrice > 0 && group.minPrice !== Infinity) {
-        if (group.minPrice === group.maxPrice) {
-            priceDisplay = formatPrice(group.minPrice);
-        } else {
-            priceDisplay = `${formatPrice(group.minPrice)} — ${formatPrice(group.maxPrice)}`;
-        }
+        priceDisplay = group.minPrice === group.maxPrice ? fmtPrice(group.minPrice) : `${fmtPrice(group.minPrice)} — ${fmtPrice(group.maxPrice)}`;
     }
     
     let marginDisplay = '0%';
-    if (group.minMargin !== Infinity && group.minMargin > 0) {
-        if (group.minMargin === group.maxMargin) {
-            marginDisplay = formatMargin(group.minMargin);
-        } else {
-            marginDisplay = `${formatMargin(group.minMargin)} — ${formatMargin(group.maxMargin)}`;
-        }
-    } else if (group.maxMargin > 0) {
-        marginDisplay = formatMargin(group.maxMargin);
-    }
+    if (group.maxMargin > 0) marginDisplay = fmtMargin(group.maxMargin);
+    else if (group.minMargin > 0 && group.minMargin !== Infinity) marginDisplay = fmtMargin(group.minMargin);
     
-    const ioDisplay = formatIO(group.io);
-    const sizesDisplay = sizes.length > 0 ? sizes.slice(0, 5).join(', ') + (sizes.length > 5 ? ` +${sizes.length - 5}` : '') : 'Нет размеров';
-
     return `
-        <div class="product-card-grid" data-base="${group.baseModel}" style="cursor:pointer;" onclick="window.openProductCard('${group.baseModel}')">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div class="product-grid-item" data-base="${group.baseModel}" onclick="window.openProductCard('${group.baseModel}')">
+            <div class="product-grid-header">
                 <div>
-                    <div style="font-weight:600;font-size:14px;color:#1A1A2E;">${group.baseModel}</div>
-                    <div style="font-size:12px;color:#6B7280;">${group.name}</div>
+                    <div class="product-grid-name">${group.baseModel}</div>
+                    <div class="product-grid-sub">${group.name}</div>
                 </div>
-                <span style="font-size:14px;">${statusInfo.icon}</span>
+                <span class="product-grid-status">${st.icon}</span>
             </div>
-            
-            <div style="font-size:11px;color:#9CA3AF;margin-bottom:10px;">
-                ${sizesDisplay}
-                ${colorsCount > 0 ? ` · ${colorsCount} цветов` : ''}
-            </div>
-            
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;background:#FAF8FF;padding:10px 12px;border-radius:6px;">
-                <div><span style="color:#6B7280;">Цена:</span> <strong>${priceDisplay}</strong></div>
-                <div><span style="color:#6B7280;">Остаток:</span> <strong>${group.totalStock} шт</strong></div>
-                <div><span style="color:#6B7280;">Маржа:</span> <strong style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</strong></div>
-                <div><span style="color:#6B7280;">ИО:</span> <strong>${ioDisplay}</strong></div>
+            <div class="product-grid-sizes">${sizesDisplay} ${colorsCount > 0 ? `· ${colorsCount} цв.` : ''}</div>
+            <div class="product-grid-metrics">
+                <div><span class="metric-label">Цена</span> <strong>${priceDisplay}</strong></div>
+                <div><span class="metric-label">Остаток</span> <strong>${group.totalStock} шт</strong></div>
+                <div><span class="metric-label">Маржа</span> <strong style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</strong></div>
+                <div><span class="metric-label">ИО</span> <strong>${fmtIO(group.io)}</strong></div>
             </div>
         </div>
     `;
 }
 
 // ============================================================
-// ОТРИСОВКА КАРТОЧКИ (СПИСОК)
+// РЕНДЕРИНГ КАРТОЧКИ (СПИСОК)
 // ============================================================
 
 function renderListCard(group) {
-    const statusLabels = {
-        'no_stock': { label: 'Нет остатков', color: '#6B7280', icon: '⚫' },
-        'deficit': { label: 'Дефицит', color: '#EF4444', icon: '🔴' },
-        'warning': { label: 'Внимание', color: '#F59E0B', icon: '🟡' },
-        'normal': { label: 'В наличии', color: '#10B981', icon: '🟢' }
+    const statusMap = {
+        no_stock: { icon: '⚫' },
+        deficit: { icon: '🔴' },
+        warning: { icon: '🟡' },
+        normal: { icon: '🟢' }
     };
+    const st = statusMap[group.status] || statusMap.normal;
     
-    const statusInfo = statusLabels[group.status] || statusLabels['normal'];
     const sizes = Array.from(group.sizes).sort();
     const colorsCount = group.colors.size;
+    const sizesDisplay = sizes.length > 0 ? sizes.join(', ') : 'Нет размеров';
     
     let priceDisplay = '0 ₽';
     if (group.minPrice > 0 && group.minPrice !== Infinity) {
-        if (group.minPrice === group.maxPrice) {
-            priceDisplay = formatPrice(group.minPrice);
-        } else {
-            priceDisplay = `${formatPrice(group.minPrice)} — ${formatPrice(group.maxPrice)}`;
-        }
+        priceDisplay = group.minPrice === group.maxPrice ? fmtPrice(group.minPrice) : `${fmtPrice(group.minPrice)} — ${fmtPrice(group.maxPrice)}`;
     }
     
     let marginDisplay = '0%';
-    if (group.minMargin !== Infinity && group.minMargin > 0) {
-        if (group.minMargin === group.maxMargin) {
-            marginDisplay = formatMargin(group.minMargin);
-        } else {
-            marginDisplay = `${formatMargin(group.minMargin)} — ${formatMargin(group.maxMargin)}`;
-        }
-    } else if (group.maxMargin > 0) {
-        marginDisplay = formatMargin(group.maxMargin);
-    }
+    if (group.maxMargin > 0) marginDisplay = fmtMargin(group.maxMargin);
+    else if (group.minMargin > 0 && group.minMargin !== Infinity) marginDisplay = fmtMargin(group.minMargin);
     
-    const ioDisplay = formatIO(group.io);
-    const sizesDisplay = sizes.length > 0 ? sizes.join(', ') : 'Нет размеров';
-
     return `
-        <div class="product-card-list" data-base="${group.baseModel}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #F0ECF8;" onclick="window.openProductCard('${group.baseModel}')">
-            <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
-                <span style="font-size:16px;">${statusInfo.icon}</span>
-                <div style="min-width:0;">
-                    <div style="font-weight:600;font-size:13px;color:#1A1A2E;">${group.baseModel}</div>
-                    <div style="font-size:11px;color:#6B7280;">${group.name}</div>
-                </div>
-                <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;">
-                    ${sizesDisplay}
-                    ${colorsCount > 0 ? ` · ${colorsCount} цв.` : ''}
-                </div>
+        <div class="product-list-item" onclick="window.openProductCard('${group.baseModel}')">
+            <span class="product-list-status">${st.icon}</span>
+            <div class="product-list-info">
+                <span class="product-list-name">${group.baseModel}</span>
+                <span class="product-list-sub">${group.name}</span>
+                <span class="product-list-detail">${sizesDisplay} ${colorsCount > 0 ? `· ${colorsCount} цв.` : ''}</span>
             </div>
-            <div style="display:flex;gap:16px;font-size:12px;flex-shrink:0;">
-                <div><span style="color:#6B7280;">Цена:</span> ${priceDisplay}</div>
-                <div><span style="color:#6B7280;">Остаток:</span> ${group.totalStock} шт</div>
-                <div><span style="color:#6B7280;">Маржа:</span> <span style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</span></div>
-                <div><span style="color:#6B7280;">ИО:</span> ${ioDisplay}</div>
+            <div class="product-list-metrics">
+                <span>${priceDisplay}</span>
+                <span>${group.totalStock} шт</span>
+                <span style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</span>
+                <span>${fmtIO(group.io)}</span>
             </div>
         </div>
     `;
 }
 
 // ============================================================
-// ОСНОВНАЯ ФУНКЦИЯ РЕНДЕРИНГА
+// ОСНОВНАЯ ФУНКЦИЯ
 // ============================================================
 
 export async function renderProductList() {
@@ -372,9 +304,9 @@ export async function renderProductList() {
     }
     
     try {
-        await loadData();
+        const groups = await loadData();
         
-        if (allProducts.length === 0) {
+        if (!groups || groups.length === 0) {
             if (emptyContainer) emptyContainer.style.display = 'block';
             if (contentContainer) contentContainer.style.display = 'none';
             if (countEl) countEl.textContent = 'Товаров: 0';
@@ -384,17 +316,14 @@ export async function renderProductList() {
         if (emptyContainer) emptyContainer.style.display = 'none';
         if (contentContainer) contentContainer.style.display = 'block';
         
-        let groups = groupByBase(allProducts);
-        groups = filterGroups(groups);
+        let filtered = filterGroups(groups);
         
         const statusOrder = { deficit: 0, warning: 1, normal: 2, no_stock: 3 };
-        groups.sort((a, b) => (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0));
+        filtered.sort((a, b) => (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0));
         
-        if (countEl) {
-            countEl.textContent = `Товаров: ${groups.length}`;
-        }
+        if (countEl) countEl.textContent = `Товаров: ${filtered.length}`;
         
-        if (groups.length === 0) {
+        if (filtered.length === 0) {
             container.innerHTML = `
                 <div class="card" style="text-align:center;padding:30px;">
                     <div style="font-size:36px;margin-bottom:8px;">🔍</div>
@@ -405,20 +334,20 @@ export async function renderProductList() {
             return;
         }
         
-        // Рендерим в зависимости от режима
         const renderFn = viewMode === 'grid' ? renderGridCard : renderListCard;
-        const containerClass = viewMode === 'grid' ? 'products-grid' : 'products-list';
+        const wrapperClass = viewMode === 'grid' ? 'products-grid-wrapper' : 'products-list-wrapper';
         
-        container.innerHTML = `
-            <div class="${containerClass}">
-                ${groups.map(group => renderFn(group)).join('')}
-            </div>
-        `;
+        container.innerHTML = `<div class="${wrapperClass}">${filtered.map(renderFn).join('')}</div>`;
         
-        console.log(`✅ Отображено ${groups.length} групп товаров (${viewMode} режим)`);
+        // Навешиваем обработчики на переключатели вида
+        document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === viewMode);
+        });
+        
+        console.log(`✅ Отображено ${filtered.length} групп (${viewMode})`);
         
     } catch (error) {
-        console.error('❌ Ошибка:', error.message);
+        console.error('❌ Ошибка:', error);
         container.innerHTML = `
             <div class="card" style="text-align:center;padding:30px;color:#EF4444;">
                 <div style="font-size:48px;margin-bottom:12px;">❌</div>
@@ -434,73 +363,35 @@ export async function renderProductList() {
 // ============================================================
 
 window.openProductCard = function(baseModel) {
-    console.log('📋 Открываем карточку товара:', baseModel);
-    // Переход на страницу карточки
+    if (!baseModel) return;
+    window._selectedBaseModel = baseModel;
     window.navigateTo('product-card');
-    // TODO: передать baseModel в карточку
-    showToast(`📋 Карточка: ${baseModel}`, 'success');
 };
-
-window.openProductGraph = function(baseModel) {
-    console.log('📊 Открываем график для:', baseModel);
-    showToast(`📊 График для: ${baseModel}`, 'success');
-};
-
-window.openProductEdit = function(baseModel) {
-    console.log('✏️ Редактируем:', baseModel);
-    showToast(`✏️ Редактирование: ${baseModel}`, 'success');
-};
-
-// ============================================================
-// ОБНОВЛЕНИЕ ПРИ ИЗМЕНЕНИИ ФИЛЬТРОВ
-// ============================================================
 
 window.refreshProductTable = function() {
     const searchInput = document.getElementById('productSearch');
     const statusSelect = document.getElementById('productFilter');
-    
     if (searchInput) currentFilters.search = searchInput.value;
     if (statusSelect) currentFilters.status = statusSelect.value;
-    
     renderProductList();
 };
 
 window.clearProductFilters = function() {
     const searchInput = document.getElementById('productSearch');
     const statusSelect = document.getElementById('productFilter');
-    
     if (searchInput) searchInput.value = '';
     if (statusSelect) statusSelect.value = 'all';
-    
     currentFilters = { search: '', status: 'all' };
     renderProductList();
 };
 
 window.toggleViewMode = function(mode) {
     viewMode = mode;
-    // Обновляем активную кнопку
-    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.view === mode);
+    document.querySelectorAll('.view-toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === mode);
     });
     renderProductList();
 };
-
-// ============================================================
-// ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ
-// ============================================================
-
-// Навешиваем обработчики на переключатели вида
-document.addEventListener('DOMContentLoaded', function() {
-    const gridBtn = document.getElementById('viewGridBtn');
-    const listBtn = document.getElementById('viewListBtn');
-    
-    if (gridBtn) {
-        gridBtn.addEventListener('click', () => window.toggleViewMode('grid'));
-    }
-    if (listBtn) {
-        listBtn.addEventListener('click', () => window.toggleViewMode('list'));
-    }
-});
 
 // ============================================================
 // ЭКСПОРТ
