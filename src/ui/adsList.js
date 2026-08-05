@@ -76,7 +76,8 @@ function renderSummary(campaigns, metrics) {
 
     let totalSpent = 0;
     let totalOrders = 0;
-    let totalRoi = 0;
+    let totalImpressions = 0;
+    let totalClicks = 0;
     let activeCount = 0;
     let pausedCount = 0;
 
@@ -84,12 +85,14 @@ function renderSummary(campaigns, metrics) {
         const m = metrics[c.id] || {};
         totalSpent += m.spent || 0;
         totalOrders += m.orders || 0;
-        totalRoi += m.roi || 0;
+        totalImpressions += m.impressions || 0;
+        totalClicks += m.clicks || 0;
         if (c.isActive()) activeCount++;
         if (c.isPaused()) pausedCount++;
     });
 
-    const avgRoi = campaigns.length > 0 ? Math.round(totalRoi / campaigns.length) : 0;
+    const avgCtr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : 0;
+    const avgCpc = totalClicks > 0 ? (totalSpent / totalClicks).toFixed(2) : 0;
 
     container.innerHTML = `
         <div class="ads-summary-grid">
@@ -106,8 +109,20 @@ function renderSummary(campaigns, metrics) {
                 <div class="label">Всего заказов</div>
             </div>
             <div class="ads-summary-item">
-                <div class="value" style="color:${avgRoi > 0 ? '#10B981' : '#EF4444'};">${avgRoi}%</div>
-                <div class="label">Средний ROI</div>
+                <div class="value">${totalImpressions.toLocaleString()}</div>
+                <div class="label">Показы</div>
+            </div>
+            <div class="ads-summary-item">
+                <div class="value">${totalClicks}</div>
+                <div class="label">Клики</div>
+            </div>
+            <div class="ads-summary-item">
+                <div class="value">${avgCtr}%</div>
+                <div class="label">Средний CTR</div>
+            </div>
+            <div class="ads-summary-item">
+                <div class="value">${avgCpc} ₽</div>
+                <div class="label">Средний CPC</div>
             </div>
             <div class="ads-summary-item">
                 <div class="value">🟢 ${activeCount} ⏸️ ${pausedCount}</div>
@@ -130,20 +145,16 @@ function renderTable(campaigns, metrics) {
             <table>
                 <thead>
                     <tr>
-                        <th>Кампания</th>
-                        <th>Тип</th>
-                        <th>Статус</th>
-                        <th>Затраты</th>
+                        <th style="min-width:200px;">Кампания</th>
                         <th>Показы</th>
                         <th>Клики</th>
                         <th>CTR</th>
-                        <th>CR</th>
-                        <th>Заказы</th>
                         <th>CPC</th>
-                        <th>ROI</th>
-                        <th>ДРР</th>
+                        <th>Затраты</th>
+                        <th>Заказы</th>
+                        <th>CR</th>
                         <th>Товар</th>
-                        <th style="width:100px;">Действия</th>
+                        <th style="min-width:120px;">Действия</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -153,23 +164,26 @@ function renderTable(campaigns, metrics) {
         const m = metrics[c.id] || {};
         const statusLabel = c.isActive() ? '🟢 Активна' : c.isPaused() ? '⏸️ Приостановлена' : '📦 Архив';
         const statusClass = c.isActive() ? 'status-active' : c.isPaused() ? 'status-paused' : 'status-archived';
-        const roiColor = m.roi > 50 ? '#10B981' : m.roi > 0 ? '#F59E0B' : '#EF4444';
+        
+        // Отображаем привязанный артикул или кнопку "Привязать"
+        const linkedDisplay = c.linkedArticle 
+            ? `<span style="font-size:11px;font-weight:600;color:var(--primary);">${c.linkedArticle}</span>`
+            : `<button class="btn btn-xs btn-secondary" onclick="window.linkArticleToCampaign('${c.id}')">🔗 Привязать</button>`;
 
         html += `
             <tr>
-                <td><strong>${c.name || 'Без названия'}</strong></td>
-                <td>${c.type || '—'}</td>
-                <td class="${statusClass}">${statusLabel}</td>
-                <td>${(m.spent || 0).toLocaleString()} ₽</td>
+                <td>
+                    <div style="font-weight:600;font-size:12px;">${c.campaign || c.name || 'Без названия'}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">${c.startDate ? c.startDate.slice(0,10) : '—'}</div>
+                </td>
                 <td>${(m.impressions || 0).toLocaleString()}</td>
                 <td>${m.clicks || 0}</td>
                 <td>${m.ctr || 0}%</td>
-                <td>${m.cr || 0}%</td>
-                <td>${m.orders || 0}</td>
                 <td>${m.cpc || 0} ₽</td>
-                <td style="color:${roiColor};font-weight:600;">${m.roi || 0}%</td>
-                <td>${m.drr || 0}%</td>
-                <td>${c.linkedArticle || '—'}</td>
+                <td>${(m.spent || 0).toLocaleString()} ₽</td>
+                <td>${m.orders || 0}</td>
+                <td>${m.cr || 0}%</td>
+                <td>${linkedDisplay}</td>
                 <td style="white-space:nowrap;">
                     ${c.isActive() ? 
                         `<button class="btn btn-xs btn-warning" onclick="window.pauseCampaign('${c.id}')">⏸️</button>` : 
@@ -193,7 +207,88 @@ function renderTable(campaigns, metrics) {
 }
 
 // ============================================================
-// УПРАВЛЕНИЕ КАМПАНИЯМИ (ГЛОБАЛЬНЫЕ ФУНКЦИИ)
+// ПРИВЯЗКА АРТИКУЛА К КАМПАНИИ
+// ============================================================
+
+window.linkArticleToCampaign = async function(campaignId) {
+    try {
+        const campaigns = await AdvertisingService.getAll();
+        const campaign = campaigns.find(c => c.id === campaignId);
+        if (!campaign) {
+            showToast('❌ Кампания не найдена', 'error');
+            return;
+        }
+        
+        // Получаем список товаров для выбора
+        const products = await ProductService.getAll();
+        const productOptions = products.map(p => 
+            `<option value="${p.article}">${p.article}</option>`
+        ).join('');
+        
+        // Создаём модалку для выбора артикула
+        const modalHtml = `
+            <div id="linkArticleModal" class="modal" style="display:flex;align-items:center;justify-content:center;">
+                <div class="modal-overlay" onclick="window.closeLinkModal()"></div>
+                <div class="modal-content" style="max-width:500px;">
+                    <div class="modal-header">
+                        <h2>🔗 Привязка артикула</h2>
+                        <button class="modal-close" onclick="window.closeLinkModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="margin-bottom:12px;">
+                            <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">Кампания</label>
+                            <div style="font-size:14px;font-weight:600;word-break:break-word;">${campaign.campaign || campaign.name}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Выберите артикул</label>
+                            <select id="campaignArticleSelect" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);">
+                                <option value="">— Без привязки —</option>
+                                ${productOptions}
+                            </select>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-secondary);margin-top:8px;">
+                            💡 Привязка поможет рассчитать ROI и ДРР для кампании
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="window.closeLinkModal()">Отмена</button>
+                        <button class="btn btn-primary" onclick="window.saveLinkArticle('${campaignId}')">💾 Сохранить</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Добавляем модалку в DOM
+        const existingModal = document.getElementById('linkArticleModal');
+        if (existingModal) existingModal.remove();
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (error) {
+        showToast('❌ Ошибка: ' + error.message, 'error');
+    }
+};
+
+window.closeLinkModal = function() {
+    const modal = document.getElementById('linkArticleModal');
+    if (modal) modal.remove();
+};
+
+window.saveLinkArticle = async function(campaignId) {
+    const select = document.getElementById('campaignArticleSelect');
+    const article = select.value;
+    
+    try {
+        await AdvertisingService.linkProduct(campaignId, article || null);
+        showToast('✅ Артикул привязан', 'success');
+        window.closeLinkModal();
+        renderAdsList();
+    } catch (error) {
+        showToast('❌ Ошибка: ' + error.message, 'error');
+    }
+};
+
+// ============================================================
+// УПРАВЛЕНИЕ КАМПАНИЯМИ
 // ============================================================
 
 window.pauseCampaign = async function(id) {
