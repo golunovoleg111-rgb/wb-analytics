@@ -202,36 +202,42 @@
             </div>
         </section>
 
-        <!-- ===================== ТОВАРЫ ===================== -->
+        <!-- ===================== ТОВАРЫ (ОБНОВЛЕН) ===================== -->
         <section id="page-products" class="page">
             <div class="page-header">
                 <h1>📋 Карточки товаров</h1>
-                <span style="font-size:12px;color:var(--text-secondary);">Управление ассортиментом</span>
+                <span style="font-size:12px;color:var(--text-secondary);" class="products-count">Товаров: 0</span>
             </div>
 
             <div id="productsEmpty" class="card" style="text-align:center;">
                 <div style="font-size:48px;margin-bottom:12px;">📥</div>
                 <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
                 <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
-                    Импортируйте <strong>номенклатуру</strong>, <strong>продажи</strong> и <strong>остатки</strong> в разделе «Импорт»
+                    Импортируйте <strong>номенклатуру</strong> в разделе «Импорт»
                 </div>
                 <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
             </div>
 
             <div id="productsContent" style="display:none;">
+                <!-- Фильтры -->
                 <div class="card" style="margin-bottom:14px;">
                     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <input type="text" id="productSearch" placeholder="🔍 Поиск по артикулу..." style="flex:1;min-width:180px;" oninput="refreshProductTable()">
-                        <select id="productFilter" style="min-width:140px;" onchange="refreshProductTable()">
-                            <option value="all">Все товары</option>
-                            <option value="profitable">🟢 Прибыльные</option>
-                            <option value="lowMargin">🟡 Низкая маржа</option>
-                            <option value="unprofitable">🔴 Убыточные</option>
-                            <option value="deficit">⚠️ Дефицит</option>
+                        <input type="text" id="productSearch" placeholder="🔍 Поиск по артикулу или названию..." 
+                               style="flex:1;min-width:180px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);" 
+                               oninput="window.refreshProductTable()">
+                        <select id="productFilter" style="min-width:140px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);" 
+                                onchange="window.refreshProductTable()">
+                            <option value="all">📋 Все товары</option>
+                            <option value="normal">🟢 В наличии</option>
+                            <option value="warning">🟡 Внимание</option>
+                            <option value="deficit">🔴 Дефицит</option>
+                            <option value="no_stock">⚫ Нет остатков</option>
                         </select>
-                        <button class="btn btn-secondary btn-sm" id="clearFilterBtn">Сбросить</button>
+                        <button class="btn btn-secondary btn-sm" onclick="window.clearProductFilters()">🔄 Сбросить</button>
                     </div>
                 </div>
+                
+                <!-- Список товаров -->
                 <div id="productsGroupedList"></div>
             </div>
         </section>
@@ -429,22 +435,22 @@
                 </div>
 
                 <!-- Маржинальность -->
-<div class="card import-card" style="border:2px solid var(--primary-light);">
-    <div class="card-title">📊 Маржинальность</div>
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
-        Загрузка экономических показателей по товарам
-    </div>
-    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('margin')" style="margin-bottom:10px;">
-        📥 Шаблон
-    </button>
-    <div class="drop-zone" id="marginDropZone">
-        <div style="font-size:28px;">📤</div>
-        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
-        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
-    </div>
-    <input type="file" id="marginFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-    <div id="marginImportStatus" style="margin-top:8px;font-size:12px;"></div>
-</div>
+                <div class="card import-card" style="border:2px solid var(--primary-light);">
+                    <div class="card-title">📊 Маржинальность</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                        Загрузка экономических показателей по товарам
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('margin')" style="margin-bottom:10px;">
+                        📥 Шаблон
+                    </button>
+                    <div class="drop-zone" id="marginDropZone">
+                        <div style="font-size:28px;">📤</div>
+                        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
+                        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
+                    </div>
+                    <input type="file" id="marginFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+                    <div id="marginImportStatus" style="margin-top:8px;font-size:12px;"></div>
+                </div>
 
                 <!-- Реклама -->
                 <div class="card import-card">
@@ -1015,6 +1021,26 @@
     });
 
     // ============================================================
+    // ФИЛЬТРЫ ТОВАРОВ
+    // ============================================================
+
+    window.clearProductFilters = function() {
+        const searchInput = document.getElementById('productSearch');
+        const filterSelect = document.getElementById('productFilter');
+        
+        if (searchInput) searchInput.value = '';
+        if (filterSelect) filterSelect.value = 'all';
+        
+        window.refreshProductTable();
+    };
+
+    window.refreshProductTable = function() {
+        import('./src/ui/productList.js').then(module => {
+            module.renderProductList();
+        });
+    };
+
+    // ============================================================
     // НАСТРОЙКА DROP ZONE ДЛЯ ИМПОРТА
     // ============================================================
 
@@ -1146,8 +1172,8 @@
     setupImportDropZone('nomenclatureDropZone', 'nomenclatureFileInput', 'nomenclature');
     setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
     setupImportDropZone('pricesDropZone', 'pricesFileInput', 'prices');
+    setupImportDropZone('marginDropZone', 'marginFileInput', 'margin');
     setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
-        setupImportDropZone('marginDropZone', 'marginFileInput', 'margin');
     setupStockDropZone();
 
     </script>
