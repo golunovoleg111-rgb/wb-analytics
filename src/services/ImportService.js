@@ -66,7 +66,11 @@ const TEMPLATES = {
         description: '📊 Маржинальность — экономические показатели по товарам'
     },
     [ImportTypes.ADS]: {
-        columns: ['Кампания', 'Тип ставки', 'ID', 'Показы', 'Клики', 'CPC', 'CTR', 'CR', 'Затраты', 'Заказанные товары, шт'],
+        columns: [
+            'Кампания', 'Старт', 'Финиш', 'Показы', 'Частота',
+            'Клики', 'CPC', 'CPM', 'CTR(%)', 'Длительность',
+            'CR(%)', 'Затраты', 'Заказанные товары, шт', 'Добавления в корзину'
+        ],
         required: ['Кампания', 'Затраты', 'Заказанные товары, шт'],
         filename: 'StockFlow_Шаблон_Реклама.xlsx',
         description: '📢 Реклама — эффективность рекламных кампаний'
@@ -90,7 +94,13 @@ const EXAMPLES = {
         '80,77 р.', '88 682,32 р.', '2 884 446,00 р.', '884 988,00 р.',
         '3%', '8,45', '35'
     ],
-    [ImportTypes.ADS]: ['Кампания от 06.05.2025', 'Единая Ставка', '36386799', '12500', '320', '45.5', '2.56', '4.2', '14560', '13']
+    [ImportTypes.ADS]: [
+        'Кампания от 29.06.2026 - КЗЖ№2 - Беж - Авто',
+        '2026-06-29 11:02:28',
+        '2026-08-05 15:42:54',
+        '2', '1', '0', '0', '320', '0', '892:40:26',
+        '0', '0,64', '0', '0'
+    ]
 };
 
 // ============================================================
@@ -231,22 +241,15 @@ function parseUniversalNumber(value) {
     let str = cleanString(String(value));
     if (!str) return 0;
     
-    // Проверяем на N/A, н/д, —
     const naPatterns = ['n/a', 'н/д', '—', '-', 'na', 'undefined', 'null'];
     if (naPatterns.some(p => str.toLowerCase() === p)) {
         return 0;
     }
     
-    // Убираем р. и пробелы
     str = str.replace(/р\./g, '').replace(/\s/g, '');
-    
-    // Убираем % если есть
     str = str.replace(/%/g, '');
-    
-    // Заменяем запятую на точку
     str = str.replace(/,/g, '.');
     
-    // Парсим число
     const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
 }
@@ -732,7 +735,7 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ МАРЖИНАЛЬНОСТИ (MARGIN) — МАКСИМАЛЬНО УНИВЕРСАЛЬНЫЙ
+            // ПАРСИНГ МАРЖИНАЛЬНОСТИ (MARGIN)
             // ============================================================
             if (type === ImportTypes.MARGIN) {
                 const article = findValue(row, ['Артикул']);
@@ -778,191 +781,33 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ РЕКЛАМЫ
+            // ПАРСИНГ РЕКЛАМЫ (ADS) — ОБНОВЛЕННЫЙ
             // ============================================================
             if (type === ImportTypes.ADS) {
-                const record = {
-                    campaign: findValue(row, ['Кампания', 'campaign']) || '',
-                    type: findValue(row, ['Тип ставки', 'type']) || '',
-                    wbId: findValue(row, ['ID', 'id']) || '',
-                    impressions: parseNumber(findValue(row, ['Показы', 'impressions'])),
-                    clicks: parseNumber(findValue(row, ['Клики', 'clicks'])),
-                    cpc: parseNumber(findValue(row, ['CPC', 'cpc'])),
-                    ctr: parseNumber(findValue(row, ['CTR', 'ctr'])),
-                    cr: parseNumber(findValue(row, ['CR', 'cr'])),
-                    spent: parseNumber(findValue(row, ['Затраты', 'spent'])),
-                    orders_from_ad: parseNumber(findValue(row, ['Заказанные товары, шт', 'orders_from_ad']))
+                const campaign = findValue(row, ['Кампания', 'campaign']);
+                
+                if (!campaign) {
+                    errors.push({ row: rowNum, errors: ['Название кампании не найдено'] });
+                    return;
+                }
+                
+                // Парсинг даты с временем
+                const parseDateTime = (value) => {
+                    if (!value) return null;
+                    const str = cleanString(value);
+                    if (!str) return null;
+                    const date = new Date(str);
+                    return isNaN(date.getTime()) ? null : date.toISOString();
                 };
-
-                records.push(record);
-                return;
-            }
-        });
-
-        console.log(`📊 Итоги: всего ${data.length} строк, ✅ ${records.length} валидных, ❌ ${errors.length} ошибок`);
-
-        if (errors.length > 0) {
-            console.log('🔴 ПЕРВЫЕ 10 ОШИБОК:');
-            errors.slice(0, 10).forEach(err => {
-                console.log(`  Строка ${err.row}: ${err.errors.join(', ')}`);
-            });
-        }
-
-        return {
-            success: errors.length === 0,
-            records,
-            errors,
-            total: data.length,
-            valid: records.length,
-            invalid: errors.length
-        };
-    }
-
-    static async _saveData(records, type) {
-        const storeMap = {
-            [ImportTypes.NOMENCLATURE]: 'products',
-            [ImportTypes.SALES]: 'sales',
-            [ImportTypes.STOCK_DAILY]: 'stock',
-            [ImportTypes.STOCK_CURRENT]: 'stock',
-            [ImportTypes.PRICES]: 'products',
-            [ImportTypes.MARGIN]: 'products',
-            [ImportTypes.ADS]: 'ads'
-        };
-
-        const storeName = storeMap[type];
-        if (!storeName) throw new Error(`Неизвестное хранилище для типа: ${type}`);
-
-        // Для PRICES — обновляем цены
-        if (type === ImportTypes.PRICES) {
-            let updated = 0;
-            let skipped = 0;
-            
-            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            
-            for (const record of records) {
-                if (record._type === 'price_record') {
-                    const matchingProducts = allProducts.filter(p => 
-                        p.article === record.article || 
-                        p.articleKey.startsWith(record.article + '|')
-                    );
-                    
-                    if (matchingProducts.length === 0) {
-                        skipped++;
-                        continue;
-                    }
-                    
-                    for (const product of matchingProducts) {
-                        product.price = record.price;
-                        product.discount = record.discount;
-                        product.priceWithDiscount = record.priceWithDiscount;
-                        product.updatedAt = new Date().toISOString();
-                        await Database.save(Database.STORES.PRODUCTS, product);
-                        updated++;
-                    }
-                }
-            }
-            
-            console.log(`[ImportService] Цены: обновлено ${updated}, пропущено ${skipped}`);
-            return records;
-        }
-
-        // Для MARGIN — обновляем экономические показатели
-        if (type === ImportTypes.MARGIN) {
-            let updated = 0;
-            let skipped = 0;
-            
-            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            
-            for (const record of records) {
-                const matchingProducts = allProducts.filter(p => 
-                    p.article === record.article || 
-                    p.articleKey.startsWith(record.article + '|')
-                );
                 
-                if (matchingProducts.length === 0) {
-                    skipped++;
-                    continue;
-                }
-                
-                for (const product of matchingProducts) {
-                    product.purchasePrice = record.purchasePrice;
-                    product.marketPrice = record.marketPrice;
-                    product.clientPrice = record.clientPrice;
-                    product.wbCommission = record.wbCommission;
-                    product.tax = record.tax;
-                    product.storageCost = record.storageCost;
-                    product.storageDays = record.storageDays;
-                    product.packaging = record.packaging;
-                    product.logistics = record.logistics;
-                    product.totalCost = record.totalCost;
-                    product.profitPerUnit = record.profitPerUnit;
-                    product.profitTotal = record.profitTotal;
-                    product.revenue = record.revenue;
-                    product.investment = record.investment;
-                    product.margin = record.margin;
-                    product.volume = record.volume;
-                    product.buyoutPercent = record.buyoutPercent;
-                    product.updatedAt = new Date().toISOString();
-                    await Database.save(Database.STORES.PRODUCTS, product);
-                    updated++;
-                }
-            }
-            
-            console.log(`[ImportService] Маржинальность: обновлено ${updated}, пропущено ${skipped}`);
-            return records;
-        }
-
-        if (type === ImportTypes.NOMENCLATURE) {
-            const existingProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            const existingKeys = new Set(existingProducts.map(p => p.articleKey));
-
-            let added = 0, skipped = 0;
-            for (const record of records) {
-                if (existingKeys.has(record.articleKey)) {
-                    skipped++;
-                    continue;
-                }
-                await Database.save(Database.STORES.PRODUCTS, {
-                    id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-                    ...record,
-                    importDate: new Date().toISOString()
-                });
-                added++;
-            }
-
-            console.log(`[ImportService] Номенклатура: +${added}, пропущено ${skipped}`);
-            return records.filter(r => !existingKeys.has(r.articleKey));
-        }
-
-        await Database.clear(storeName);
-        for (const record of records) {
-            await Database.save(storeName, {
-                id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-                ...record,
-                importDate: new Date().toISOString()
-            });
-        }
-
-        console.log(`[ImportService] ${type}: сохранено ${records.length} записей`);
-        return records;
-    }
-
-    static downloadTemplate(type) {
-        const template = TEMPLATES[type];
-        if (!template) {
-            console.error(`Неизвестный тип: ${type}`);
-            return;
-        }
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet([template.columns]);
-        if (EXAMPLES[type]) {
-            XLSX.utils.sheet_add_aoa(ws, [EXAMPLES[type]], { origin: 'A2' });
-        }
-        ws['!cols'] = template.columns.map(() => ({ wch: 22 }));
-        XLSX.utils.book_append_sheet(wb, ws, 'Шаблон');
-        XLSX.writeFile(wb, template.filename);
-    }
-}
-
-export default ImportService;
+                const record = {
+                    campaign: cleanString(campaign),
+                    startDate: parseDateTime(findValue(row, ['Старт', 'start'])),
+                    finishDate: parseDateTime(findValue(row, ['Финиш', 'finish'])),
+                    impressions: parseNumber(findValue(row, ['Показы'])),
+                    frequency: parseNumber(findValue(row, ['Частота'])),
+                    clicks: parseNumber(findValue(row, ['Клики'])),
+                    cpc: parseNumber(findValue(row, ['CPC'])),
+                    cpm: parseNumber(findValue(row, ['CPM'])),
+                    ctr: parseNumber(findValue(row, ['CTR(%)', 'CTR'])),
+                    duration: clean
