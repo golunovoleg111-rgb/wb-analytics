@@ -428,6 +428,24 @@
                     <div id="pricesImportStatus" style="margin-top:8px;font-size:12px;"></div>
                 </div>
 
+                <!-- Маржинальность -->
+<div class="card import-card" style="border:2px solid var(--primary-light);">
+    <div class="card-title">📊 Маржинальность</div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+        Загрузка экономических показателей по товарам
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('margin')" style="margin-bottom:10px;">
+        📥 Шаблон
+    </button>
+    <div class="drop-zone" id="marginDropZone">
+        <div style="font-size:28px;">📤</div>
+        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
+        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
+    </div>
+    <input type="file" id="marginFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+    <div id="marginImportStatus" style="margin-top:8px;font-size:12px;"></div>
+</div>
+
                 <!-- Реклама -->
                 <div class="card import-card">
                     <div class="card-title">📢 Реклама</div>
@@ -1129,6 +1147,7 @@
     setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
     setupImportDropZone('pricesDropZone', 'pricesFileInput', 'prices');
     setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
+        setupImportDropZone('marginDropZone', 'marginFileInput', 'margin');
     setupStockDropZone();
 
     </script>
