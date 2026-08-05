@@ -17,9 +17,21 @@ let salesChartInstance = null;
 // ============================================================
 
 async function getSalesAnalytics(period) {
+    console.log('🔍 Загрузка аналитики продаж за', period, 'дней');
+    
     // Получаем все продажи
     const allSales = await SalesService.getAll();
+    console.log('📊 Всего продаж в базе:', allSales.length);
     
+    if (allSales.length === 0) {
+        return {
+            chartData: [],
+            topProducts: [],
+            summary: { revenue: 0, orders: 0, delivered: 0, avgOrderValue: 0 },
+            totalRecords: 0
+        };
+    }
+
     // Получаем товары для сопоставления артикулов
     const products = await ProductService.getAll();
     const productMap = {};
@@ -34,7 +46,19 @@ async function getSalesAnalytics(period) {
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = today.toISOString().split('T')[0];
 
+    console.log('📅 Период:', startStr, '—', endStr);
+
     const filtered = allSales.filter(s => s.date >= startStr && s.date <= endStr);
+    console.log('📊 Продаж за период:', filtered.length);
+
+    if (filtered.length === 0) {
+        return {
+            chartData: [],
+            topProducts: [],
+            summary: { revenue: 0, orders: 0, delivered: 0, avgOrderValue: 0 },
+            totalRecords: 0
+        };
+    }
 
     // Агрегируем по дням
     const dailyData = {};
@@ -42,32 +66,43 @@ async function getSalesAnalytics(period) {
         if (!dailyData[s.date]) {
             dailyData[s.date] = { revenue: 0, orders: 0, delivered: 0, count: 0 };
         }
-        dailyData[s.date].revenue += s.amount;
-        dailyData[s.date].orders += s.orders;
-        dailyData[s.date].delivered += s.delivered;
+        dailyData[s.date].revenue += s.amount || 0;
+        dailyData[s.date].orders += s.orders || 0;
+        dailyData[s.date].delivered += s.delivered || 0;
         dailyData[s.date].count += 1;
     });
 
     // Сортируем по датам
     const sortedDates = Object.keys(dailyData).sort();
-    const chartData = sortedDates.map(date => ({
-        date,
-        revenue: dailyData[date].revenue,
-        orders: dailyData[date].orders,
-        delivered: dailyData[date].delivered
-    }));
+    const chartData = sortedDates.map(date => {
+        // Форматируем дату для отображения (DD.MM)
+        const parts = date.split('-');
+        const day = parts[2];
+        const month = parts[1];
+        const displayDate = `${day}.${month}`;
+        return {
+            date: displayDate,
+            dateFull: date,
+            revenue: dailyData[date].revenue,
+            orders: dailyData[date].orders,
+            delivered: dailyData[date].delivered
+        };
+    });
 
     // Топ-5 товаров по выручке
-const productSales = {};
-filtered.forEach(s => {
-    // Используем article из записи, а не productId
-    const article = s.article || productMap[s.productId] || s.productId;
-    if (!productSales[article]) {
-        productSales[article] = { revenue: 0, orders: 0 };
-    }
-    productSales[article].revenue += s.amount;
-    productSales[article].orders += s.orders;
-});
+    const productSales = {};
+    filtered.forEach(s => {
+        // ✅ Используем article из записи, если есть
+        let article = s.article || productMap[s.productId] || s.productId;
+        // ✅ Убираем суффикс |nosize|nocolor если есть
+        article = article.replace(/\|nosize\|nocolor$/i, '');
+        
+        if (!productSales[article]) {
+            productSales[article] = { revenue: 0, orders: 0 };
+        }
+        productSales[article].revenue += s.amount || 0;
+        productSales[article].orders += s.orders || 0;
+    });
 
     const topProducts = Object.keys(productSales)
         .map(article => ({
@@ -79,10 +114,17 @@ filtered.forEach(s => {
         .slice(0, 5);
 
     // Итоговые показатели
-    const totalRevenue = filtered.reduce((sum, s) => sum + s.amount, 0);
-    const totalOrders = filtered.reduce((sum, s) => sum + s.orders, 0);
-    const totalDelivered = filtered.reduce((sum, s) => sum + s.delivered, 0);
+    const totalRevenue = filtered.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const totalOrders = filtered.reduce((sum, s) => sum + (s.orders || 0), 0);
+    const totalDelivered = filtered.reduce((sum, s) => sum + (s.delivered || 0), 0);
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    console.log('📊 Итоги:', {
+        revenue: totalRevenue,
+        orders: totalOrders,
+        delivered: totalDelivered,
+        avgOrderValue
+    });
 
     return {
         chartData,
@@ -134,7 +176,7 @@ export async function renderSalesAnalytics() {
 
         // 1. Выбор периода
         html += `
-            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
                 <button class="btn ${currentPeriod === 7 ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.setSalesPeriod(7)">7 дней</button>
                 <button class="btn ${currentPeriod === 14 ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.setSalesPeriod(14)">14 дней</button>
                 <button class="btn ${currentPeriod === 30 ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.setSalesPeriod(30)">30 дней</button>
@@ -251,8 +293,13 @@ function renderSalesChart(chartData) {
         salesChartInstance = null;
     }
 
+    if (!chartData || chartData.length === 0) {
+        console.warn('⚠️ Нет данных для графика');
+        return;
+    }
+
     const ctx = canvas.getContext('2d');
-    const labels = chartData.map(d => d.date.slice(0, 5)); // ДД.ММ
+    const labels = chartData.map(d => d.date);
     const revenueData = chartData.map(d => d.revenue);
     const ordersData = chartData.map(d => d.orders);
 
