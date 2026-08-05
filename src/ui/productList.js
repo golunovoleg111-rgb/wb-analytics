@@ -153,11 +153,27 @@ function filterGroups(groups) {
             return false;
         }
         
-        // Склад (пока пропускаем, т.к. данные по складам ещё не подключены)
-        // TODO: добавить фильтр по складу
-        
         return true;
     });
+}
+
+// ============================================================
+// ФОРМАТИРОВАНИЕ ЧИСЕЛ
+// ============================================================
+
+function formatPrice(value) {
+    if (!value || value === Infinity) return '0 ₽';
+    return Math.round(value).toLocaleString() + ' ₽';
+}
+
+function formatMargin(value) {
+    if (!value || value === Infinity || value === -Infinity) return '0%';
+    return Math.round(value) + '%';
+}
+
+function formatIO(value) {
+    if (value === Infinity || value === 0) return '0';
+    return value.toFixed(1);
 }
 
 // ============================================================
@@ -179,64 +195,82 @@ function renderGroupCard(group) {
     const colors = Array.from(group.colors);
     
     // Цена: показываем диапазон или одну цену
-    const priceDisplay = group.minPrice === group.maxPrice 
-        ? `${group.minPrice.toLocaleString()} ₽`
-        : `${group.minPrice.toLocaleString()} — ${group.maxPrice.toLocaleString()} ₽`;
+    let priceDisplay = '0 ₽';
+    if (group.minPrice > 0 && group.minPrice !== Infinity) {
+        if (group.minPrice === group.maxPrice) {
+            priceDisplay = formatPrice(group.minPrice);
+        } else {
+            priceDisplay = `${formatPrice(group.minPrice)} — ${formatPrice(group.maxPrice)}`;
+        }
+    }
     
     // Маржа: диапазон
-    const marginDisplay = group.minMargin === group.maxMargin
-        ? `${group.minMargin}%`
-        : `${group.minMargin}% — ${group.maxMargin}%`;
+    let marginDisplay = '0%';
+    if (group.minMargin !== Infinity && group.minMargin > 0) {
+        if (group.minMargin === group.maxMargin) {
+            marginDisplay = formatMargin(group.minMargin);
+        } else {
+            marginDisplay = `${formatMargin(group.minMargin)} — ${formatMargin(group.maxMargin)}`;
+        }
+    } else if (group.maxMargin > 0) {
+        marginDisplay = formatMargin(group.maxMargin);
+    }
     
     // ИО
-    const ioDisplay = group.io >= 999 ? '∞' : group.io.toFixed(1);
+    const ioDisplay = formatIO(group.io);
     
+    // Размеры и цвета для отображения
+    const sizesDisplay = sizes.length > 0 ? sizes.join(', ') : 'Нет размеров';
+    const colorsCount = colors.length > 0 ? colors.length : 0;
+
     return `
-        <div class="product-group" data-base="${group.baseModel}" style="border-left:4px solid ${statusInfo.color};">
-            <div class="product-group-header" onclick="window.toggleGroup(this)">
-                <span class="product-group-icon">${statusInfo.icon}</span>
-                <div class="product-group-info">
-                    <div class="product-group-name">
+        <div class="product-group" data-base="${group.baseModel}" style="border-left:4px solid ${statusInfo.color};margin-bottom:8px;background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.04);">
+            <div class="product-group-header" onclick="window.toggleGroup(this)" style="display:flex;align-items:center;padding:12px 16px;cursor:pointer;gap:12px;">
+                <span class="product-group-icon" style="font-size:18px;flex-shrink:0;">${statusInfo.icon}</span>
+                <div class="product-group-info" style="flex:1;min-width:0;">
+                    <div class="product-group-name" style="font-weight:600;font-size:14px;color:#1A1A2E;">
                         ${group.baseModel}
-                        <span style="font-size:12px;font-weight:400;color:var(--text-secondary);margin-left:8px;">
+                        <span style="font-size:12px;font-weight:400;color:#6B7280;margin-left:8px;">
                             ${group.name}
                         </span>
                     </div>
-                    <div class="product-group-category">
-                        ${sizes.length > 0 ? `Размеры: ${sizes.join(', ')}` : 'Размер: NOSIZE'}
-                        ${colors.length > 0 ? ` · Цвета: ${colors.length}` : ''}
+                    <div class="product-group-category" style="font-size:11px;color:#9CA3AF;margin-top:2px;">
+                        ${sizesDisplay}
+                        ${colorsCount > 0 ? ` · ${colorsCount} цветов` : ''}
                     </div>
                 </div>
-                <div class="product-group-metrics">
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">Цена</div>
-                        <div class="product-group-metric-value">${priceDisplay}</div>
+                <div class="product-group-metrics" style="display:flex;gap:16px;font-size:12px;flex-shrink:0;flex-wrap:wrap;">
+                    <div class="product-group-metric" style="text-align:center;">
+                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Цена</div>
+                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;">${priceDisplay}</div>
                     </div>
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">Остаток</div>
-                        <div class="product-group-metric-value">${group.totalStock} шт</div>
+                    <div class="product-group-metric" style="text-align:center;">
+                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Остаток</div>
+                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;">${group.totalStock} шт</div>
                     </div>
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">Маржа</div>
-                        <div class="product-group-metric-value" style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</div>
+                    <div class="product-group-metric" style="text-align:center;">
+                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Маржа</div>
+                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</div>
                     </div>
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">ИО</div>
-                        <div class="product-group-metric-value">${ioDisplay}</div>
+                    <div class="product-group-metric" style="text-align:center;">
+                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">ИО</div>
+                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;">${ioDisplay}</div>
                     </div>
                 </div>
-                <span class="product-group-arrow">▶</span>
+                <span class="product-group-arrow" style="font-size:10px;color:#9CA3AF;transition:transform 0.2s;flex-shrink:0;">▶</span>
             </div>
-            <div class="product-group-items">
-                <div style="padding:12px 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <div class="product-group-items" style="display:none;padding:12px 16px;border-top:1px solid #F0ECF8;background:#FAF8FF;border-radius:0 0 8px 8px;">
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
                     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;">
-                        <span style="font-size:11px;color:var(--text-secondary);font-weight:500;">Размер:</span>
-                        <select class="product-size-select" data-base="${group.baseModel}" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:12px;background:var(--bg-input);">
-                            ${sizes.length > 0 ? sizes.map(s => `<option value="${s}">${s}</option>`).join('') : '<option value="NOSIZE">NOSIZE</option>'}
-                        </select>
+                        ${sizes.length > 0 ? `
+                            <span style="font-size:11px;color:#6B7280;font-weight:500;">Размер:</span>
+                            <select class="product-size-select" data-base="${group.baseModel}" style="padding:4px 8px;border:1px solid #E5E0F0;border-radius:6px;font-size:12px;background:#FAF8FF;">
+                                ${sizes.map(s => `<option value="${s}">${s}</option>`).join('')}
+                            </select>
+                        ` : ''}
                         ${colors.length > 0 ? `
-                            <span style="font-size:11px;color:var(--text-secondary);font-weight:500;margin-left:8px;">Цвет:</span>
-                            <select class="product-color-select" data-base="${group.baseModel}" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:12px;background:var(--bg-input);">
+                            <span style="font-size:11px;color:#6B7280;font-weight:500;margin-left:8px;">Цвет:</span>
+                            <select class="product-color-select" data-base="${group.baseModel}" style="padding:4px 8px;border:1px solid #E5E0F0;border-radius:6px;font-size:12px;background:#FAF8FF;">
                                 ${colors.map(c => `<option value="${c}">${c}</option>`).join('')}
                             </select>
                         ` : ''}
@@ -262,6 +296,7 @@ export async function renderProductList() {
     const container = document.getElementById('productsGroupedList');
     const emptyContainer = document.getElementById('productsEmpty');
     const contentContainer = document.getElementById('productsContent');
+    const countEl = document.querySelector('.products-count');
     
     if (!container) {
         console.warn('⚠️ Контейнер productsGroupedList не найден');
@@ -274,6 +309,7 @@ export async function renderProductList() {
         if (allProducts.length === 0) {
             if (emptyContainer) emptyContainer.style.display = 'block';
             if (contentContainer) contentContainer.style.display = 'none';
+            if (countEl) countEl.textContent = 'Товаров: 0';
             return;
         }
         
@@ -290,6 +326,11 @@ export async function renderProductList() {
         const statusOrder = { deficit: 0, warning: 1, normal: 2, no_stock: 3 };
         groups.sort((a, b) => (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0));
         
+        // Обновляем счётчик
+        if (countEl) {
+            countEl.textContent = `Товаров: ${groups.length}`;
+        }
+        
         if (groups.length === 0) {
             container.innerHTML = `
                 <div class="card" style="text-align:center;padding:30px;color:var(--text-secondary);">
@@ -303,12 +344,6 @@ export async function renderProductList() {
         
         // Рендерим карточки
         container.innerHTML = groups.map(group => renderGroupCard(group)).join('');
-        
-        // Обновляем счётчик
-        const countEl = document.querySelector('.products-count');
-        if (countEl) {
-            countEl.textContent = `${groups.length} товаров`;
-        }
         
         console.log(`✅ Отображено ${groups.length} групп товаров`);
         
@@ -342,8 +377,6 @@ window.toggleGroup = function(header) {
 
 window.openProductCard = function(baseModel) {
     console.log('📋 Открываем карточку товара:', baseModel);
-    // TODO: переход на страницу product-card
-    // пока просто показываем уведомление
     showToast(`📋 Открываем карточку: ${baseModel}`, 'success');
 };
 
