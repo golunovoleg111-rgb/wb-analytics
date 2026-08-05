@@ -16,7 +16,7 @@ export const ImportTypes = {
 };
 
 // ============================================================
-// ШАБЛОНЫ КОЛОНОК (ОБНОВЛЕНЫ)
+// ШАБЛОНЫ КОЛОНОК
 // ============================================================
 
 const TEMPLATES = {
@@ -30,11 +30,10 @@ const TEMPLATES = {
             'Состав ткани',
             'GTIN'
         ],
-        required: ['Артикул продавца'],
+        required: ['Артикул продавца', 'Название карточки', 'Размер', 'Баркод'],
         filename: 'StockFlow_Шаблон_Номенклатура.xlsx'
     },
     [ImportTypes.SALES]: {
-        // ✅ НОВЫЙ ШАБЛОН — под "Динамику продаж"
         columns: [
             'День',
             'Артикул продавца',
@@ -77,12 +76,12 @@ const TEMPLATES = {
 };
 
 // ============================================================
-// ПРИМЕРЫ ДЛЯ ШАБЛОНОВ (ОБНОВЛЕНЫ)
+// ПРИМЕРЫ ДЛЯ ШАБЛОНОВ
 // ============================================================
 
 const EXAMPLES = {
     [ImportTypes.NOMENCLATURE]: [
-        '210_Комбез_графит',
+        '210_Комбез_графит_42',
         'Комбез графит',
         '42',
         '4601234567890',
@@ -91,7 +90,6 @@ const EXAMPLES = {
         '04601234567890'
     ],
     [ImportTypes.SALES]: [
-        // ✅ НОВЫЙ ПРИМЕР — под "Динамику продаж"
         '01.05.2026',
         '210_Комбез_графит',
         '3',
@@ -125,46 +123,180 @@ const EXAMPLES = {
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================================
 
-function getYesterdayStr() {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return String(d.getDate()).padStart(2, '0') + '.' +
-           String(d.getMonth() + 1).padStart(2, '0') + '.' +
-           d.getFullYear();
+/**
+ * Парсинг артикула: выделение базы, цвета, размера
+ * Поддерживает форматы:
+ * - 210_Комбез_графит_42
+ * - 210_Комбез_графит
+ * - 216_К_Замша_№1_коричневый
+ * - 24_К_Велюр_розовый
+ */
+function parseArticle(article) {
+    if (!article) {
+        return { baseModel: '', color: '', size: '', full: '' };
+    }
+
+    const full = article.trim();
+    let baseModel = full;
+    let color = '';
+    let size = '';
+
+    // Разбиваем на части по '_'
+    const parts = full.split('_');
+    
+    if (parts.length === 1) {
+        // Простой артикул без разделителей
+        return { baseModel: full, color: '', size: '', full };
+    }
+
+    // Ищем размер (число в конце или в любом месте)
+    let sizeIndex = -1;
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i].trim();
+        // Размер может быть: 42, 44, 46, 48, 50, 52, 54, 56, M, L, XL, XXL, XS, S
+        if (part.match(/^\d{2,3}$/) || part.match(/^[XxSsMmLl]{1,4}$/)) {
+            sizeIndex = i;
+            size = part;
+            break;
+        }
+    }
+
+    // Если размер найден — удаляем его из частей
+    const nameParts = [];
+    let colorPart = '';
+
+    for (let i = 0; i < parts.length; i++) {
+        if (i === sizeIndex) continue;
+        const part = parts[i].trim();
+        if (!part) continue;
+        
+        // Проверяем, не является ли часть цветом
+        const colorKeywords = ['белый', 'черный', 'серый', 'красный', 'синий', 'зеленый', 'желтый', 
+                               'розовый', 'голубой', 'фиолетовый', 'оранжевый', 'коричневый', 
+                               'бежевый', 'графит', 'бордовый', 'бирюзовый', 'салатовый', 
+                               'лавандовый', 'графитовый', 'изумрудный', 'шоколадный', 
+                               'кремовый', 'золотистый', 'серебристый', 'персиковый', 
+                               'васильковый', 'лимонный', 'темный', 'светлый'];
+        
+        const lowerPart = part.toLowerCase();
+        if (colorKeywords.some(keyword => lowerPart.includes(keyword))) {
+            colorPart = part;
+        } else {
+            nameParts.push(part);
+        }
+    }
+
+    baseModel = nameParts.join('_');
+    color = colorPart;
+
+    // Если цвет не найден, но есть что-то после базы — считаем цветом
+    if (!color && nameParts.length > 1) {
+        const lastPart = nameParts[nameParts.length - 1];
+        if (lastPart && !lastPart.match(/^\d+$/)) {
+            color = lastPart;
+            nameParts.pop();
+            baseModel = nameParts.join('_');
+        }
+    }
+
+    // Если база пустая — используем полный артикул без размера
+    if (!baseModel) {
+        baseModel = full.replace('_' + size, '');
+        if (baseModel.endsWith('_')) {
+            baseModel = baseModel.slice(0, -1);
+        }
+    }
+
+    return {
+        baseModel: baseModel || full,
+        color: color,
+        size: size,
+        full: full
+    };
 }
 
 /**
- * Парсинг даты из формата DD.MM.YYYY → YYYY-MM-DD
+ * Универсальный парсинг даты
+ * Поддерживает: DD.MM.YYYY, MM.DD.YYYY, YYYY.MM.DD, DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
  */
-function parseDateFromWB(dateStr) {
+function parseDateUniversal(dateStr) {
     if (!dateStr) return null;
     
     const str = dateStr.toString().trim();
     
-    // Формат DD.MM.YYYY
-    const match = str.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-    if (match) {
-        const day = match[1];
-        const month = match[2];
-        const year = match[3];
-        return `${year}-${month}-${day}`;
-    }
-    
-    // Формат YYYY-MM-DD (уже правильный)
+    // Если уже YYYY-MM-DD
     if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return str;
     }
     
-    // Пробуем через Date (запасной вариант)
-    const date = new Date(str);
-    if (!isNaN(date.getTime())) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+    // Определяем разделитель
+    const separators = ['.', '/', '-'];
+    let separator = null;
+    let parts = null;
+    
+    for (const sep of separators) {
+        const split = str.split(sep);
+        if (split.length === 3) {
+            separator = sep;
+            parts = split.map(p => p.trim());
+            break;
+        }
     }
     
-    return null;
+    if (!parts) {
+        // Пробуем через Date
+        const date = new Date(str);
+        if (!isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return null;
+    }
+    
+    // Определяем формат
+    let day, month, year;
+    const p1 = parseInt(parts[0]);
+    const p2 = parseInt(parts[1]);
+    const p3 = parseInt(parts[2]);
+    
+    // Определяем, что есть что
+    if (p3 >= 1900 && p3 <= 2100) {
+        // Год в конце — DD.MM.YYYY или MM.DD.YYYY
+        year = p3;
+        if (p1 <= 12 && p2 <= 31) {
+            // MM.DD.YYYY
+            month = p1;
+            day = p2;
+        } else {
+            // DD.MM.YYYY
+            day = p1;
+            month = p2;
+        }
+    } else if (p1 >= 1900 && p1 <= 2100) {
+        // Год в начале — YYYY.MM.DD
+        year = p1;
+        month = p2;
+        day = p3;
+    } else {
+        // Непонятный формат — пробуем через Date
+        const date = new Date(str);
+        if (!isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return null;
+    }
+    
+    // Проверяем валидность
+    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) {
+        return null;
+    }
+    
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /**
@@ -178,8 +310,7 @@ function parseNumberFromWB(value) {
 }
 
 /**
- * Создание уникального ключа товара (артикул + размер + цвет)
- * Для продаж размер не известен → используем NOSIZE
+ * Создание уникального ключа товара
  */
 function createArticleKey(article, size = 'NOSIZE', color = 'NOCOLOR') {
     return `${article}|${size}|${color}`.toLowerCase().trim();
@@ -191,17 +322,9 @@ function createArticleKey(article, size = 'NOSIZE', color = 'NOCOLOR') {
 
 class ImportService {
     
-    // ============================================================
-    // ПОЛУЧИТЬ ШАБЛОН
-    // ============================================================
-
     static getTemplate(type) {
         return TEMPLATES[type] || null;
     }
-
-    // ============================================================
-    // ОБРАБОТКА ФАЙЛА
-    // ============================================================
 
     static async processFile(file, type) {
         console.log(`📥 Импорт ${type} из файла:`, file.name);
@@ -223,14 +346,12 @@ class ImportService {
             return { success: false, error: `Ошибка чтения файла: ${err.message}` };
         }
 
-        // 🔍 ДИАГНОСТИКА: выводим структуру файла
         if (data && data.length > 0) {
             console.log('📋 Фактические колонки в файле:', Object.keys(data[0]));
-            console.log('📋 Первая строка данных:', data[0]);
         }
 
         const template = TEMPLATES[type];
-        const columnCheck = this._validateColumns(data, template.columns);
+        const columnCheck = this._validateColumns(data, template);
         if (!columnCheck.valid) {
             return { success: false, error: columnCheck.error };
         }
@@ -243,10 +364,6 @@ class ImportService {
 
         return result;
     }
-
-    // ============================================================
-    // ЧТЕНИЕ ФАЙЛА
-    // ============================================================
 
     static _readFile(file) {
         return new Promise((resolve, reject) => {
@@ -266,39 +383,26 @@ class ImportService {
         });
     }
 
-    // ============================================================
-    // ПРОВЕРКА КОЛОНОК
-    // ============================================================
-
-    static _validateColumns(data, expectedColumns) {
+    static _validateColumns(data, template) {
         if (!data || data.length === 0) {
             return { valid: false, error: 'Файл пуст' };
         }
 
         const actualColumns = Object.keys(data[0]);
+        const required = template.required || [];
         
-        // 🔍 ДИАГНОСТИКА
-        console.log('📋 Ожидаемые колонки:', expectedColumns);
-
-        // Проверяем, что есть хотя бы основные колонки
-        const required = ['Артикул продавца', 'День', 'Выкупили', 'Заказано'];
-        const found = required.filter(col => 
-            actualColumns.some(actual => actual.includes(col) || col.includes(actual))
-        );
-
-        if (found.length < 2) {
+        // Проверяем наличие обязательных колонок
+        const missing = required.filter(col => !actualColumns.includes(col));
+        
+        if (missing.length > 0) {
             return {
                 valid: false,
-                error: `Не найдены обязательные колонки. Фактические колонки: ${actualColumns.join(', ')}`
+                error: `Отсутствуют обязательные колонки: ${missing.join(', ')}`
             };
         }
 
         return { valid: true };
     }
-
-    // ============================================================
-    // ПОИСК ЗНАЧЕНИЯ ПО НЕСКОЛЬКИМ КЛЮЧАМ
-    // ============================================================
 
     static _findValueInRow(row, possibleKeys) {
         for (const key of possibleKeys) {
@@ -312,10 +416,6 @@ class ImportService {
         return null;
     }
 
-    // ============================================================
-    // ПАРСИНГ И ВАЛИДАЦИЯ (ОБНОВЛЕН)
-    // ============================================================
-
     static _parseAndValidate(data, type, template) {
         const records = [];
         const errors = [];
@@ -325,17 +425,80 @@ class ImportService {
             const rowNum = index + 1;
             const rowErrors = [];
 
-            // Проверяем, что row не пустой
             if (!row || typeof row !== 'object') {
                 errors.push({ row: rowNum, errors: ['Строка пуста или не является объектом'] });
                 return;
             }
 
             // ============================================================
-            // ПАРСИНГ ПРОДАЖ (НОВАЯ ВЕРСИЯ)
+            // ПАРСИНГ НОМЕНКЛАТУРЫ (ОБНОВЛЕН)
+            // ============================================================
+            if (type === ImportTypes.NOMENCLATURE) {
+                const article = String(row['Артикул продавца'] || '').trim();
+                const name = String(row['Название карточки'] || '').trim();
+                const sizeFromCol = String(row['Размер'] || '').trim();
+                const barcode = String(row['Баркод'] || '').trim();
+                const tnved = String(row['ТН ВЭД'] || '').trim();
+                const fabric = String(row['Состав ткани'] || '').trim();
+                const gtin = String(row['GTIN'] || '').trim();
+
+                // Проверяем обязательные поля
+                if (!article) {
+                    rowErrors.push('Артикул продавца пуст');
+                }
+                if (!name) {
+                    rowErrors.push('Название карточки пусто');
+                }
+                if (!sizeFromCol) {
+                    rowErrors.push('Размер пуст');
+                }
+                if (!barcode) {
+                    rowErrors.push('Баркод пуст');
+                }
+
+                if (rowErrors.length > 0) {
+                    errors.push({ row: rowNum, errors: rowErrors });
+                    return;
+                }
+
+                // Парсим артикул для извлечения базы, цвета и размера
+                const parsed = parseArticle(article);
+                
+                // Приоритет: размер из колонки > размер из артикула
+                const finalSize = sizeFromCol || parsed.size || 'NOSIZE';
+                const finalColor = parsed.color || '';
+                const baseModel = parsed.baseModel || article;
+                
+                // Название: из колонки > из артикула
+                const finalName = name || baseModel || article;
+                
+                const articleKey = createArticleKey(article, finalSize, finalColor);
+
+                const record = {
+                    article,
+                    articleKey,
+                    baseModel: baseModel,
+                    color: finalColor,
+                    size: finalSize,
+                    name: finalName,
+                    barcode: barcode,
+                    tnved: tnved || '',
+                    fabric: fabric || '',
+                    gtin: gtin || '',
+                    category: '',
+                    purchasePrice: 0,
+                    price: 0,
+                    status: 'active'
+                };
+
+                records.push(record);
+                return;
+            }
+
+            // ============================================================
+            // ПАРСИНГ ПРОДАЖ (ОБНОВЛЕН)
             // ============================================================
             if (type === ImportTypes.SALES) {
-                // Гибкий поиск колонок
                 const article = this._findValueInRow(row, [
                     'Артикул продавца',
                     'Артикул',
@@ -378,18 +541,6 @@ class ImportService {
                     'Сумма заказов'
                 ]);
 
-                // 🔍 ДИАГНОСТИКА
-                if (index === 0) {
-                    console.log('🔍 Найденные значения в первой строке:', {
-                        article,
-                        dateStr,
-                        redeemed,
-                        amount,
-                        orders,
-                        totalAmount
-                    });
-                }
-
                 // Проверяем обязательные поля
                 if (!article) {
                     rowErrors.push('Артикул продавца не найден');
@@ -412,19 +563,21 @@ class ImportService {
                     return;
                 }
 
-                const parsedDate = parseDateFromWB(dateStr);
+                // Универсальный парсинг даты
+                const parsedDate = parseDateUniversal(dateStr);
                 if (!parsedDate) {
                     errors.push({ row: rowNum, errors: [`Некорректная дата: "${dateStr}"`] });
                     return;
                 }
 
-                // Создаём articleKey без размера
-                const articleKey = createArticleKey(article);
+                // Обрезаем артикул от пробелов
+                const cleanArticle = article.toString().trim();
+                const articleKey = createArticleKey(cleanArticle);
 
                 const record = {
                     articleKey,
                     productId: articleKey,
-                    article: article,
+                    article: cleanArticle,
                     size: 'NOSIZE',
                     warehouse: 'Не указан',
                     date: parsedDate,
@@ -436,41 +589,6 @@ class ImportService {
                     returns: 0,
                     fileName: row._fileName || '',
                     importDate: new Date().toISOString()
-                };
-
-                records.push(record);
-                return;
-            }
-
-            // ============================================================
-            // ПАРСИНГ НОМЕНКЛАТУРЫ
-            // ============================================================
-            if (type === ImportTypes.NOMENCLATURE) {
-                const article = String(row['Артикул продавца'] || '').trim();
-                const size = String(row['Размер'] || '').trim();
-                const color = ''; // в шаблоне пока нет цвета
-                const articleKey = createArticleKey(article, size || 'NOSIZE', color || 'NOCOLOR');
-
-                if (!article) {
-                    errors.push({ row: rowNum, errors: ['Артикул продавца пуст'] });
-                    return;
-                }
-
-                const record = {
-                    article,
-                    articleKey,
-                    baseModel: article,
-                    color: color,
-                    size: size || 'NOSIZE',
-                    name: String(row['Название карточки'] || '').trim() || article,
-                    barcode: String(row['Баркод'] || '').trim(),
-                    tnved: String(row['ТН ВЭД'] || '').trim(),
-                    fabric: String(row['Состав ткани'] || '').trim(),
-                    gtin: String(row['GTIN'] || '').trim(),
-                    category: '',
-                    purchasePrice: 0,
-                    price: 0,
-                    status: 'active'
                 };
 
                 records.push(record);
@@ -528,7 +646,6 @@ class ImportService {
             }
         });
 
-        // 🔍 ДИАГНОСТИКА: итоги
         console.log(`📊 Итоги парсинга: всего ${data.length} строк, валидных ${records.length}, ошибок ${errors.length}`);
 
         return {
@@ -540,10 +657,6 @@ class ImportService {
             invalid: errors.length
         };
     }
-
-    // ============================================================
-    // СОХРАНЕНИЕ В БАЗУ
-    // ============================================================
 
     static async _saveData(records, type) {
         const storeMap = {
@@ -582,7 +695,6 @@ class ImportService {
             return records.filter(r => !existingKeys.has(r.articleKey));
         }
 
-        // Для остальных типов — очищаем и загружаем заново
         await Database.clear(storeName);
         for (const record of records) {
             await Database.save(storeName, {
@@ -595,10 +707,6 @@ class ImportService {
         console.log(`[ImportService] ${type}: сохранено ${records.length} записей`);
         return records;
     }
-
-    // ============================================================
-    // ЭКСПОРТ ШАБЛОНА В EXCEL (ОБНОВЛЕН)
-    // ============================================================
 
     static downloadTemplate(type) {
         const template = TEMPLATES[type];
