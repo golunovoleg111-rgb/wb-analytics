@@ -9,15 +9,14 @@ import ProductService from '../services/ProductService.js';
 // СОСТОЯНИЕ
 // ============================================================
 
-let currentPeriod = 30; // 7, 14, 30
 let salesChartInstance = null;
 
 // ============================================================
 // ПОЛУЧЕНИЕ ДАННЫХ
 // ============================================================
 
-async function getSalesAnalytics(period) {
-    console.log('🔍 Загрузка аналитики продаж за', period, 'дней');
+async function getSalesAnalytics(startDate, endDate) {
+    console.log('🔍 Загрузка аналитики продаж с', startDate, 'по', endDate);
     
     // Получаем все продажи
     const allSales = await SalesService.getAll();
@@ -28,27 +27,14 @@ async function getSalesAnalytics(period) {
             chartData: [],
             topProducts: [],
             summary: { revenue: 0, orders: 0, delivered: 0, avgOrderValue: 0 },
-            totalRecords: 0
+            changes: { revenue: 0, orders: 0 },
+            totalRecords: 0,
+            period: { start: startDate, end: endDate }
         };
     }
 
-    // Получаем товары для сопоставления артикулов
-    const products = await ProductService.getAll();
-    const productMap = {};
-    products.forEach(p => {
-        productMap[p.id] = p.article;
-    });
-
     // Фильтруем по периоду
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - period);
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = today.toISOString().split('T')[0];
-
-    console.log('📅 Период:', startStr, '—', endStr);
-
-    const filtered = allSales.filter(s => s.date >= startStr && s.date <= endStr);
+    const filtered = allSales.filter(s => s.date >= startDate && s.date <= endDate);
     console.log('📊 Продаж за период:', filtered.length);
 
     if (filtered.length === 0) {
@@ -56,7 +42,9 @@ async function getSalesAnalytics(period) {
             chartData: [],
             topProducts: [],
             summary: { revenue: 0, orders: 0, delivered: 0, avgOrderValue: 0 },
-            totalRecords: 0
+            changes: { revenue: 0, orders: 0 },
+            totalRecords: 0,
+            period: { start: startDate, end: endDate }
         };
     }
 
@@ -75,7 +63,6 @@ async function getSalesAnalytics(period) {
     // Сортируем по датам
     const sortedDates = Object.keys(dailyData).sort();
     const chartData = sortedDates.map(date => {
-        // Форматируем дату для отображения (DD.MM)
         const parts = date.split('-');
         const day = parts[2];
         const month = parts[1];
@@ -92,11 +79,8 @@ async function getSalesAnalytics(period) {
     // Топ-5 товаров по выручке
     const productSales = {};
     filtered.forEach(s => {
-        // ✅ Используем article из записи, если есть
-        let article = s.article || productMap[s.productId] || s.productId;
-        // ✅ Убираем суффикс |nosize|nocolor если есть
+        let article = s.article || s.productId || '';
         article = article.replace(/\|nosize\|nocolor$/i, '');
-        
         if (!productSales[article]) {
             productSales[article] = { revenue: 0, orders: 0 };
         }
@@ -119,11 +103,38 @@ async function getSalesAnalytics(period) {
     const totalDelivered = filtered.reduce((sum, s) => sum + (s.delivered || 0), 0);
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
+    // ============================================================
+    // РАСЧЁТ ИЗМЕНЕНИЙ (сравнение с предыдущим периодом)
+    // ============================================================
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    const periodDays = Math.ceil((endDateObj - startDateObj) / (1000 * 60 * 60 * 24));
+    
+    // Предыдущий период такой же длины
+    const prevStartDate = new Date(startDateObj);
+    prevStartDate.setDate(prevStartDate.getDate() - periodDays - 1);
+    const prevEndDate = new Date(startDateObj);
+    prevEndDate.setDate(prevEndDate.getDate() - 1);
+    
+    const prevStartStr = prevStartDate.toISOString().split('T')[0];
+    const prevEndStr = prevEndDate.toISOString().split('T')[0];
+    
+    const prevSales = allSales.filter(s => s.date >= prevStartStr && s.date <= prevEndStr);
+    const prevRevenue = prevSales.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const prevOrders = prevSales.reduce((sum, s) => sum + (s.orders || 0), 0);
+    
+    const revenueChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue * 100) : 0;
+    const ordersChange = prevOrders > 0 ? ((totalOrders - prevOrders) / prevOrders * 100) : 0;
+
     console.log('📊 Итоги:', {
         revenue: totalRevenue,
         orders: totalOrders,
         delivered: totalDelivered,
-        avgOrderValue
+        avgOrderValue,
+        prevRevenue,
+        prevOrders,
+        revenueChange,
+        ordersChange
     });
 
     return {
@@ -135,7 +146,12 @@ async function getSalesAnalytics(period) {
             delivered: totalDelivered,
             avgOrderValue
         },
-        totalRecords: filtered.length
+        changes: {
+            revenue: revenueChange,
+            orders: ordersChange
+        },
+        totalRecords: filtered.length,
+        period: { start: startDate, end: endDate }
     };
 }
 
@@ -153,7 +169,24 @@ export async function renderSalesAnalytics() {
     }
 
     try {
-        const data = await getSalesAnalytics(currentPeriod);
+        // Получаем даты из полей ввода (или используем по умолчанию)
+        const startInput = document.getElementById('salesStartDate');
+        const endInput = document.getElementById('salesEndDate');
+        
+        let startDate, endDate;
+        if (startInput && endInput && startInput.value && endInput.value) {
+            startDate = startInput.value;
+            endDate = endInput.value;
+        } else {
+            // По умолчанию: последние 30 дней
+            const today = new Date();
+            const start = new Date(today);
+            start.setDate(start.getDate() - 30);
+            startDate = start.toISOString().split('T')[0];
+            endDate = today.toISOString().split('T')[0];
+        }
+
+        const data = await getSalesAnalytics(startDate, endDate);
 
         if (data.totalRecords === 0) {
             container.innerHTML = `
@@ -174,20 +207,32 @@ export async function renderSalesAnalytics() {
         // Строим HTML
         let html = '';
 
-        // 1. Выбор периода
+        // 1. КАЛЕНДАРЬ для выбора периода
         html += `
-            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-                <button class="btn ${currentPeriod === 7 ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.setSalesPeriod(7)">7 дней</button>
-                <button class="btn ${currentPeriod === 14 ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.setSalesPeriod(14)">14 дней</button>
-                <button class="btn ${currentPeriod === 30 ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.setSalesPeriod(30)">30 дней</button>
+            <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;background:var(--bg-hover);padding:10px 14px;border-radius:var(--radius-sm);">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">С</label>
+                    <input type="date" id="salesStartDate" value="${data.period.start}" 
+                           style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:12px;background:var(--bg-card);">
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">По</label>
+                    <input type="date" id="salesEndDate" value="${data.period.end}" 
+                           style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:12px;background:var(--bg-card);">
+                </div>
+                <button class="btn btn-primary btn-sm" id="applyDateRangeBtn">📊 Применить</button>
+                <button class="btn btn-secondary btn-sm" id="resetDateRangeBtn">↺ Сбросить</button>
                 <span style="flex:1;"></span>
-                <span style="font-size:12px;color:var(--text-secondary);padding:6px 0;">
-                    Период: ${currentPeriod} дней
+                <span style="font-size:11px;color:var(--text-secondary);">
+                    ${data.period.start} — ${data.period.end}
                 </span>
             </div>
         `;
 
-        // 2. Итоговые показатели
+        // 2. Итоговые показатели с изменением
+        const revenueChange = data.changes?.revenue || 0;
+        const ordersChange = data.changes?.orders || 0;
+        
         html += `
             <div class="grid-4" style="margin-bottom:16px;">
                 <div class="kpi-card">
@@ -195,6 +240,9 @@ export async function renderSalesAnalytics() {
                     <div class="kpi-info">
                         <span class="kpi-label">Выручка</span>
                         <span class="kpi-value">${data.summary.revenue.toLocaleString()} ₽</span>
+                        <span style="font-size:11px;color:${revenueChange >= 0 ? '#10B981' : '#EF4444'};">
+                            ${revenueChange >= 0 ? '↑' : '↓'} ${Math.abs(revenueChange).toFixed(1)}%
+                        </span>
                     </div>
                 </div>
                 <div class="kpi-card">
@@ -202,6 +250,9 @@ export async function renderSalesAnalytics() {
                     <div class="kpi-info">
                         <span class="kpi-label">Заказы</span>
                         <span class="kpi-value">${data.summary.orders}</span>
+                        <span style="font-size:11px;color:${ordersChange >= 0 ? '#10B981' : '#EF4444'};">
+                            ${ordersChange >= 0 ? '↑' : '↓'} ${Math.abs(ordersChange).toFixed(1)}%
+                        </span>
                     </div>
                 </div>
                 <div class="kpi-card">
@@ -264,6 +315,19 @@ export async function renderSalesAnalytics() {
         `;
 
         container.innerHTML = html;
+
+        // Навешиваем обработчики на календарь
+        document.getElementById('applyDateRangeBtn')?.addEventListener('click', () => {
+            renderSalesAnalytics();
+        });
+        document.getElementById('resetDateRangeBtn')?.addEventListener('click', () => {
+            const today = new Date();
+            const start = new Date(today);
+            start.setDate(start.getDate() - 30);
+            document.getElementById('salesStartDate').value = start.toISOString().split('T')[0];
+            document.getElementById('salesEndDate').value = today.toISOString().split('T')[0];
+            renderSalesAnalytics();
+        });
 
         // Рисуем график после рендеринга
         setTimeout(() => renderSalesChart(data.chartData), 100);
@@ -372,15 +436,6 @@ function renderSalesChart(chartData) {
         }
     });
 }
-
-// ============================================================
-// УПРАВЛЕНИЕ ПЕРИОДОМ
-// ============================================================
-
-window.setSalesPeriod = function(period) {
-    currentPeriod = period;
-    renderSalesAnalytics();
-};
 
 // ============================================================
 // ЭКСПОРТ
