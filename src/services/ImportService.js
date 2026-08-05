@@ -13,6 +13,7 @@ export const ImportTypes = {
     SALES: 'sales',
     STOCK_DAILY: 'stock_daily',
     STOCK_CURRENT: 'stock_current',
+    PRICES: 'prices',           // ← НОВЫЙ ТИП
     ADS: 'ads'
 };
 
@@ -45,6 +46,12 @@ const TEMPLATES = {
         filename: 'StockFlow_Шаблон_Текущие_остатки.xlsx',
         description: '📦 Текущие остатки — актуальные остатки и в пути'
     },
+    [ImportTypes.PRICES]: {
+        columns: ['Артикул продавца', 'Текущая цена', 'Текущая скидка', 'Цена со скидкой'],
+        required: ['Артикул продавца', 'Текущая цена'],
+        filename: 'StockFlow_Шаблон_Цены_и_скидки.xlsx',
+        description: '💰 Цены и скидки — актуальные цены из WB'
+    },
     [ImportTypes.ADS]: {
         columns: ['Кампания', 'Тип ставки', 'ID', 'Показы', 'Клики', 'CPC', 'CTR', 'CR', 'Затраты', 'Заказанные товары, шт'],
         required: ['Кампания', 'Затраты', 'Заказанные товары, шт'],
@@ -62,6 +69,7 @@ const EXAMPLES = {
     [ImportTypes.SALES]: ['01.05.2026', '210_Комбез_графит', '3', '6740,03', '3', '7131,48'],
     [ImportTypes.STOCK_DAILY]: ['210_Комбез_графит', 'Комбез графит', '42', 'Коледино', '50'],
     [ImportTypes.STOCK_CURRENT]: ['210_Комбез_графит', '42', '5', '2', '50', '45'],
+    [ImportTypes.PRICES]: ['210_Комбез_графит', '7000', '67', '2310'],
     [ImportTypes.ADS]: ['Кампания от 06.05.2025', 'Единая Ставка', '36386799', '12500', '320', '45.5', '2.56', '4.2', '14560', '13']
 };
 
@@ -109,7 +117,6 @@ function findValue(row, possibleKeys) {
 
 /**
  * Универсальный парсинг даты
- * Поддерживает: DD.MM.YYYY, MM.DD.YYYY, YYYY.MM.DD, DD/MM/YYYY, Excel числа
  */
 function parseDateUniversal(dateStr) {
     if (!dateStr) return null;
@@ -117,7 +124,6 @@ function parseDateUniversal(dateStr) {
     const str = cleanString(dateStr);
     if (!str) return null;
     
-    // Excel числовой формат (46143 → 01.05.2026)
     const num = parseFloat(str);
     if (!isNaN(num) && num > 30000 && num < 60000) {
         const date = new Date((num - 25569) * 86400 * 1000);
@@ -127,12 +133,10 @@ function parseDateUniversal(dateStr) {
         return `${year}-${month}-${day}`;
     }
     
-    // Уже в формате YYYY-MM-DD
     if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return str;
     }
     
-    // Определяем разделитель
     const separators = ['.', '/', '-', ' '];
     let parts = null;
     
@@ -524,7 +528,6 @@ class ImportService {
                     return;
                 }
                 
-                // Определяем все колонки с датами (начиная с E)
                 const knownColumns = ['Артикул продавца', 'Название', 'Размер', 'Склад'];
                 const dateColumns = Object.keys(row).filter(key => {
                     if (knownColumns.includes(key)) return false;
@@ -546,7 +549,6 @@ class ImportService {
                 const cleanWarehouse = cleanString(warehouse);
                 const articleKey = createArticleKey(cleanArticle, cleanSize);
                 
-                // Сохраняем по каждой дате
                 for (const dateKey of dateColumns) {
                     const quantity = parseNumber(row[dateKey]);
                     const parsedDate = parseDateUniversal(dateKey);
@@ -569,7 +571,7 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ ТЕКУЩИХ ОСТАТКОВ (STOCK_CURRENT) — ИСПРАВЛЕННЫЙ
+            // ПАРСИНГ ТЕКУЩИХ ОСТАТКОВ (STOCK_CURRENT)
             // ============================================================
             if (type === ImportTypes.STOCK_CURRENT) {
                 const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
@@ -588,10 +590,8 @@ class ImportService {
                     return;
                 }
                 
-                // Если total пустой — ставим 0
                 const totalValue = total ? parseNumber(total) : 0;
                 
-                // Определяем все колонки со складами (начиная с F)
                 const knownColumns = ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 
                                       'В пути возвраты на склад WB', 'Всего находится на складах'];
                 const warehouseColumns = Object.keys(row).filter(key => {
@@ -601,7 +601,6 @@ class ImportService {
                     return true;
                 });
                 
-                // Если нет колонок со складами — пропускаем строку
                 if (warehouseColumns.length === 0) {
                     return;
                 }
@@ -623,13 +622,77 @@ class ImportService {
                     importDate: new Date().toISOString()
                 };
                 
-                // Сохраняем по каждому складу
                 for (const warehouse of warehouseColumns) {
                     const quantity = parseNumber(row[warehouse]);
                     records.push({
                         ...baseRecord,
                         warehouse: cleanString(warehouse),
                         quantity: quantity
+                    });
+                }
+                return;
+            }
+
+            // ============================================================
+            // ПАРСИНГ ЦЕН И СКИДОК (PRICES) — НОВЫЙ
+            // ============================================================
+            if (type === ImportTypes.PRICES) {
+                const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
+                const price = findValue(row, ['Текущая цена', 'Цена', 'price']);
+                const discount = findValue(row, ['Текущая скидка', 'Скидка', 'discount']);
+                const priceWithDiscount = findValue(row, ['Цена со скидкой', 'Цена со скидкой, руб.']);
+                
+                if (!article) {
+                    errors.push({ row: rowNum, errors: ['Артикул продавца не найден'] });
+                    return;
+                }
+                
+                if (!price) {
+                    errors.push({ row: rowNum, errors: ['Текущая цена не найдена'] });
+                    return;
+                }
+                
+                const cleanArticle = cleanString(article);
+                const priceValue = parseNumber(price);
+                const discountValue = parseNumber(discount);
+                const priceWithDiscountValue = priceWithDiscount ? parseNumber(priceWithDiscount) : 0;
+                
+                // Пытаемся найти товар в номенклатуре по артикулу
+                // (без размера, так как в отчёте цен размера нет)
+                // Ищем все товары с таким артикулом
+                const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
+                const matchingProducts = allProducts.filter(p => 
+                    p.article === cleanArticle || 
+                    p.articleKey.startsWith(cleanArticle + '|')
+                );
+                
+                if (matchingProducts.length === 0) {
+                    // Если товар не найден — создаём запись с ценой, но без привязки
+                    // Позже пользователь сможет привязать вручную
+                    records.push({
+                        article: cleanArticle,
+                        price: priceValue,
+                        discount: discountValue,
+                        priceWithDiscount: priceWithDiscountValue,
+                        importDate: new Date().toISOString(),
+                        // Сохраняем как отдельную запись цен
+                        _type: 'price_record'
+                    });
+                    return;
+                }
+                
+                // Обновляем цены для всех найденных товаров с этим артикулом
+                for (const product of matchingProducts) {
+                    records.push({
+                        productId: product.id,
+                        articleKey: product.articleKey,
+                        article: cleanArticle,
+                        size: product.size || 'NOSIZE',
+                        price: priceValue,
+                        discount: discountValue,
+                        priceWithDiscount: priceWithDiscountValue,
+                        importDate: new Date().toISOString(),
+                        _type: 'price_update'
                     });
                 }
                 return;
@@ -682,11 +745,45 @@ class ImportService {
             [ImportTypes.SALES]: 'sales',
             [ImportTypes.STOCK_DAILY]: 'stock',
             [ImportTypes.STOCK_CURRENT]: 'stock',
+            [ImportTypes.PRICES]: 'products',      // ← сохраняем в products
             [ImportTypes.ADS]: 'ads'
         };
 
         const storeName = storeMap[type];
         if (!storeName) throw new Error(`Неизвестное хранилище для типа: ${type}`);
+
+        // Для PRICES — обновляем цены в существующих товарах
+        if (type === ImportTypes.PRICES) {
+            let updated = 0;
+            let skipped = 0;
+            
+            for (const record of records) {
+                if (record._type === 'price_record') {
+                    // Это запись без привязки к товару — сохраняем в отдельное хранилище?
+                    // Пока просто пропускаем
+                    skipped++;
+                    continue;
+                }
+                
+                if (record._type === 'price_update' && record.productId) {
+                    // Обновляем цену в товаре
+                    const product = await Database.getById(Database.STORES.PRODUCTS, record.productId);
+                    if (product) {
+                        product.price = record.price;
+                        product.discount = record.discount;
+                        product.priceWithDiscount = record.priceWithDiscount;
+                        product.updatedAt = new Date().toISOString();
+                        await Database.save(Database.STORES.PRODUCTS, product);
+                        updated++;
+                    } else {
+                        skipped++;
+                    }
+                }
+            }
+            
+            console.log(`[ImportService] Цены: обновлено ${updated}, пропущено ${skipped}`);
+            return records;
+        }
 
         if (type === ImportTypes.NOMENCLATURE) {
             const existingProducts = await Database.getAll(Database.STORES.PRODUCTS);
