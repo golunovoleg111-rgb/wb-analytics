@@ -391,22 +391,31 @@
                 </div>
 
                 <!-- Остатки -->
-                <div class="card import-card">
-                    <div class="card-title">📦 Остатки</div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
-                        Отчёт WB по остаткам
-                    </div>
-                    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock')" style="margin-bottom:10px;">
-                        📥 Шаблон
-                    </button>
-                    <div class="drop-zone" id="stockDropZone">
-                        <div style="font-size:28px;">📤</div>
-                        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
-                        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
-                    </div>
-                    <input type="file" id="stockFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-                    <div id="stockImportStatus" style="margin-top:8px;font-size:12px;"></div>
-                </div>
+<div class="card import-card">
+    <div class="card-title">📦 Остатки</div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+        Загрузка отчётов WB по остаткам
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock_daily')">
+            📥 Шаблон (по дням)
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock_current')">
+            📥 Шаблон (текущие)
+        </button>
+    </div>
+    <select id="stockTypeSelect" style="width:100%;margin-bottom:10px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);outline:none;transition:all var(--transition);">
+        <option value="stock_daily">📊 Остатки по дням (детализация по датам)</option>
+        <option value="stock_current">📦 Текущие остатки (актуальные + в пути)</option>
+    </select>
+    <div class="drop-zone" id="stockDropZone">
+        <div style="font-size:28px;">📤</div>
+        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
+        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
+    </div>
+    <input type="file" id="stockFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+    <div id="stockImportStatus" style="margin-top:8px;font-size:12px;"></div>
+</div>
 
                 <!-- Реклама -->
                 <div class="card import-card">
@@ -979,47 +988,95 @@
             console.error('❌ Ошибка инициализации:', err.message);
         });
 
-        // ============================================================
-        // НАСТРОЙКА DROP ZONE ДЛЯ ИМПОРТА
-        // ============================================================
+       // ============================================================
+// НАСТРОЙКА DROP ZONE ДЛЯ ИМПОРТА
+// ============================================================
 
-        function setupImportDropZone(dropZoneId, fileInputId, type) {
-            const dropZone = document.getElementById(dropZoneId);
-            const fileInput = document.getElementById(fileInputId);
-            const statusEl = document.getElementById(type + 'ImportStatus');
+function setupImportDropZone(dropZoneId, fileInputId, type) {
+    const dropZone = document.getElementById(dropZoneId);
+    const fileInput = document.getElementById(fileInputId);
+    const statusEl = document.getElementById(type + 'ImportStatus');
 
-            if (!dropZone || !fileInput) {
-                console.warn(`Drop zone ${dropZoneId} или input ${fileInputId} не найдены`);
-                return;
-            }
+    if (!dropZone || !fileInput) {
+        console.warn(`Drop zone ${dropZoneId} или input ${fileInputId} не найдены`);
+        return;
+    }
 
-            dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('click', () => fileInput.click());
 
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
 
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('dragover');
-            });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
 
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    handleImport(files[0], type, statusEl);
-                }
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleImport(e.target.files[0], type, statusEl);
-                    fileInput.value = '';
-                }
-            });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleImport(files[0], type, statusEl);
         }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleImport(e.target.files[0], type, statusEl);
+            fileInput.value = '';
+        }
+    });
+}
+
+// ============================================================
+// НАСТРОЙКА DROP ZONE ДЛЯ ОСТАТКОВ (с выбором типа)
+// ============================================================
+
+function setupStockDropZone() {
+    const dropZone = document.getElementById('stockDropZone');
+    const fileInput = document.getElementById('stockFileInput');
+    const statusEl = document.getElementById('stockImportStatus');
+    const typeSelect = document.getElementById('stockTypeSelect');
+
+    if (!dropZone || !fileInput) {
+        console.warn('Stock drop zone не найдена');
+        return;
+    }
+
+    function handleStockFile(file) {
+        const type = typeSelect.value;
+        handleImport(file, type, statusEl);
+    }
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleStockFile(files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleStockFile(e.target.files[0]);
+            fileInput.value = '';
+        }
+    });
+}
 
         // ============================================================
         // ОБРАБОТКА ИМПОРТА
@@ -1056,14 +1113,15 @@
             }
         }
 
-        // ============================================================
-        // НАСТРАИВАЕМ DROP ZONES
-        // ============================================================
+       // ============================================================
+// НАСТРАИВАЕМ DROP ZONES
+// ============================================================
 
-        setupImportDropZone('nomenclatureDropZone', 'nomenclatureFileInput', 'nomenclature');
-        setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
-        setupImportDropZone('stockDropZone', 'stockFileInput', 'stock');
-        setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
+setupImportDropZone('nomenclatureDropZone', 'nomenclatureFileInput', 'nomenclature');
+setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
+setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
+// Остатки — отдельная настройка с выбором типа
+setupStockDropZone();
 
     </script>
 
