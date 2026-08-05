@@ -12,57 +12,64 @@ import InventoryAggregate from '../core/stock/InventoryAggregate.js';
 // ============================================================
 
 async function getDashboardData() {
-    const [products, salesAggregated, stockAggregated] = await Promise.all([
+    console.log('🔍 Загрузка данных для дашборда...');
+    
+    const [products, allSales] = await Promise.all([
         ProductService.getAll(),
-        SalesService.getAllAggregated(30),
-        StockService.getAllAggregated()
+        SalesService.getAll()
     ]);
 
     const totalProducts = products.length;
 
-    // Выручка вчера
+    // Получаем вчерашнюю дату
     const yesterday = getYesterdayStr();
-    const allSales = await SalesService.getAll();
+    console.log('📅 Вчера:', yesterday);
+
+    // Продажи за вчера
     const yesterdaySales = allSales.filter(s => s.date === yesterday);
     const yesterdayRevenue = yesterdaySales.reduce((sum, s) => sum + s.amount, 0);
     const yesterdayOrders = yesterdaySales.reduce((sum, s) => sum + s.orders, 0);
 
-    const avgMargin = 0;
-
-    // Проблемные товары (ИО < 0.2)
-    const criticalProducts = [];
-    for (const product of products) {
-        const stock = stockAggregated[product.id] || { available: 0 };
-        const salesData = salesAggregated[product.id] || { orders: 0 };
-        const io = InventoryAggregate.calculateIO(stock.available, salesData.orders);
-        if (io < 0.2 && stock.available > 0) {
-            criticalProducts.push({
-                product,
-                stock: stock.available,
-                io
-            });
-        }
-    }
-
-    // Продажи за 7 дней
+    // Продажи за 7 дней (для графика)
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const dateStr = formatDate(d);
+        const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        // Ищем продажи за этот день
         const daySales = allSales.filter(s => s.date === dateStr);
+        const revenue = daySales.reduce((sum, s) => sum + s.amount, 0);
+        const orders = daySales.reduce((sum, s) => sum + s.orders, 0);
+        
+        // Форматируем дату для отображения (DD.MM)
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const displayDate = `${day}.${month}`;
+        
         last7Days.push({
-            date: dateStr,
-            revenue: daySales.reduce((sum, s) => sum + s.amount, 0),
-            orders: daySales.reduce((sum, s) => sum + s.orders, 0)
+            date: displayDate,
+            dateFull: dateStr,
+            revenue,
+            orders
         });
     }
+
+    // Проблемные товары (ИО < 0.2) — пока заглушка
+    const criticalProducts = [];
+
+    console.log('📊 Данные для дашборда:', {
+        totalProducts,
+        yesterdayRevenue,
+        yesterdayOrders,
+        last7Days
+    });
 
     return {
         totalProducts,
         yesterdayRevenue,
         yesterdayOrders,
-        avgMargin,
+        avgMargin: 0,
         criticalProducts,
         last7Days
     };
