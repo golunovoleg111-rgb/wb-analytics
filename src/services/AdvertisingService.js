@@ -3,7 +3,6 @@
 // ============================================================
 
 import CampaignAggregate from '../core/advertising/CampaignAggregate.js';
-import InventoryAggregate from '../core/stock/InventoryAggregate.js';
 import ProductService from './ProductService.js';
 import SalesService from './SalesService.js';
 import StockService from './StockService.js';
@@ -48,45 +47,17 @@ class AdvertisingService {
     static async calculateMetrics(campaign) {
         // Базовая статистика из кампании
         const stats = campaign.stats || {};
-        const impressions = stats.impressions || 0;
-        const clicks = stats.clicks || 0;
-        const spent = stats.spent || 0;
-        const orders = stats.orders || 0;
+        const impressions = stats.impressions || campaign.impressions || 0;
+        const clicks = stats.clicks || campaign.clicks || 0;
+        const spent = stats.spent || campaign.spent || 0;
+        const orders = stats.orders || campaign.orders || 0;
 
-        // Если есть привязка к товару — считаем ROI с учётом маржинальности
         let roi = 0;
         let drr = 0;
         let cpc = 0;
         let cpm = 0;
         let ctr = 0;
         let cr = 0;
-
-        if (campaign.linkedArticle) {
-            try {
-                // Получаем информацию о товаре
-                const product = await ProductService.findByArticle(campaign.linkedArticle);
-                if (product) {
-                    // Получаем продажи и остатки для расчёта маржинальности
-                    const sales = await SalesService.getAggregated(product.id, 30);
-                    const stock = await StockService.getAggregated(product.id);
-                    
-                    // Рассчитываем маржинальность (упрощённо)
-                    const price = product.price || 0;
-                    const purchasePrice = product.purchasePrice || 0;
-                    const margin = price > 0 ? ((price - purchasePrice) / price * 100) : 0;
-                    
-                    // ROI = (Выручка от рекламы * Маржинальность - Затраты) / Затраты
-                    const revenue = orders * price;
-                    const profit = revenue * (margin / 100);
-                    roi = spent > 0 ? Math.round((profit - spent) / spent * 100) : 0;
-                    
-                    // ДРР = Затраты / Выручка * 100
-                    drr = revenue > 0 ? Math.round(spent / revenue * 100) : 0;
-                }
-            } catch (error) {
-                console.warn(`[AdvertisingService] Не удалось рассчитать ROI для кампании ${campaign.id}:`, error.message);
-            }
-        }
 
         // CPC = Затраты / Клики
         cpc = clicks > 0 ? Math.round(spent / clicks * 100) / 100 : 0;
@@ -99,6 +70,29 @@ class AdvertisingService {
         
         // CR = Заказы / Клики * 100
         cr = clicks > 0 ? Math.round(orders / clicks * 10000) / 100 : 0;
+
+        // Если есть привязка к товару — считаем ROI с учётом маржинальности
+        const linkedArticle = campaign.linkedArticle || null;
+        
+        if (linkedArticle) {
+            try {
+                const product = await ProductService.findByArticle(linkedArticle);
+                if (product && product.length > 0) {
+                    const p = product[0];
+                    const price = p.price || p.clientPrice || 0;
+                    const purchasePrice = p.purchasePrice || 0;
+                    const margin = price > 0 ? ((price - purchasePrice) / price * 100) : 0;
+                    
+                    const revenue = orders * price;
+                    const profit = revenue * (margin / 100);
+                    roi = spent > 0 ? Math.round((profit - spent) / spent * 100) : 0;
+                    
+                    drr = revenue > 0 ? Math.round(spent / revenue * 100) : 0;
+                }
+            } catch (error) {
+                console.warn(`[AdvertisingService] Не удалось рассчитать ROI для кампании ${campaign.id}:`, error.message);
+            }
+        }
 
         return {
             roi,
