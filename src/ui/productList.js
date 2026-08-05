@@ -15,6 +15,7 @@ let currentFilters = {
     status: 'all'
 };
 
+let viewMode = 'grid'; // grid | list
 let allProducts = [];
 let allStock = {};
 let allSales = {};
@@ -48,17 +49,17 @@ async function loadData() {
 function findDataByProduct(product, dataMap) {
     if (!product || !dataMap) return null;
     
-    // 1. Пробуем по articleKey (точное совпадение)
+    // 1. По articleKey
     if (product.articleKey && dataMap[product.articleKey]) {
         return dataMap[product.articleKey];
     }
     
-    // 2. Пробуем по id
+    // 2. По id
     if (product.id && dataMap[product.id]) {
         return dataMap[product.id];
     }
     
-    // 3. Пробуем по артикулу + размер + цвет
+    // 3. По артикулу с вариациями
     const article = product.article || '';
     const size = product.size || '';
     const color = product.color || '';
@@ -76,7 +77,7 @@ function findDataByProduct(product, dataMap) {
         }
     }
     
-    // 4. Ищем частичное совпадение по артикулу (для агрегированных данных)
+    // 4. Частичное совпадение по артикулу
     const lowerArticle = article.toLowerCase();
     for (const [key, value] of Object.entries(dataMap)) {
         if (key && key.toLowerCase().includes(lowerArticle)) {
@@ -108,7 +109,6 @@ function groupByBase(products) {
     const groups = {};
     
     products.forEach(product => {
-        // Используем article как базу, если baseModel не задан
         const base = product.baseModel || product.article || 'unknown';
         
         if (!groups[base]) {
@@ -133,7 +133,6 @@ function groupByBase(products) {
         const group = groups[base];
         group.products.push(product);
         
-        // Размеры и цвета
         if (product.size && product.size !== 'NOSIZE') {
             group.sizes.add(product.size);
         }
@@ -141,29 +140,24 @@ function groupByBase(products) {
             group.colors.add(product.color);
         }
         
-        // Остатки
         const stock = getStockForProduct(product);
         const available = stock.available || 0;
         group.totalStock += available;
         
-        // Продажи
         const sales = getSalesForProduct(product);
         group.totalSales += sales.orders || 0;
         
-        // Цены
         const price = product.price || 0;
         if (price > 0) {
             group.minPrice = Math.min(group.minPrice, price);
             group.maxPrice = Math.max(group.maxPrice, price);
         }
         
-        // Закупка
         const purchase = product.purchasePrice || 0;
         if (purchase > 0) {
             group.minPurchase = Math.min(group.minPurchase, purchase);
         }
         
-        // Маржа
         const margin = product.margin || 0;
         if (margin > 0) {
             group.minMargin = Math.min(group.minMargin, margin);
@@ -171,7 +165,6 @@ function groupByBase(products) {
         }
     });
     
-    // Вычисляем статус и ИО
     Object.values(groups).forEach(group => {
         const dailySales = group.totalSales / 30;
         const io = dailySales > 0 ? group.totalStock / dailySales : (group.totalStock > 0 ? 999 : 0);
@@ -188,7 +181,6 @@ function groupByBase(products) {
         }
     });
     
-    console.log(`📦 Сгруппировано: ${Object.values(groups).length} групп`);
     return Object.values(groups);
 }
 
@@ -200,7 +192,6 @@ function filterGroups(groups) {
     const { search, status } = currentFilters;
     
     return groups.filter(group => {
-        // Поиск
         if (search) {
             const query = search.toLowerCase();
             const match = 
@@ -210,7 +201,6 @@ function filterGroups(groups) {
             if (!match) return false;
         }
         
-        // Статус
         if (status !== 'all' && group.status !== status) {
             return false;
         }
@@ -239,10 +229,10 @@ function formatIO(value) {
 }
 
 // ============================================================
-// ОТРИСОВКА КАРТОЧКИ
+// ОТРИСОВКА КАРТОЧКИ (СЕТКА)
 // ============================================================
 
-function renderGroupCard(group) {
+function renderGridCard(group) {
     const statusLabels = {
         'no_stock': { label: 'Нет остатков', color: '#6B7280', icon: '⚫' },
         'deficit': { label: 'Дефицит', color: '#EF4444', icon: '🔴' },
@@ -252,9 +242,8 @@ function renderGroupCard(group) {
     
     const statusInfo = statusLabels[group.status] || statusLabels['normal'];
     const sizes = Array.from(group.sizes).sort();
-    const colors = Array.from(group.colors);
+    const colorsCount = group.colors.size;
     
-    // Цена
     let priceDisplay = '0 ₽';
     if (group.minPrice > 0 && group.minPrice !== Infinity) {
         if (group.minPrice === group.maxPrice) {
@@ -264,7 +253,70 @@ function renderGroupCard(group) {
         }
     }
     
-    // Маржа
+    let marginDisplay = '0%';
+    if (group.minMargin !== Infinity && group.minMargin > 0) {
+        if (group.minMargin === group.maxMargin) {
+            marginDisplay = formatMargin(group.minMargin);
+        } else {
+            marginDisplay = `${formatMargin(group.minMargin)} — ${formatMargin(group.maxMargin)}`;
+        }
+    } else if (group.maxMargin > 0) {
+        marginDisplay = formatMargin(group.maxMargin);
+    }
+    
+    const ioDisplay = formatIO(group.io);
+    const sizesDisplay = sizes.length > 0 ? sizes.slice(0, 5).join(', ') + (sizes.length > 5 ? ` +${sizes.length - 5}` : '') : 'Нет размеров';
+
+    return `
+        <div class="product-card-grid" data-base="${group.baseModel}" style="cursor:pointer;" onclick="window.openProductCard('${group.baseModel}')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                <div>
+                    <div style="font-weight:600;font-size:14px;color:#1A1A2E;">${group.baseModel}</div>
+                    <div style="font-size:12px;color:#6B7280;">${group.name}</div>
+                </div>
+                <span style="font-size:14px;">${statusInfo.icon}</span>
+            </div>
+            
+            <div style="font-size:11px;color:#9CA3AF;margin-bottom:10px;">
+                ${sizesDisplay}
+                ${colorsCount > 0 ? ` · ${colorsCount} цветов` : ''}
+            </div>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;background:#FAF8FF;padding:10px 12px;border-radius:6px;">
+                <div><span style="color:#6B7280;">Цена:</span> <strong>${priceDisplay}</strong></div>
+                <div><span style="color:#6B7280;">Остаток:</span> <strong>${group.totalStock} шт</strong></div>
+                <div><span style="color:#6B7280;">Маржа:</span> <strong style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</strong></div>
+                <div><span style="color:#6B7280;">ИО:</span> <strong>${ioDisplay}</strong></div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// ОТРИСОВКА КАРТОЧКИ (СПИСОК)
+// ============================================================
+
+function renderListCard(group) {
+    const statusLabels = {
+        'no_stock': { label: 'Нет остатков', color: '#6B7280', icon: '⚫' },
+        'deficit': { label: 'Дефицит', color: '#EF4444', icon: '🔴' },
+        'warning': { label: 'Внимание', color: '#F59E0B', icon: '🟡' },
+        'normal': { label: 'В наличии', color: '#10B981', icon: '🟢' }
+    };
+    
+    const statusInfo = statusLabels[group.status] || statusLabels['normal'];
+    const sizes = Array.from(group.sizes).sort();
+    const colorsCount = group.colors.size;
+    
+    let priceDisplay = '0 ₽';
+    if (group.minPrice > 0 && group.minPrice !== Infinity) {
+        if (group.minPrice === group.maxPrice) {
+            priceDisplay = formatPrice(group.minPrice);
+        } else {
+            priceDisplay = `${formatPrice(group.minPrice)} — ${formatPrice(group.maxPrice)}`;
+        }
+    }
+    
     let marginDisplay = '0%';
     if (group.minMargin !== Infinity && group.minMargin > 0) {
         if (group.minMargin === group.maxMargin) {
@@ -278,71 +330,32 @@ function renderGroupCard(group) {
     
     const ioDisplay = formatIO(group.io);
     const sizesDisplay = sizes.length > 0 ? sizes.join(', ') : 'Нет размеров';
-    const colorsCount = colors.length;
 
     return `
-        <div class="product-group" data-base="${group.baseModel}">
-            <div class="product-group-header" onclick="window.toggleGroup(this)">
-                <span class="product-group-icon">${statusInfo.icon}</span>
-                <div class="product-group-info">
-                    <div class="product-group-name">
-                        ${group.baseModel}
-                        <span class="product-group-subname">${group.name}</span>
-                    </div>
-                    <div class="product-group-category">
-                        ${sizesDisplay}
-                        ${colorsCount > 0 ? ` · ${colorsCount} цветов` : ''}
-                    </div>
+        <div class="product-card-list" data-base="${group.baseModel}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #F0ECF8;" onclick="window.openProductCard('${group.baseModel}')">
+            <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+                <span style="font-size:16px;">${statusInfo.icon}</span>
+                <div style="min-width:0;">
+                    <div style="font-weight:600;font-size:13px;color:#1A1A2E;">${group.baseModel}</div>
+                    <div style="font-size:11px;color:#6B7280;">${group.name}</div>
                 </div>
-                <div class="product-group-metrics">
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">Цена</div>
-                        <div class="product-group-metric-value">${priceDisplay}</div>
-                    </div>
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">Остаток</div>
-                        <div class="product-group-metric-value">${group.totalStock} шт</div>
-                    </div>
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">Маржа</div>
-                        <div class="product-group-metric-value">${marginDisplay}</div>
-                    </div>
-                    <div class="product-group-metric">
-                        <div class="product-group-metric-label">ИО</div>
-                        <div class="product-group-metric-value">${ioDisplay}</div>
-                    </div>
+                <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;">
+                    ${sizesDisplay}
+                    ${colorsCount > 0 ? ` · ${colorsCount} цв.` : ''}
                 </div>
-                <span class="product-group-arrow">▶</span>
             </div>
-            <div class="product-group-items">
-                <div>
-                    <div>
-                        ${sizes.length > 0 ? `
-                            <span>Размер:</span>
-                            <select class="product-size-select" data-base="${group.baseModel}">
-                                ${sizes.map(s => `<option value="${s}">${s}</option>`).join('')}
-                            </select>
-                        ` : ''}
-                        ${colors.length > 0 ? `
-                            <span>Цвет:</span>
-                            <select class="product-color-select" data-base="${group.baseModel}">
-                                ${colors.map(c => `<option value="${c}">${c}</option>`).join('')}
-                            </select>
-                        ` : ''}
-                    </div>
-                    <div>
-                        <button class="btn btn-sm btn-secondary" onclick="window.openProductGraph('${group.baseModel}')">📊 График</button>
-                        <button class="btn btn-sm btn-secondary" onclick="window.openProductEdit('${group.baseModel}')">✏️ Редактировать</button>
-                        <button class="btn btn-sm btn-primary" onclick="window.openProductCard('${group.baseModel}')">📋 Открыть</button>
-                    </div>
-                </div>
+            <div style="display:flex;gap:16px;font-size:12px;flex-shrink:0;">
+                <div><span style="color:#6B7280;">Цена:</span> ${priceDisplay}</div>
+                <div><span style="color:#6B7280;">Остаток:</span> ${group.totalStock} шт</div>
+                <div><span style="color:#6B7280;">Маржа:</span> <span style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</span></div>
+                <div><span style="color:#6B7280;">ИО:</span> ${ioDisplay}</div>
             </div>
         </div>
     `;
 }
 
 // ============================================================
-// ОСНОВНАЯ ФУНКЦИЯ
+// ОСНОВНАЯ ФУНКЦИЯ РЕНДЕРИНГА
 // ============================================================
 
 export async function renderProductList() {
@@ -392,8 +405,17 @@ export async function renderProductList() {
             return;
         }
         
-        container.innerHTML = groups.map(group => renderGroupCard(group)).join('');
-        console.log(`✅ Отображено ${groups.length} групп товаров`);
+        // Рендерим в зависимости от режима
+        const renderFn = viewMode === 'grid' ? renderGridCard : renderListCard;
+        const containerClass = viewMode === 'grid' ? 'products-grid' : 'products-list';
+        
+        container.innerHTML = `
+            <div class="${containerClass}">
+                ${groups.map(group => renderFn(group)).join('')}
+            </div>
+        `;
+        
+        console.log(`✅ Отображено ${groups.length} групп товаров (${viewMode} режим)`);
         
     } catch (error) {
         console.error('❌ Ошибка:', error.message);
@@ -411,23 +433,12 @@ export async function renderProductList() {
 // ГЛОБАЛЬНЫЕ ФУНКЦИИ
 // ============================================================
 
-window.toggleGroup = function(header) {
-    const items = header.nextElementSibling;
-    const arrow = header.querySelector('.product-group-arrow');
-    if (!items) return;
-    
-    if (items.classList.contains('open')) {
-        items.classList.remove('open');
-        if (arrow) arrow.classList.remove('open');
-    } else {
-        items.classList.add('open');
-        if (arrow) arrow.classList.add('open');
-    }
-};
-
 window.openProductCard = function(baseModel) {
     console.log('📋 Открываем карточку товара:', baseModel);
-    showToast(`📋 Открываем карточку: ${baseModel}`, 'success');
+    // Переход на страницу карточки
+    window.navigateTo('product-card');
+    // TODO: передать baseModel в карточку
+    showToast(`📋 Карточка: ${baseModel}`, 'success');
 };
 
 window.openProductGraph = function(baseModel) {
@@ -439,6 +450,10 @@ window.openProductEdit = function(baseModel) {
     console.log('✏️ Редактируем:', baseModel);
     showToast(`✏️ Редактирование: ${baseModel}`, 'success');
 };
+
+// ============================================================
+// ОБНОВЛЕНИЕ ПРИ ИЗМЕНЕНИИ ФИЛЬТРОВ
+// ============================================================
 
 window.refreshProductTable = function() {
     const searchInput = document.getElementById('productSearch');
@@ -460,6 +475,32 @@ window.clearProductFilters = function() {
     currentFilters = { search: '', status: 'all' };
     renderProductList();
 };
+
+window.toggleViewMode = function(mode) {
+    viewMode = mode;
+    // Обновляем активную кнопку
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === mode);
+    });
+    renderProductList();
+};
+
+// ============================================================
+// ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ
+// ============================================================
+
+// Навешиваем обработчики на переключатели вида
+document.addEventListener('DOMContentLoaded', function() {
+    const gridBtn = document.getElementById('viewGridBtn');
+    const listBtn = document.getElementById('viewListBtn');
+    
+    if (gridBtn) {
+        gridBtn.addEventListener('click', () => window.toggleViewMode('grid'));
+    }
+    if (listBtn) {
+        listBtn.addEventListener('click', () => window.toggleViewMode('list'));
+    }
+});
 
 // ============================================================
 // ЭКСПОРТ
