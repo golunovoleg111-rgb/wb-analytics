@@ -14,6 +14,7 @@ export const ImportTypes = {
     STOCK_DAILY: 'stock_daily',
     STOCK_CURRENT: 'stock_current',
     PRICES: 'prices',
+    MARGIN: 'margin',
     ADS: 'ads'
 };
 
@@ -52,6 +53,18 @@ const TEMPLATES = {
         filename: 'StockFlow_Шаблон_Цены_и_скидки.xlsx',
         description: '💰 Цены и скидки — актуальные цены из WB'
     },
+    [ImportTypes.MARGIN]: {
+        columns: [
+            'Артикул', 'Остаток', 'Закупочная цена', 'Рыночная цена - сейчас',
+            'Цена для клиента', 'Комиссия WB', 'Налог, %', 'Стоимость хранения',
+            'Срок хранения', 'Упаковка', 'Логистика', 'Итого себестоимость',
+            'Прибыль с 1 шт', 'Прибыль итого', 'Выручка', 'Вложения',
+            'Маржинальность', 'Объем', '% выкупа (месяц)'
+        ],
+        required: ['Артикул', 'Закупочная цена'],
+        filename: 'StockFlow_Шаблон_Маржинальность.xlsx',
+        description: '📊 Маржинальность — экономические показатели по товарам'
+    },
     [ImportTypes.ADS]: {
         columns: ['Кампания', 'Тип ставки', 'ID', 'Показы', 'Клики', 'CPC', 'CTR', 'CR', 'Затраты', 'Заказанные товары, шт'],
         required: ['Кампания', 'Затраты', 'Заказанные товары, шт'],
@@ -70,6 +83,13 @@ const EXAMPLES = {
     [ImportTypes.STOCK_DAILY]: ['210_Комбез_графит', 'Комбез графит', '42', 'Коледино', '50'],
     [ImportTypes.STOCK_CURRENT]: ['210_Комбез_графит', '42', '5', '2', '50', '45'],
     [ImportTypes.PRICES]: ['210_Комбез_графит', '7000', '67', '2310'],
+    [ImportTypes.MARGIN]: [
+        '21_К_Вельвет_бирюзовый', '1098', 'р.796,00', 'р.2 627,00',
+        '2049,06 р.', '25%', '2%', '0,845 р.',
+        '60', '10,00 р.', 'р.980,24', '2 546,23 р.',
+        '80,77 р.', '88 682,32 р.', '2 884 446,00 р.', '884 988,00 р.',
+        '3%', '8,45', '35'
+    ],
     [ImportTypes.ADS]: ['Кампания от 06.05.2025', 'Единая Ставка', '36386799', '12500', '320', '45.5', '2.56', '4.2', '14560', '13']
 };
 
@@ -198,6 +218,52 @@ function parseNumber(value) {
     if (!str) return 0;
     const cleaned = str.replace(/\s/g, '').replace(',', '.');
     const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+}
+
+// ============================================================
+// УНИВЕРСАЛЬНЫЙ ПАРСИНГ ЧИСЕЛ ДЛЯ МАРЖИНАЛЬНОСТИ
+// ============================================================
+
+function parseUniversalNumber(value) {
+    if (value === null || value === undefined || value === '') return 0;
+    
+    let str = cleanString(String(value));
+    if (!str) return 0;
+    
+    // Проверяем на N/A, н/д, —
+    const naPatterns = ['n/a', 'н/д', '—', '-', 'na', 'undefined', 'null'];
+    if (naPatterns.some(p => str.toLowerCase() === p)) {
+        return 0;
+    }
+    
+    // Убираем р. и пробелы
+    str = str.replace(/р\./g, '').replace(/\s/g, '');
+    
+    // Убираем % если есть
+    str = str.replace(/%/g, '');
+    
+    // Заменяем запятую на точку
+    str = str.replace(/,/g, '.');
+    
+    // Парсим число
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+}
+
+function parseUniversalPercent(value) {
+    if (value === null || value === undefined || value === '') return 0;
+    
+    let str = cleanString(String(value));
+    if (!str) return 0;
+    
+    const naPatterns = ['n/a', 'н/д', '—', '-', 'na', 'undefined', 'null'];
+    if (naPatterns.some(p => str.toLowerCase() === p)) {
+        return 0;
+    }
+    
+    str = str.replace(/%/g, '').replace(/\s/g, '').replace(/,/g, '.');
+    const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
 }
 
@@ -666,6 +732,52 @@ class ImportService {
             }
 
             // ============================================================
+            // ПАРСИНГ МАРЖИНАЛЬНОСТИ (MARGIN) — МАКСИМАЛЬНО УНИВЕРСАЛЬНЫЙ
+            // ============================================================
+            if (type === ImportTypes.MARGIN) {
+                const article = findValue(row, ['Артикул']);
+                const purchasePrice = findValue(row, ['Закупочная цена']);
+                
+                if (!article) {
+                    errors.push({ row: rowNum, errors: ['Артикул не найден'] });
+                    return;
+                }
+                
+                if (!purchasePrice) {
+                    errors.push({ row: rowNum, errors: ['Закупочная цена не найдена'] });
+                    return;
+                }
+                
+                const cleanArticle = cleanString(article);
+                
+                const record = {
+                    article: cleanArticle,
+                    stock: parseUniversalNumber(findValue(row, ['Остаток'])),
+                    purchasePrice: parseUniversalNumber(purchasePrice),
+                    marketPrice: parseUniversalNumber(findValue(row, ['Рыночная цена - сейчас'])),
+                    clientPrice: parseUniversalNumber(findValue(row, ['Цена для клиента'])),
+                    wbCommission: parseUniversalPercent(findValue(row, ['Комиссия WB'])),
+                    tax: parseUniversalPercent(findValue(row, ['Налог, %'])),
+                    storageCost: parseUniversalNumber(findValue(row, ['Стоимость хранения'])),
+                    storageDays: parseUniversalNumber(findValue(row, ['Срок хранения'])),
+                    packaging: parseUniversalNumber(findValue(row, ['Упаковка'])),
+                    logistics: parseUniversalNumber(findValue(row, ['Логистика'])),
+                    totalCost: parseUniversalNumber(findValue(row, ['Итого себестоимость'])),
+                    profitPerUnit: parseUniversalNumber(findValue(row, ['Прибыль с 1 шт'])),
+                    profitTotal: parseUniversalNumber(findValue(row, ['Прибыль итого'])),
+                    revenue: parseUniversalNumber(findValue(row, ['Выручка'])),
+                    investment: parseUniversalNumber(findValue(row, ['Вложения'])),
+                    margin: parseUniversalPercent(findValue(row, ['Маржинальность'])),
+                    volume: parseUniversalNumber(findValue(row, ['Объем'])),
+                    buyoutPercent: parseUniversalPercent(findValue(row, ['% выкупа (месяц)'])),
+                    importDate: new Date().toISOString()
+                };
+                
+                records.push(record);
+                return;
+            }
+
+            // ============================================================
             // ПАРСИНГ РЕКЛАМЫ
             // ============================================================
             if (type === ImportTypes.ADS) {
@@ -691,119 +803,4 @@ class ImportService {
 
         if (errors.length > 0) {
             console.log('🔴 ПЕРВЫЕ 10 ОШИБОК:');
-            errors.slice(0, 10).forEach(err => {
-                console.log(`  Строка ${err.row}: ${err.errors.join(', ')}`);
-            });
-        }
-
-        return {
-            success: errors.length === 0,
-            records,
-            errors,
-            total: data.length,
-            valid: records.length,
-            invalid: errors.length
-        };
-    }
-
-    static async _saveData(records, type) {
-        const storeMap = {
-            [ImportTypes.NOMENCLATURE]: 'products',
-            [ImportTypes.SALES]: 'sales',
-            [ImportTypes.STOCK_DAILY]: 'stock',
-            [ImportTypes.STOCK_CURRENT]: 'stock',
-            [ImportTypes.PRICES]: 'products',
-            [ImportTypes.ADS]: 'ads'
-        };
-
-        const storeName = storeMap[type];
-        if (!storeName) throw new Error(`Неизвестное хранилище для типа: ${type}`);
-
-        // Для PRICES — обновляем цены в существующих товарах
-        if (type === ImportTypes.PRICES) {
-            let updated = 0;
-            let skipped = 0;
-            
-            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            
-            for (const record of records) {
-                if (record._type === 'price_record') {
-                    const matchingProducts = allProducts.filter(p => 
-                        p.article === record.article || 
-                        p.articleKey.startsWith(record.article + '|')
-                    );
-                    
-                    if (matchingProducts.length === 0) {
-                        skipped++;
-                        continue;
-                    }
-                    
-                    for (const product of matchingProducts) {
-                        product.price = record.price;
-                        product.discount = record.discount;
-                        product.priceWithDiscount = record.priceWithDiscount;
-                        product.updatedAt = new Date().toISOString();
-                        await Database.save(Database.STORES.PRODUCTS, product);
-                        updated++;
-                    }
-                }
-            }
-            
-            console.log(`[ImportService] Цены: обновлено ${updated}, пропущено ${skipped}`);
-            return records;
-        }
-
-        if (type === ImportTypes.NOMENCLATURE) {
-            const existingProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            const existingKeys = new Set(existingProducts.map(p => p.articleKey));
-
-            let added = 0, skipped = 0;
-            for (const record of records) {
-                if (existingKeys.has(record.articleKey)) {
-                    skipped++;
-                    continue;
-                }
-                await Database.save(Database.STORES.PRODUCTS, {
-                    id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-                    ...record,
-                    importDate: new Date().toISOString()
-                });
-                added++;
-            }
-
-            console.log(`[ImportService] Номенклатура: +${added}, пропущено ${skipped}`);
-            return records.filter(r => !existingKeys.has(r.articleKey));
-        }
-
-        await Database.clear(storeName);
-        for (const record of records) {
-            await Database.save(storeName, {
-                id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-                ...record,
-                importDate: new Date().toISOString()
-            });
-        }
-
-        console.log(`[ImportService] ${type}: сохранено ${records.length} записей`);
-        return records;
-    }
-
-    static downloadTemplate(type) {
-        const template = TEMPLATES[type];
-        if (!template) {
-            console.error(`Неизвестный тип: ${type}`);
-            return;
-        }
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet([template.columns]);
-        if (EXAMPLES[type]) {
-            XLSX.utils.sheet_add_aoa(ws, [EXAMPLES[type]], { origin: 'A2' });
-        }
-        ws['!cols'] = template.columns.map(() => ({ wch: 22 }));
-        XLSX.utils.book_append_sheet(wb, ws, 'Шаблон');
-        XLSX.writeFile(wb, template.filename);
-    }
-}
-
-export default ImportService;
+            errors.slice(0, 10).forEach(err
