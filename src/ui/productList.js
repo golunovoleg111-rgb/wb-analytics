@@ -39,74 +39,65 @@ async function loadData() {
     console.log(`📦 Товаров: ${allProducts.length}`);
     console.log(`📦 Записей остатков: ${Object.keys(allStock).length}`);
     console.log(`📦 Записей продаж: ${Object.keys(allSales).length}`);
-    
-    // Диагностика: показываем первые 5 ключей остатков
-    const stockKeys = Object.keys(allStock).slice(0, 5);
-    console.log('🔑 Примеры ключей остатков:', stockKeys);
-    
-    // Диагностика: показываем первые 5 товаров
-    const productKeys = allProducts.slice(0, 5).map(p => ({ 
-        id: p.id, 
-        articleKey: p.articleKey,
-        article: p.article
-    }));
-    console.log('🔑 Примеры товаров:', productKeys);
 }
 
 // ============================================================
-// ПОИСК ОСТАТКОВ ПО ТОВАРУ
+// ПОИСК ДАННЫХ ПО ТОВАРУ (УНИВЕРСАЛЬНЫЙ)
 // ============================================================
 
-function getStockForProduct(product) {
-    // Пробуем найти по разным ключам
-    const keys = [
-        product.id,
-        product.articleKey,
-        product.article,
-        product.article + '|' + (product.size || 'NOSIZE') + '|' + (product.color || 'NOCOLOR')
+function findDataByProduct(product, dataMap) {
+    if (!product || !dataMap) return null;
+    
+    // 1. Пробуем по articleKey (точное совпадение)
+    if (product.articleKey && dataMap[product.articleKey]) {
+        return dataMap[product.articleKey];
+    }
+    
+    // 2. Пробуем по id
+    if (product.id && dataMap[product.id]) {
+        return dataMap[product.id];
+    }
+    
+    // 3. Пробуем по артикулу + размер + цвет
+    const article = product.article || '';
+    const size = product.size || '';
+    const color = product.color || '';
+    
+    const variants = [
+        `${article}|${size}|${color}`.toLowerCase(),
+        `${article}|${size}`.toLowerCase(),
+        article.toLowerCase(),
+        article
     ];
     
-    for (const key of keys) {
-        if (key && allStock[key]) {
-            return allStock[key];
+    for (const key of variants) {
+        if (dataMap[key]) {
+            return dataMap[key];
         }
     }
     
-    // Если не нашли — ищем частичное совпадение по артикулу
-    const article = product.article;
-    for (const [stockKey, stockValue] of Object.entries(allStock)) {
-        if (stockKey.startsWith(article + '|')) {
-            return stockValue;
+    // 4. Ищем частичное совпадение по артикулу (для агрегированных данных)
+    const lowerArticle = article.toLowerCase();
+    for (const [key, value] of Object.entries(dataMap)) {
+        if (key && key.toLowerCase().includes(lowerArticle)) {
+            return value;
+        }
+        if (key && key.toLowerCase().startsWith(lowerArticle + '|')) {
+            return value;
         }
     }
     
-    return { available: 0, total: 0, byWarehouse: {} };
+    return null;
+}
+
+function getStockForProduct(product) {
+    const result = findDataByProduct(product, allStock);
+    return result || { available: 0, total: 0, byWarehouse: {} };
 }
 
 function getSalesForProduct(product) {
-    // Пробуем найти по разным ключам
-    const keys = [
-        product.id,
-        product.articleKey,
-        product.article,
-        product.article + '|' + (product.size || 'NOSIZE') + '|' + (product.color || 'NOCOLOR')
-    ];
-    
-    for (const key of keys) {
-        if (key && allSales[key]) {
-            return allSales[key];
-        }
-    }
-    
-    // Если не нашли — ищем частичное совпадение по артикулу
-    const article = product.article;
-    for (const [salesKey, salesValue] of Object.entries(allSales)) {
-        if (salesKey.startsWith(article + '|')) {
-            return salesValue;
-        }
-    }
-    
-    return { orders: 0, revenue: 0 };
+    const result = findDataByProduct(product, allSales);
+    return result || { orders: 0, revenue: 0 };
 }
 
 // ============================================================
@@ -117,7 +108,9 @@ function groupByBase(products) {
     const groups = {};
     
     products.forEach(product => {
-        const base = product.baseModel || product.article;
+        // Используем article как базу, если baseModel не задан
+        const base = product.baseModel || product.article || 'unknown';
+        
         if (!groups[base]) {
             groups[base] = {
                 baseModel: base,
@@ -132,14 +125,15 @@ function groupByBase(products) {
                 minPurchase: Infinity,
                 maxMargin: 0,
                 minMargin: Infinity,
-                status: 'normal'
+                status: 'normal',
+                io: 0
             };
         }
         
         const group = groups[base];
         group.products.push(product);
         
-        // Добавляем размер и цвет
+        // Размеры и цвета
         if (product.size && product.size !== 'NOSIZE') {
             group.sizes.add(product.size);
         }
@@ -147,12 +141,12 @@ function groupByBase(products) {
             group.colors.add(product.color);
         }
         
-        // ✅ ИСПРАВЛЕНО: используем улучшенный поиск остатков
+        // Остатки
         const stock = getStockForProduct(product);
         const available = stock.available || 0;
         group.totalStock += available;
         
-        // ✅ ИСПРАВЛЕНО: используем улучшенный поиск продаж
+        // Продажи
         const sales = getSalesForProduct(product);
         group.totalSales += sales.orders || 0;
         
@@ -177,7 +171,7 @@ function groupByBase(products) {
         }
     });
     
-    // Вычисляем статус для каждой группы
+    // Вычисляем статус и ИО
     Object.values(groups).forEach(group => {
         const dailySales = group.totalSales / 30;
         const io = dailySales > 0 ? group.totalStock / dailySales : (group.totalStock > 0 ? 999 : 0);
@@ -206,14 +200,17 @@ function filterGroups(groups) {
     const { search, status } = currentFilters;
     
     return groups.filter(group => {
+        // Поиск
         if (search) {
             const query = search.toLowerCase();
-            const match = group.baseModel.toLowerCase().includes(query) ||
-                         group.name.toLowerCase().includes(query) ||
-                         group.products.some(p => p.article.toLowerCase().includes(query));
+            const match = 
+                group.baseModel.toLowerCase().includes(query) ||
+                group.name.toLowerCase().includes(query) ||
+                group.products.some(p => p.article.toLowerCase().includes(query));
             if (!match) return false;
         }
         
+        // Статус
         if (status !== 'all' && group.status !== status) {
             return false;
         }
@@ -223,11 +220,11 @@ function filterGroups(groups) {
 }
 
 // ============================================================
-// ФОРМАТИРОВАНИЕ ЧИСЕЛ
+// ФОРМАТИРОВАНИЕ
 // ============================================================
 
 function formatPrice(value) {
-    if (!value || value === Infinity) return '0 ₽';
+    if (!value || value === Infinity || value === -Infinity) return '0 ₽';
     return Math.round(value).toLocaleString() + ' ₽';
 }
 
@@ -237,7 +234,7 @@ function formatMargin(value) {
 }
 
 function formatIO(value) {
-    if (value === Infinity || value === 0) return '0';
+    if (value === Infinity || value === -Infinity || value === 0) return '0';
     return value.toFixed(1);
 }
 
@@ -257,6 +254,7 @@ function renderGroupCard(group) {
     const sizes = Array.from(group.sizes).sort();
     const colors = Array.from(group.colors);
     
+    // Цена
     let priceDisplay = '0 ₽';
     if (group.minPrice > 0 && group.minPrice !== Infinity) {
         if (group.minPrice === group.maxPrice) {
@@ -266,6 +264,7 @@ function renderGroupCard(group) {
         }
     }
     
+    // Маржа
     let marginDisplay = '0%';
     if (group.minMargin !== Infinity && group.minMargin > 0) {
         if (group.minMargin === group.maxMargin) {
@@ -279,61 +278,59 @@ function renderGroupCard(group) {
     
     const ioDisplay = formatIO(group.io);
     const sizesDisplay = sizes.length > 0 ? sizes.join(', ') : 'Нет размеров';
-    const colorsCount = colors.length > 0 ? colors.length : 0;
+    const colorsCount = colors.length;
 
     return `
-        <div class="product-group" data-base="${group.baseModel}" style="border-left:4px solid ${statusInfo.color};margin-bottom:8px;background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.04);">
-            <div class="product-group-header" onclick="window.toggleGroup(this)" style="display:flex;align-items:center;padding:12px 16px;cursor:pointer;gap:12px;">
-                <span class="product-group-icon" style="font-size:18px;flex-shrink:0;">${statusInfo.icon}</span>
-                <div class="product-group-info" style="flex:1;min-width:0;">
-                    <div class="product-group-name" style="font-weight:600;font-size:14px;color:#1A1A2E;">
+        <div class="product-group" data-base="${group.baseModel}">
+            <div class="product-group-header" onclick="window.toggleGroup(this)">
+                <span class="product-group-icon">${statusInfo.icon}</span>
+                <div class="product-group-info">
+                    <div class="product-group-name">
                         ${group.baseModel}
-                        <span style="font-size:12px;font-weight:400;color:#6B7280;margin-left:8px;">
-                            ${group.name}
-                        </span>
+                        <span class="product-group-subname">${group.name}</span>
                     </div>
-                    <div class="product-group-category" style="font-size:11px;color:#9CA3AF;margin-top:2px;">
+                    <div class="product-group-category">
                         ${sizesDisplay}
                         ${colorsCount > 0 ? ` · ${colorsCount} цветов` : ''}
                     </div>
                 </div>
-                <div class="product-group-metrics" style="display:flex;gap:16px;font-size:12px;flex-shrink:0;flex-wrap:wrap;">
-                    <div class="product-group-metric" style="text-align:center;">
-                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Цена</div>
-                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;">${priceDisplay}</div>
+                <div class="product-group-metrics">
+                    <div class="product-group-metric">
+                        <div class="product-group-metric-label">Цена</div>
+                        <div class="product-group-metric-value">${priceDisplay}</div>
                     </div>
-                    <div class="product-group-metric" style="text-align:center;">
-                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Остаток</div>
-                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;">${group.totalStock} шт</div>
+                    <div class="product-group-metric">
+                        <div class="product-group-metric-label">Остаток</div>
+                        <div class="product-group-metric-value">${group.totalStock} шт</div>
                     </div>
-                    <div class="product-group-metric" style="text-align:center;">
-                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Маржа</div>
-                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</div>
+                    <div class="product-group-metric">
+                        <div class="product-group-metric-label">Маржа</div>
+                        <div class="product-group-metric-value">${marginDisplay}</div>
                     </div>
-                    <div class="product-group-metric" style="text-align:center;">
-                        <div class="product-group-metric-label" style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">ИО</div>
-                        <div class="product-group-metric-value" style="font-weight:600;font-size:13px;">${ioDisplay}</div>
+                    <div class="product-group-metric">
+                        <div class="product-group-metric-label">ИО</div>
+                        <div class="product-group-metric-value">${ioDisplay}</div>
                     </div>
                 </div>
-                <span class="product-group-arrow" style="font-size:10px;color:#9CA3AF;transition:transform 0.2s;flex-shrink:0;">▶</span>
+                <span class="product-group-arrow">▶</span>
             </div>
-            <div class="product-group-items" style="display:none;padding:12px 16px;border-top:1px solid #F0ECF8;background:#FAF8FF;border-radius:0 0 8px 8px;">
-                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;">
+            <div class="product-group-items">
+                <div>
+                    <div>
                         ${sizes.length > 0 ? `
-                            <span style="font-size:11px;color:#6B7280;font-weight:500;">Размер:</span>
-                            <select class="product-size-select" data-base="${group.baseModel}" style="padding:4px 8px;border:1px solid #E5E0F0;border-radius:6px;font-size:12px;background:#FAF8FF;">
+                            <span>Размер:</span>
+                            <select class="product-size-select" data-base="${group.baseModel}">
                                 ${sizes.map(s => `<option value="${s}">${s}</option>`).join('')}
                             </select>
                         ` : ''}
                         ${colors.length > 0 ? `
-                            <span style="font-size:11px;color:#6B7280;font-weight:500;margin-left:8px;">Цвет:</span>
-                            <select class="product-color-select" data-base="${group.baseModel}" style="padding:4px 8px;border:1px solid #E5E0F0;border-radius:6px;font-size:12px;background:#FAF8FF;">
+                            <span>Цвет:</span>
+                            <select class="product-color-select" data-base="${group.baseModel}">
                                 ${colors.map(c => `<option value="${c}">${c}</option>`).join('')}
                             </select>
                         ` : ''}
                     </div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <div>
                         <button class="btn btn-sm btn-secondary" onclick="window.openProductGraph('${group.baseModel}')">📊 График</button>
                         <button class="btn btn-sm btn-secondary" onclick="window.openProductEdit('${group.baseModel}')">✏️ Редактировать</button>
                         <button class="btn btn-sm btn-primary" onclick="window.openProductCard('${group.baseModel}')">📋 Открыть</button>
@@ -345,7 +342,7 @@ function renderGroupCard(group) {
 }
 
 // ============================================================
-// ОСНОВНАЯ ФУНКЦИЯ РЕНДЕРИНГА
+// ОСНОВНАЯ ФУНКЦИЯ
 // ============================================================
 
 export async function renderProductList() {
@@ -386,17 +383,16 @@ export async function renderProductList() {
         
         if (groups.length === 0) {
             container.innerHTML = `
-                <div class="card" style="text-align:center;padding:30px;color:var(--text-secondary);">
+                <div class="card" style="text-align:center;padding:30px;">
                     <div style="font-size:36px;margin-bottom:8px;">🔍</div>
                     <div style="font-size:14px;font-weight:500;">Ничего не найдено</div>
-                    <div style="font-size:12px;">Попробуйте изменить параметры поиска</div>
+                    <div style="font-size:12px;color:var(--text-secondary);">Попробуйте изменить параметры поиска</div>
                 </div>
             `;
             return;
         }
         
         container.innerHTML = groups.map(group => renderGroupCard(group)).join('');
-        
         console.log(`✅ Отображено ${groups.length} групп товаров`);
         
     } catch (error) {
@@ -419,6 +415,7 @@ window.toggleGroup = function(header) {
     const items = header.nextElementSibling;
     const arrow = header.querySelector('.product-group-arrow');
     if (!items) return;
+    
     if (items.classList.contains('open')) {
         items.classList.remove('open');
         if (arrow) arrow.classList.remove('open');
@@ -443,10 +440,6 @@ window.openProductEdit = function(baseModel) {
     showToast(`✏️ Редактирование: ${baseModel}`, 'success');
 };
 
-// ============================================================
-// ОБНОВЛЕНИЕ ПРИ ИЗМЕНЕНИИ ФИЛЬТРОВ
-// ============================================================
-
 window.refreshProductTable = function() {
     const searchInput = document.getElementById('productSearch');
     const statusSelect = document.getElementById('productFilter');
@@ -454,6 +447,17 @@ window.refreshProductTable = function() {
     if (searchInput) currentFilters.search = searchInput.value;
     if (statusSelect) currentFilters.status = statusSelect.value;
     
+    renderProductList();
+};
+
+window.clearProductFilters = function() {
+    const searchInput = document.getElementById('productSearch');
+    const statusSelect = document.getElementById('productFilter');
+    
+    if (searchInput) searchInput.value = '';
+    if (statusSelect) statusSelect.value = 'all';
+    
+    currentFilters = { search: '', status: 'all' };
     renderProductList();
 };
 
