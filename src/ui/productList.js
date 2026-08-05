@@ -12,8 +12,7 @@ import StockService from '../services/StockService.js';
 
 let currentFilters = {
     search: '',
-    status: 'all',
-    warehouse: 'all'
+    status: 'all'
 };
 
 let allProducts = [];
@@ -37,9 +36,77 @@ async function loadData() {
     allStock = stockAggregated;
     allSales = salesAggregated;
     
-    console.log(`📦 Загружено: ${allProducts.length} товаров`);
-    console.log(`📦 Загружено: ${Object.keys(allStock).length} записей остатков`);
-    console.log(`📦 Загружено: ${Object.keys(allSales).length} записей продаж`);
+    console.log(`📦 Товаров: ${allProducts.length}`);
+    console.log(`📦 Записей остатков: ${Object.keys(allStock).length}`);
+    console.log(`📦 Записей продаж: ${Object.keys(allSales).length}`);
+    
+    // Диагностика: показываем первые 5 ключей остатков
+    const stockKeys = Object.keys(allStock).slice(0, 5);
+    console.log('🔑 Примеры ключей остатков:', stockKeys);
+    
+    // Диагностика: показываем первые 5 товаров
+    const productKeys = allProducts.slice(0, 5).map(p => ({ 
+        id: p.id, 
+        articleKey: p.articleKey,
+        article: p.article
+    }));
+    console.log('🔑 Примеры товаров:', productKeys);
+}
+
+// ============================================================
+// ПОИСК ОСТАТКОВ ПО ТОВАРУ
+// ============================================================
+
+function getStockForProduct(product) {
+    // Пробуем найти по разным ключам
+    const keys = [
+        product.id,
+        product.articleKey,
+        product.article,
+        product.article + '|' + (product.size || 'NOSIZE') + '|' + (product.color || 'NOCOLOR')
+    ];
+    
+    for (const key of keys) {
+        if (key && allStock[key]) {
+            return allStock[key];
+        }
+    }
+    
+    // Если не нашли — ищем частичное совпадение по артикулу
+    const article = product.article;
+    for (const [stockKey, stockValue] of Object.entries(allStock)) {
+        if (stockKey.startsWith(article + '|')) {
+            return stockValue;
+        }
+    }
+    
+    return { available: 0, total: 0, byWarehouse: {} };
+}
+
+function getSalesForProduct(product) {
+    // Пробуем найти по разным ключам
+    const keys = [
+        product.id,
+        product.articleKey,
+        product.article,
+        product.article + '|' + (product.size || 'NOSIZE') + '|' + (product.color || 'NOCOLOR')
+    ];
+    
+    for (const key of keys) {
+        if (key && allSales[key]) {
+            return allSales[key];
+        }
+    }
+    
+    // Если не нашли — ищем частичное совпадение по артикулу
+    const article = product.article;
+    for (const [salesKey, salesValue] of Object.entries(allSales)) {
+        if (salesKey.startsWith(article + '|')) {
+            return salesValue;
+        }
+    }
+    
+    return { orders: 0, revenue: 0 };
 }
 
 // ============================================================
@@ -80,13 +147,13 @@ function groupByBase(products) {
             group.colors.add(product.color);
         }
         
-        // Считаем остатки
-        const stock = allStock[product.id] || allStock[product.articleKey] || { available: 0 };
+        // ✅ ИСПРАВЛЕНО: используем улучшенный поиск остатков
+        const stock = getStockForProduct(product);
         const available = stock.available || 0;
         group.totalStock += available;
         
-        // Считаем продажи
-        const sales = allSales[product.id] || allSales[product.articleKey] || { orders: 0 };
+        // ✅ ИСПРАВЛЕНО: используем улучшенный поиск продаж
+        const sales = getSalesForProduct(product);
         group.totalSales += sales.orders || 0;
         
         // Цены
@@ -112,7 +179,6 @@ function groupByBase(products) {
     
     // Вычисляем статус для каждой группы
     Object.values(groups).forEach(group => {
-        // ИО = остаток / (продажи за 30 дней / 30)
         const dailySales = group.totalSales / 30;
         const io = dailySales > 0 ? group.totalStock / dailySales : (group.totalStock > 0 ? 999 : 0);
         group.io = io;
@@ -128,6 +194,7 @@ function groupByBase(products) {
         }
     });
     
+    console.log(`📦 Сгруппировано: ${Object.values(groups).length} групп`);
     return Object.values(groups);
 }
 
@@ -136,10 +203,9 @@ function groupByBase(products) {
 // ============================================================
 
 function filterGroups(groups) {
-    const { search, status, warehouse } = currentFilters;
+    const { search, status } = currentFilters;
     
     return groups.filter(group => {
-        // Поиск
         if (search) {
             const query = search.toLowerCase();
             const match = group.baseModel.toLowerCase().includes(query) ||
@@ -148,7 +214,6 @@ function filterGroups(groups) {
             if (!match) return false;
         }
         
-        // Статус
         if (status !== 'all' && group.status !== status) {
             return false;
         }
@@ -189,12 +254,9 @@ function renderGroupCard(group) {
     };
     
     const statusInfo = statusLabels[group.status] || statusLabels['normal'];
-    
-    // Получаем все размеры и цвета
     const sizes = Array.from(group.sizes).sort();
     const colors = Array.from(group.colors);
     
-    // Цена: показываем диапазон или одну цену
     let priceDisplay = '0 ₽';
     if (group.minPrice > 0 && group.minPrice !== Infinity) {
         if (group.minPrice === group.maxPrice) {
@@ -204,7 +266,6 @@ function renderGroupCard(group) {
         }
     }
     
-    // Маржа: диапазон
     let marginDisplay = '0%';
     if (group.minMargin !== Infinity && group.minMargin > 0) {
         if (group.minMargin === group.maxMargin) {
@@ -216,10 +277,7 @@ function renderGroupCard(group) {
         marginDisplay = formatMargin(group.maxMargin);
     }
     
-    // ИО
     const ioDisplay = formatIO(group.io);
-    
-    // Размеры и цвета для отображения
     const sizesDisplay = sizes.length > 0 ? sizes.join(', ') : 'Нет размеров';
     const colorsCount = colors.length > 0 ? colors.length : 0;
 
@@ -316,17 +374,12 @@ export async function renderProductList() {
         if (emptyContainer) emptyContainer.style.display = 'none';
         if (contentContainer) contentContainer.style.display = 'block';
         
-        // Группируем
         let groups = groupByBase(allProducts);
-        
-        // Применяем фильтры
         groups = filterGroups(groups);
         
-        // Сортируем по статусу (дефицит → внимание → норма → нет остатков)
         const statusOrder = { deficit: 0, warning: 1, normal: 2, no_stock: 3 };
         groups.sort((a, b) => (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0));
         
-        // Обновляем счётчик
         if (countEl) {
             countEl.textContent = `Товаров: ${groups.length}`;
         }
@@ -342,7 +395,6 @@ export async function renderProductList() {
             return;
         }
         
-        // Рендерим карточки
         container.innerHTML = groups.map(group => renderGroupCard(group)).join('');
         
         console.log(`✅ Отображено ${groups.length} групп товаров`);
@@ -366,12 +418,13 @@ export async function renderProductList() {
 window.toggleGroup = function(header) {
     const items = header.nextElementSibling;
     const arrow = header.querySelector('.product-group-arrow');
+    if (!items) return;
     if (items.classList.contains('open')) {
         items.classList.remove('open');
-        arrow.classList.remove('open');
+        if (arrow) arrow.classList.remove('open');
     } else {
         items.classList.add('open');
-        arrow.classList.add('open');
+        if (arrow) arrow.classList.add('open');
     }
 };
 
