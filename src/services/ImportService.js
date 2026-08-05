@@ -810,4 +810,185 @@ class ImportService {
                     cpc: parseNumber(findValue(row, ['CPC'])),
                     cpm: parseNumber(findValue(row, ['CPM'])),
                     ctr: parseNumber(findValue(row, ['CTR(%)', 'CTR'])),
-                    duration: clean
+                    duration: cleanString(findValue(row, ['Длительность']) || ''),
+                    cr: parseNumber(findValue(row, ['CR(%)', 'CR'])),
+                    spent: parseNumber(findValue(row, ['Затраты'])),
+                    orders: parseNumber(findValue(row, ['Заказанные товары, шт'])),
+                    cartAdds: parseNumber(findValue(row, ['Добавления в корзину'])),
+                    linkedArticle: null,
+                    importDate: new Date().toISOString()
+                };
+                
+                records.push(record);
+                return;
+            }
+        });
+
+        console.log(`📊 Итоги: всего ${data.length} строк, ✅ ${records.length} валидных, ❌ ${errors.length} ошибок`);
+
+        if (errors.length > 0) {
+            console.log('🔴 ПЕРВЫЕ 10 ОШИБОК:');
+            errors.slice(0, 10).forEach(err => {
+                console.log(`  Строка ${err.row}: ${err.errors.join(', ')}`);
+            });
+        }
+
+        return {
+            success: errors.length === 0,
+            records,
+            errors,
+            total: data.length,
+            valid: records.length,
+            invalid: errors.length
+        };
+    }
+
+    static async _saveData(records, type) {
+        const storeMap = {
+            [ImportTypes.NOMENCLATURE]: 'products',
+            [ImportTypes.SALES]: 'sales',
+            [ImportTypes.STOCK_DAILY]: 'stock',
+            [ImportTypes.STOCK_CURRENT]: 'stock',
+            [ImportTypes.PRICES]: 'products',
+            [ImportTypes.MARGIN]: 'products',
+            [ImportTypes.ADS]: 'advertising'
+        };
+
+        const storeName = storeMap[type];
+        if (!storeName) throw new Error(`Неизвестное хранилище для типа: ${type}`);
+
+        // Для PRICES — обновляем цены
+        if (type === ImportTypes.PRICES) {
+            let updated = 0;
+            let skipped = 0;
+            
+            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
+            
+            for (const record of records) {
+                if (record._type === 'price_record') {
+                    const matchingProducts = allProducts.filter(p => 
+                        p.article === record.article || 
+                        p.articleKey.startsWith(record.article + '|')
+                    );
+                    
+                    if (matchingProducts.length === 0) {
+                        skipped++;
+                        continue;
+                    }
+                    
+                    for (const product of matchingProducts) {
+                        product.price = record.price;
+                        product.discount = record.discount;
+                        product.priceWithDiscount = record.priceWithDiscount;
+                        product.updatedAt = new Date().toISOString();
+                        await Database.save(Database.STORES.PRODUCTS, product);
+                        updated++;
+                    }
+                }
+            }
+            
+            console.log(`[ImportService] Цены: обновлено ${updated}, пропущено ${skipped}`);
+            return records;
+        }
+
+        // Для MARGIN — обновляем экономические показатели
+        if (type === ImportTypes.MARGIN) {
+            let updated = 0;
+            let skipped = 0;
+            
+            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
+            
+            for (const record of records) {
+                const matchingProducts = allProducts.filter(p => 
+                    p.article === record.article || 
+                    p.articleKey.startsWith(record.article + '|')
+                );
+                
+                if (matchingProducts.length === 0) {
+                    skipped++;
+                    continue;
+                }
+                
+                for (const product of matchingProducts) {
+                    product.purchasePrice = record.purchasePrice;
+                    product.marketPrice = record.marketPrice;
+                    product.clientPrice = record.clientPrice;
+                    product.wbCommission = record.wbCommission;
+                    product.tax = record.tax;
+                    product.storageCost = record.storageCost;
+                    product.storageDays = record.storageDays;
+                    product.packaging = record.packaging;
+                    product.logistics = record.logistics;
+                    product.totalCost = record.totalCost;
+                    product.profitPerUnit = record.profitPerUnit;
+                    product.profitTotal = record.profitTotal;
+                    product.revenue = record.revenue;
+                    product.investment = record.investment;
+                    product.margin = record.margin;
+                    product.volume = record.volume;
+                    product.buyoutPercent = record.buyoutPercent;
+                    product.updatedAt = new Date().toISOString();
+                    await Database.save(Database.STORES.PRODUCTS, product);
+                    updated++;
+                }
+            }
+            
+            console.log(`[ImportService] Маржинальность: обновлено ${updated}, пропущено ${skipped}`);
+            return records;
+        }
+
+        if (type === ImportTypes.NOMENCLATURE) {
+            const existingProducts = await Database.getAll(Database.STORES.PRODUCTS);
+            const existingKeys = new Set(existingProducts.map(p => p.articleKey));
+
+            let added = 0, skipped = 0;
+            for (const record of records) {
+                if (existingKeys.has(record.articleKey)) {
+                    skipped++;
+                    continue;
+                }
+                await Database.save(Database.STORES.PRODUCTS, {
+                    id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+                    ...record,
+                    importDate: new Date().toISOString()
+                });
+                added++;
+            }
+
+            console.log(`[ImportService] Номенклатура: +${added}, пропущено ${skipped}`);
+            return records.filter(r => !existingKeys.has(r.articleKey));
+        }
+
+        // Для остальных типов — очищаем и загружаем заново
+        await Database.clear(storeName);
+        for (const record of records) {
+            await Database.save(storeName, {
+                id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+                ...record,
+                importDate: new Date().toISOString()
+            });
+        }
+
+        console.log(`[ImportService] ${type}: сохранено ${records.length} записей`);
+        return records;
+    }
+
+    static downloadTemplate(type) {
+        const template = TEMPLATES[type];
+        if (!template) {
+            console.error(`Неизвестный тип: ${type}`);
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([template.columns]);
+        if (EXAMPLES[type]) {
+            XLSX.utils.sheet_add_aoa(ws, [EXAMPLES[type]], { origin: 'A2' });
+        }
+        ws['!cols'] = template.columns.map(() => ({ wch: 22 }));
+        XLSX.utils.book_append_sheet(wb, ws, 'Шаблон');
+        XLSX.writeFile(wb, template.filename);
+    }
+}
+
+export default ImportService;
