@@ -13,7 +13,7 @@ export const ImportTypes = {
     SALES: 'sales',
     STOCK_DAILY: 'stock_daily',
     STOCK_CURRENT: 'stock_current',
-    PRICES: 'prices',           // ← НОВЫЙ ТИП
+    PRICES: 'prices',
     ADS: 'ads'
 };
 
@@ -115,9 +115,6 @@ function findValue(row, possibleKeys) {
     return null;
 }
 
-/**
- * Универсальный парсинг даты
- */
 function parseDateUniversal(dateStr) {
     if (!dateStr) return null;
     
@@ -481,7 +478,7 @@ class ImportService {
 
                 const parsedDate = parseDateUniversal(dateStr);
                 if (!parsedDate) {
-                    console.log(`🔴 НЕКОРРЕКТНАЯ ДАТА в строке ${rowNum}: "${dateStr}" (тип: ${typeof dateStr})`);
+                    console.log(`🔴 НЕКОРРЕКТНАЯ ДАТА в строке ${rowNum}: "${dateStr}"`);
                     errors.push({ row: rowNum, errors: [`Некорректная дата: "${dateStr}"`] });
                     return;
                 }
@@ -634,7 +631,7 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ ЦЕН И СКИДОК (PRICES) — НОВЫЙ
+            // ПАРСИНГ ЦЕН И СКИДОК (PRICES)
             // ============================================================
             if (type === ImportTypes.PRICES) {
                 const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
@@ -657,44 +654,14 @@ class ImportService {
                 const discountValue = parseNumber(discount);
                 const priceWithDiscountValue = priceWithDiscount ? parseNumber(priceWithDiscount) : 0;
                 
-                // Пытаемся найти товар в номенклатуре по артикулу
-                // (без размера, так как в отчёте цен размера нет)
-                // Ищем все товары с таким артикулом
-                const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
-                const matchingProducts = allProducts.filter(p => 
-                    p.article === cleanArticle || 
-                    p.articleKey.startsWith(cleanArticle + '|')
-                );
-                
-                if (matchingProducts.length === 0) {
-                    // Если товар не найден — создаём запись с ценой, но без привязки
-                    // Позже пользователь сможет привязать вручную
-                    records.push({
-                        article: cleanArticle,
-                        price: priceValue,
-                        discount: discountValue,
-                        priceWithDiscount: priceWithDiscountValue,
-                        importDate: new Date().toISOString(),
-                        // Сохраняем как отдельную запись цен
-                        _type: 'price_record'
-                    });
-                    return;
-                }
-                
-                // Обновляем цены для всех найденных товаров с этим артикулом
-                for (const product of matchingProducts) {
-                    records.push({
-                        productId: product.id,
-                        articleKey: product.articleKey,
-                        article: cleanArticle,
-                        size: product.size || 'NOSIZE',
-                        price: priceValue,
-                        discount: discountValue,
-                        priceWithDiscount: priceWithDiscountValue,
-                        importDate: new Date().toISOString(),
-                        _type: 'price_update'
-                    });
-                }
+                records.push({
+                    article: cleanArticle,
+                    price: priceValue,
+                    discount: discountValue,
+                    priceWithDiscount: priceWithDiscountValue,
+                    importDate: new Date().toISOString(),
+                    _type: 'price_record'
+                });
                 return;
             }
 
@@ -745,7 +712,7 @@ class ImportService {
             [ImportTypes.SALES]: 'sales',
             [ImportTypes.STOCK_DAILY]: 'stock',
             [ImportTypes.STOCK_CURRENT]: 'stock',
-            [ImportTypes.PRICES]: 'products',      // ← сохраняем в products
+            [ImportTypes.PRICES]: 'products',
             [ImportTypes.ADS]: 'ads'
         };
 
@@ -757,26 +724,27 @@ class ImportService {
             let updated = 0;
             let skipped = 0;
             
+            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
+            
             for (const record of records) {
                 if (record._type === 'price_record') {
-                    // Это запись без привязки к товару — сохраняем в отдельное хранилище?
-                    // Пока просто пропускаем
-                    skipped++;
-                    continue;
-                }
-                
-                if (record._type === 'price_update' && record.productId) {
-                    // Обновляем цену в товаре
-                    const product = await Database.getById(Database.STORES.PRODUCTS, record.productId);
-                    if (product) {
+                    const matchingProducts = allProducts.filter(p => 
+                        p.article === record.article || 
+                        p.articleKey.startsWith(record.article + '|')
+                    );
+                    
+                    if (matchingProducts.length === 0) {
+                        skipped++;
+                        continue;
+                    }
+                    
+                    for (const product of matchingProducts) {
                         product.price = record.price;
                         product.discount = record.discount;
                         product.priceWithDiscount = record.priceWithDiscount;
                         product.updatedAt = new Date().toISOString();
                         await Database.save(Database.STORES.PRODUCTS, product);
                         updated++;
-                    } else {
-                        skipped++;
                     }
                 }
             }
@@ -807,7 +775,6 @@ class ImportService {
             return records.filter(r => !existingKeys.has(r.articleKey));
         }
 
-        // Для остальных типов — очищаем и загружаем заново
         await Database.clear(storeName);
         for (const record of records) {
             await Database.save(storeName, {
