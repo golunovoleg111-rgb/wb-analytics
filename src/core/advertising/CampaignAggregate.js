@@ -81,6 +81,10 @@ class CampaignAggregate {
         return campaign;
     }
 
+    // ============================================================
+    // ПРИВЯЗКА ТОВАРА
+    // ============================================================
+
     static async linkProduct(id, article) {
         const campaign = await this.getById(id);
         if (!campaign) {
@@ -90,6 +94,10 @@ class CampaignAggregate {
         await Database.save(Database.STORES.ADVERTISING, campaign);
         return campaign;
     }
+
+    // ============================================================
+    // УПРАВЛЕНИЕ СТАТУСОМ
+    // ============================================================
 
     static async pause(id) {
         const campaign = await this.getById(id);
