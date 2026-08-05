@@ -58,15 +58,16 @@ async function getSalesAnalytics(period) {
     }));
 
     // Топ-5 товаров по выручке
-    const productSales = {};
-    filtered.forEach(s => {
-        const article = productMap[s.productId] || s.productId;
-        if (!productSales[article]) {
-            productSales[article] = { revenue: 0, orders: 0 };
-        }
-        productSales[article].revenue += s.amount;
-        productSales[article].orders += s.orders;
-    });
+const productSales = {};
+filtered.forEach(s => {
+    // Используем article из записи, а не productId
+    const article = s.article || productMap[s.productId] || s.productId;
+    if (!productSales[article]) {
+        productSales[article] = { revenue: 0, orders: 0 };
+    }
+    productSales[article].revenue += s.amount;
+    productSales[article].orders += s.orders;
+});
 
     const topProducts = Object.keys(productSales)
         .map(article => ({
