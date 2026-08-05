@@ -41,7 +41,7 @@ const TEMPLATES = {
     },
     [ImportTypes.STOCK_CURRENT]: {
         columns: ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 'В пути возвраты', 'Всего на складах', 'Новосибирск'],
-        required: ['Артикул продавца', 'Размер вещи', 'Всего на складах'],
+        required: ['Артикул продавца', 'Размер вещи'],
         filename: 'StockFlow_Шаблон_Текущие_остатки.xlsx',
         description: '📦 Текущие остатки — актуальные остатки и в пути'
     },
@@ -530,7 +530,6 @@ class ImportService {
                     if (knownColumns.includes(key)) return false;
                     const val = row[key];
                     if (val === null || val === undefined || val === '') return false;
-                    // Проверяем, похоже ли на дату
                     const cleanKey = cleanString(key);
                     return cleanKey.match(/^\d{2}\.\d{2}\.\d{4}$/) || 
                            cleanKey.match(/^\d{4}\.\d{2}\.\d{2}$/) ||
@@ -570,14 +569,14 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ ТЕКУЩИХ ОСТАТКОВ (STOCK_CURRENT)
+            // ПАРСИНГ ТЕКУЩИХ ОСТАТКОВ (STOCK_CURRENT) — ИСПРАВЛЕННЫЙ
             // ============================================================
             if (type === ImportTypes.STOCK_CURRENT) {
                 const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
                 const size = findValue(row, ['Размер вещи', 'Размер', 'size']);
                 const inTransitTo = findValue(row, ['В пути до получателей']);
                 const inTransitFrom = findValue(row, ['В пути возвраты на склад WB', 'В пути возвраты']);
-                const total = findValue(row, ['Всего находится на складах', 'Всего на складах']);
+                const total = findValue(row, ['Всего находится на складах', 'Всего на складах', 'Итого на складах']);
                 
                 if (!article) {
                     errors.push({ row: rowNum, errors: ['Артикул продавца не найден'] });
@@ -589,10 +588,8 @@ class ImportService {
                     return;
                 }
                 
-                if (!total) {
-                    errors.push({ row: rowNum, errors: ['Всего на складах не найдено'] });
-                    return;
-                }
+                // Если total пустой — ставим 0
+                const totalValue = total ? parseNumber(total) : 0;
                 
                 // Определяем все колонки со складами (начиная с F)
                 const knownColumns = ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 
@@ -603,6 +600,11 @@ class ImportService {
                     if (val === null || val === undefined || val === '') return false;
                     return true;
                 });
+                
+                // Если нет колонок со складами — пропускаем строку
+                if (warehouseColumns.length === 0) {
+                    return;
+                }
                 
                 const cleanArticle = cleanString(article);
                 const cleanSize = cleanString(size);
@@ -615,21 +617,11 @@ class ImportService {
                     size: cleanSize,
                     inTransitTo: parseNumber(inTransitTo),
                     inTransitFrom: parseNumber(inTransitFrom),
-                    total: parseNumber(total),
+                    total: totalValue,
                     date: new Date().toISOString().split('T')[0],
                     source: 'stock_current',
                     importDate: new Date().toISOString()
                 };
-                
-                // Если нет колонок со складами — сохраняем одну запись без склада
-                if (warehouseColumns.length === 0) {
-                    records.push({
-                        ...baseRecord,
-                        warehouse: 'Все склады',
-                        quantity: parseNumber(total)
-                    });
-                    return;
-                }
                 
                 // Сохраняем по каждому складу
                 for (const warehouse of warehouseColumns) {
