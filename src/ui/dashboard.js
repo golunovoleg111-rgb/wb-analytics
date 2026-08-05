@@ -5,7 +5,6 @@
 import ProductService from '../services/ProductService.js';
 import SalesService from '../services/SalesService.js';
 import StockService from '../services/StockService.js';
-import InventoryAggregate from '../core/stock/InventoryAggregate.js';
 
 // ============================================================
 // ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ ДАШБОРДА
@@ -27,22 +26,21 @@ async function getDashboardData() {
 
     // Продажи за вчера
     const yesterdaySales = allSales.filter(s => s.date === yesterday);
-    const yesterdayRevenue = yesterdaySales.reduce((sum, s) => sum + s.amount, 0);
-    const yesterdayOrders = yesterdaySales.reduce((sum, s) => sum + s.orders, 0);
+    const yesterdayRevenue = yesterdaySales.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const yesterdayOrders = yesterdaySales.reduce((sum, s) => sum + (s.orders || 0), 0);
+    const yesterdayDelivered = yesterdaySales.reduce((sum, s) => sum + (s.delivered || 0), 0);
 
     // Продажи за 7 дней (для графика)
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateStr = d.toISOString().split('T')[0];
         
-        // Ищем продажи за этот день
         const daySales = allSales.filter(s => s.date === dateStr);
-        const revenue = daySales.reduce((sum, s) => sum + s.amount, 0);
-        const orders = daySales.reduce((sum, s) => sum + s.orders, 0);
+        const revenue = daySales.reduce((sum, s) => sum + (s.amount || 0), 0);
+        const orders = daySales.reduce((sum, s) => sum + (s.orders || 0), 0);
         
-        // Форматируем дату для отображения (DD.MM)
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const displayDate = `${day}.${month}`;
@@ -55,13 +53,14 @@ async function getDashboardData() {
         });
     }
 
-    // Проблемные товары (ИО < 0.2) — пока заглушка
+    // Проблемные товары (пока заглушка)
     const criticalProducts = [];
 
     console.log('📊 Данные для дашборда:', {
         totalProducts,
         yesterdayRevenue,
         yesterdayOrders,
+        yesterdayDelivered,
         last7Days
     });
 
@@ -69,6 +68,7 @@ async function getDashboardData() {
         totalProducts,
         yesterdayRevenue,
         yesterdayOrders,
+        yesterdayDelivered,
         avgMargin: 0,
         criticalProducts,
         last7Days
@@ -126,7 +126,7 @@ function renderKPIs(data) {
     if (elOrders) elOrders.textContent = data.yesterdayOrders;
     
     const elDelivered = document.getElementById('kpiDelivered');
-    if (elDelivered) elDelivered.textContent = '—';
+    if (elDelivered) elDelivered.textContent = data.yesterdayDelivered;
     
     const elMargin = document.getElementById('kpiAvgMargin');
     if (elMargin) elMargin.textContent = data.avgMargin + '%';
@@ -155,7 +155,7 @@ function renderAttentionBlock(criticalProducts) {
             <div style="padding:8px 12px;background:#FEF2F2;border-left:3px solid #EF4444;margin-bottom:6px;border-radius:6px;font-size:13px;display:flex;justify-content:space-between;align-items:center;">
                 <span>
                     <span style="margin-right:6px;">🔴</span>
-                    <strong>${p.product.article}</strong>
+                    <strong>${p.product?.article || p.article}</strong>
                     — остаток ${p.stock} шт, ИО ${p.io.toFixed(2)}
                 </span>
                 <button class="btn btn-xs btn-danger" onclick="navigateTo('products')" style="font-size:10px;">Перейти</button>
@@ -189,8 +189,13 @@ function renderMiniChart(last7Days) {
         window.dashboardChart = null;
     }
 
+    if (!last7Days || last7Days.length === 0) {
+        console.warn('⚠️ Нет данных для графика');
+        return;
+    }
+
     const ctx = canvas.getContext('2d');
-    const labels = last7Days.map(d => d.date.slice(0, 5));
+    const labels = last7Days.map(d => d.date);
     const revenueData = last7Days.map(d => d.revenue);
     const orderData = last7Days.map(d => d.orders);
 
@@ -276,15 +281,17 @@ function renderMiniChart(last7Days) {
 function getYesterdayStr() {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    return String(d.getDate()).padStart(2, '0') + '.' +
-           String(d.getMonth() + 1).padStart(2, '0') + '.' +
-           d.getFullYear();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function formatDate(date) {
-    return String(date.getDate()).padStart(2, '0') + '.' +
-           String(date.getMonth() + 1).padStart(2, '0') + '.' +
-           date.getFullYear();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 // ============================================================
