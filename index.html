@@ -38,10 +38,8 @@
         </div>
 
         <nav class="topbar-nav">
-            <!-- Главная -->
             <a class="nav-item active" data-page="dashboard">🏠 Главная</a>
 
-            <!-- Товары ▼ -->
             <div class="nav-dropdown">
                 <span class="nav-item nav-dropdown-trigger">
                     📦 Товары <span class="arrow">▼</span>
@@ -53,7 +51,6 @@
                 </div>
             </div>
 
-            <!-- Продажи ▼ -->
             <div class="nav-dropdown">
                 <span class="nav-item nav-dropdown-trigger">
                     📊 Продажи <span class="arrow">▼</span>
@@ -66,7 +63,6 @@
                 </div>
             </div>
 
-            <!-- Маркетинг ▼ -->
             <div class="nav-dropdown">
                 <span class="nav-item nav-dropdown-trigger">
                     📢 Маркетинг <span class="arrow">▼</span>
@@ -79,7 +75,6 @@
                 </div>
             </div>
 
-            <!-- Склад ▼ -->
             <div class="nav-dropdown">
                 <span class="nav-item nav-dropdown-trigger">
                     🏪 Склад <span class="arrow">▼</span>
@@ -92,10 +87,8 @@
                 </div>
             </div>
 
-            <!-- Импорт -->
             <a class="nav-item" data-page="import">📥 Импорт</a>
 
-            <!-- Аналитика ▼ -->
             <div class="nav-dropdown">
                 <span class="nav-item nav-dropdown-trigger">
                     📈 Аналитика <span class="arrow">▼</span>
@@ -109,7 +102,6 @@
                 </div>
             </div>
 
-            <!-- Настройки -->
             <a class="nav-item" data-page="settings">⚙️ Настройки</a>
         </nav>
 
@@ -182,12 +174,13 @@
                     <div class="card-title">⚠️ Требует внимания</div>
                     <div id="attentionBlock"></div>
                 </div>
+
                 <div class="card" style="margin-bottom:16px;">
-    <div class="card-title">📈 Продажи за 7 дней</div>
-    <div style="height:180px;">
-        <canvas id="dashboardChart"></canvas>
-    </div>
-</div>
+                    <div class="card-title">📈 Продажи за 7 дней</div>
+                    <div style="height:180px;">
+                        <canvas id="dashboardChart"></canvas>
+                    </div>
+                </div>
 
                 <div class="grid-3">
                     <div class="card quick-card" onclick="navigateTo('products')">
@@ -299,30 +292,30 @@
             </div>
         </section>
 
-       <!-- ===================== РЕКЛАМА ===================== -->
-<section id="page-ads" class="page">
-    <div class="page-header">
-        <h1>📢 Реклама</h1>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" onclick="window.openCreateCampaignModal()">➕ Создать кампанию</button>
-            <button class="btn btn-secondary btn-sm" onclick="renderAdsList()">🔄 Обновить</button>
-        </div>
-    </div>
+        <!-- ===================== РЕКЛАМА ===================== -->
+        <section id="page-ads" class="page">
+            <div class="page-header">
+                <h1>📢 Реклама</h1>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="window.openCreateCampaignModal()">➕ Создать кампанию</button>
+                    <button class="btn btn-secondary btn-sm" onclick="renderAdsList()">🔄 Обновить</button>
+                </div>
+            </div>
 
-    <div id="adsEmpty" class="card" style="text-align:center;">
-        <div style="font-size:48px;margin-bottom:12px;">📥</div>
-        <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
-        <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
-            Импортируйте рекламный отчёт WB в разделе «Импорт»
-        </div>
-        <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
-    </div>
+            <div id="adsEmpty" class="card" style="text-align:center;">
+                <div style="font-size:48px;margin-bottom:12px;">📥</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
+                <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
+                    Импортируйте рекламный отчёт WB в разделе «Импорт»
+                </div>
+                <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
+            </div>
 
-    <div id="adsContent" style="display:none;">
-        <div id="adsSummary" class="card" style="margin-bottom:14px;"></div>
-        <div id="adsListContainer"></div>
-    </div>
-</section>
+            <div id="adsContent" style="display:none;">
+                <div id="adsSummary" class="card" style="margin-bottom:14px;"></div>
+                <div id="adsListContainer"></div>
+            </div>
+        </section>
 
         <!-- ===================== СКЛАД (МОЙ СКЛАД) ===================== -->
         <section id="page-warehouse" class="page">
@@ -391,31 +384,49 @@
                 </div>
 
                 <!-- Остатки -->
-<div class="card import-card">
-    <div class="card-title">📦 Остатки</div>
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
-        Загрузка отчётов WB по остаткам
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock_daily')">
-            📥 Шаблон (по дням)
-        </button>
-        <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock_current')">
-            📥 Шаблон (текущие)
-        </button>
-    </div>
-    <select id="stockTypeSelect" style="width:100%;margin-bottom:10px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);outline:none;transition:all var(--transition);">
-        <option value="stock_daily">📊 Остатки по дням (детализация по датам)</option>
-        <option value="stock_current">📦 Текущие остатки (актуальные + в пути)</option>
-    </select>
-    <div class="drop-zone" id="stockDropZone">
-        <div style="font-size:28px;">📤</div>
-        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
-        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
-    </div>
-    <input type="file" id="stockFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-    <div id="stockImportStatus" style="margin-top:8px;font-size:12px;"></div>
-</div>
+                <div class="card import-card">
+                    <div class="card-title">📦 Остатки</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                        Загрузка отчётов WB по остаткам
+                    </div>
+                    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock_daily')">
+                            📥 Шаблон (по дням)
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('stock_current')">
+                            📥 Шаблон (текущие)
+                        </button>
+                    </div>
+                    <select id="stockTypeSelect" style="width:100%;margin-bottom:10px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);outline:none;transition:all var(--transition);">
+                        <option value="stock_daily">📊 Остатки по дням (детализация по датам)</option>
+                        <option value="stock_current">📦 Текущие остатки (актуальные + в пути)</option>
+                    </select>
+                    <div class="drop-zone" id="stockDropZone">
+                        <div style="font-size:28px;">📤</div>
+                        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
+                        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
+                    </div>
+                    <input type="file" id="stockFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+                    <div id="stockImportStatus" style="margin-top:8px;font-size:12px;"></div>
+                </div>
+
+                <!-- Цены и скидки -->
+                <div class="card import-card" style="border:2px solid var(--primary-light);">
+                    <div class="card-title">💰 Цены и скидки</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                        Загрузка актуальных цен и скидок из WB
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="ImportService.downloadTemplate('prices')" style="margin-bottom:10px;">
+                        📥 Шаблон
+                    </button>
+                    <div class="drop-zone" id="pricesDropZone">
+                        <div style="font-size:28px;">📤</div>
+                        <div style="font-size:13px;font-weight:500;">Перетащите файл</div>
+                        <div style="font-size:11px;color:var(--text-secondary);">XLSX, XLS, CSV</div>
+                    </div>
+                    <input type="file" id="pricesFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+                    <div id="pricesImportStatus" style="margin-top:8px;font-size:12px;"></div>
+                </div>
 
                 <!-- Реклама -->
                 <div class="card import-card">
@@ -437,14 +448,14 @@
             </div>
         </section>
 
-      <!-- ===================== НАСТРОЙКИ ===================== -->
-<section id="page-settings" class="page">
-    <div class="page-header">
-        <h1>⚙️ Настройки</h1>
-        <span style="font-size:12px;color:var(--text-secondary);">Управление системой</span>
-    </div>
-    <div id="settingsContent"></div>
-</section>
+        <!-- ===================== НАСТРОЙКИ ===================== -->
+        <section id="page-settings" class="page">
+            <div class="page-header">
+                <h1>⚙️ Настройки</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Управление системой</span>
+            </div>
+            <div id="settingsContent"></div>
+        </section>
 
         <!-- ===================== ЗАГЛУШКИ ===================== -->
         <section id="page-price-management" class="page">
@@ -466,12 +477,12 @@
         </section>
 
         <section id="page-sales-analytics" class="page">
-    <div class="page-header">
-        <h1>📈 Аналитика продаж</h1>
-        <span style="font-size:12px;color:var(--text-secondary);">Динамика и структура продаж</span>
-    </div>
-    <div id="salesAnalyticsContent"></div>
-</section>
+            <div class="page-header">
+                <h1>📈 Аналитика продаж</h1>
+                <span style="font-size:12px;color:var(--text-secondary);">Динамика и структура продаж</span>
+            </div>
+            <div id="salesAnalyticsContent"></div>
+        </section>
 
         <section id="page-sales-geography" class="page">
             <div class="page-header"><h1>📍 География заказов</h1></div>
@@ -792,7 +803,7 @@
     <div id="toast" class="toast"></div>
 
     <!-- ========================================================== -->
-    <!-- НОВАЯ АРХИТЕКТУРА — ВСЯ ЛОГИКА ЗДЕСЬ                     -->
+    <!-- СКРИПТЫ                                                    -->
     <!-- ========================================================== -->
     <script type="module">
     import ProductService from './src/services/ProductService.js';
@@ -834,294 +845,291 @@
     window.navigateTo = function(pageName) {
         console.log('🔀 Переход на страницу:', pageName);
 
-            document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-                item.classList.remove('active');
-            });
-            const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
-            if (navItem) navItem.classList.add('active');
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+            item.classList.remove('active');
+        });
+        const navItem = document.querySelector(`.nav-item[data-page="${pageName}"]`);
+        if (navItem) navItem.classList.add('active');
 
-            document.querySelectorAll('.nav-dropdown-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            const dropdownItem = document.querySelector(`.nav-dropdown-item[data-page="${pageName}"]`);
-            if (dropdownItem) dropdownItem.classList.add('active');
+        document.querySelectorAll('.nav-dropdown-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        const dropdownItem = document.querySelector(`.nav-dropdown-item[data-page="${pageName}"]`);
+        if (dropdownItem) dropdownItem.classList.add('active');
 
+        document.querySelectorAll('.nav-dropdown-menu.open').forEach(menu => {
+            menu.classList.remove('open');
+            menu.closest('.nav-dropdown').classList.remove('active');
+        });
+
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+        const page = document.getElementById(`page-${pageName}`);
+        if (page) page.classList.add('active');
+
+        const renderMap = {
+            'products': renderProductList,
+            'supply-planning': renderOrderList,
+            'supplies': renderSupplyHistory,
+            'dashboard': renderDashboard,
+            'sales-analytics': renderSalesAnalytics,
+            'ads': renderAdsList,
+            'settings': renderSettings
+        };
+
+        if (renderMap[pageName]) {
+            setTimeout(renderMap[pageName], 50);
+        }
+    };
+
+    // ============================================================
+    // КЛИК ПО РОДИТЕЛЬСКОМУ ПУНКТУ → ОТКРЫТИЕ/ЗАКРЫТИЕ ПОДМЕНЮ
+    // ============================================================
+
+    document.querySelectorAll('.nav-dropdown-trigger').forEach(trigger => {
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.closest('.nav-dropdown');
+            const menu = dropdown.querySelector('.nav-dropdown-menu');
+            
+            document.querySelectorAll('.nav-dropdown-menu.open').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('open');
+                    m.closest('.nav-dropdown').classList.remove('active');
+                }
+            });
+            
+            menu.classList.toggle('open');
+            dropdown.classList.toggle('active');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.nav-dropdown')) {
             document.querySelectorAll('.nav-dropdown-menu.open').forEach(menu => {
                 menu.classList.remove('open');
                 menu.closest('.nav-dropdown').classList.remove('active');
             });
+        }
+    });
 
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            const page = document.getElementById(`page-${pageName}`);
-            if (page) page.classList.add('active');
+    // ============================================================
+    // ПОДКЛЮЧАЕМ НАВИГАЦИЮ К МЕНЮ
+    // ============================================================
 
-            if (pageName === 'products') {
-                setTimeout(() => renderProductList(), 50);
-            }
-            if (pageName === 'supply-planning') {
-                setTimeout(() => renderOrderList(), 50);
-            }
-            if (pageName === 'supplies') {
-                setTimeout(() => renderSupplyHistory(), 50);
-            }
-            if (pageName === 'dashboard') {
-    setTimeout(() => renderDashboard(), 50);
-}
-            if (pageName === 'sales-analytics') {
-    setTimeout(() => renderSalesAnalytics(), 50);
-}
-            if (pageName === 'ads') {
-    setTimeout(() => renderAdsList(), 50);
-}
-            if (pageName === 'settings') {
-    setTimeout(() => renderSettings(), 50);
-}
-        };
-
-        // ============================================================
-        // КЛИК ПО РОДИТЕЛЬСКОМУ ПУНКТУ → ОТКРЫТИЕ/ЗАКРЫТИЕ ПОДМЕНЮ
-        // ============================================================
-
-        document.querySelectorAll('.nav-dropdown-trigger').forEach(trigger => {
-            trigger.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const dropdown = this.closest('.nav-dropdown');
-                const menu = dropdown.querySelector('.nav-dropdown-menu');
-                
-                document.querySelectorAll('.nav-dropdown-menu.open').forEach(m => {
-                    if (m !== menu) {
-                        m.classList.remove('open');
-                        m.closest('.nav-dropdown').classList.remove('active');
-                    }
-                });
-                
-                menu.classList.toggle('open');
-                dropdown.classList.toggle('active');
-            });
+    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const pageName = this.getAttribute('data-page');
+            window.navigateTo(pageName);
         });
+    });
 
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.nav-dropdown')) {
-                document.querySelectorAll('.nav-dropdown-menu.open').forEach(menu => {
-                    menu.classList.remove('open');
-                    menu.closest('.nav-dropdown').classList.remove('active');
-                });
-            }
+    document.querySelectorAll('.nav-dropdown-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const pageName = this.getAttribute('data-page');
+            window.navigateTo(pageName);
         });
+    });
 
-        // ============================================================
-        // ПОДКЛЮЧАЕМ НАВИГАЦИЮ К МЕНЮ
-        // ============================================================
+    // ============================================================
+    // ГАМБУРГЕР-МЕНЮ
+    // ============================================================
 
-        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                const pageName = this.getAttribute('data-page');
-                window.navigateTo(pageName);
-            });
-        });
+    document.getElementById('menuToggle').addEventListener('click', function() {
+        const nav = document.querySelector('.topbar-nav');
+        nav.classList.toggle('open');
+    });
 
-        document.querySelectorAll('.nav-dropdown-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                const pageName = this.getAttribute('data-page');
-                window.navigateTo(pageName);
-            });
-        });
+    document.addEventListener('click', function(e) {
+        const nav = document.querySelector('.topbar-nav');
+        const toggle = document.getElementById('menuToggle');
+        if (!nav.contains(e.target) && !toggle.contains(e.target)) {
+            nav.classList.remove('open');
+        }
+    });
 
-        // ============================================================
-        // ГАМБУРГЕР-МЕНЮ
-        // ============================================================
+    // ============================================================
+    // ЛОГОТИП → ГЛАВНАЯ
+    // ============================================================
 
-        document.getElementById('menuToggle').addEventListener('click', function() {
-            const nav = document.querySelector('.topbar-nav');
-            nav.classList.toggle('open');
-        });
+    document.getElementById('sidebarLogo').addEventListener('click', function() {
+        window.navigateTo('dashboard');
+    });
 
-        document.addEventListener('click', function(e) {
-            const nav = document.querySelector('.topbar-nav');
-            const toggle = document.getElementById('menuToggle');
-            if (!nav.contains(e.target) && !toggle.contains(e.target)) {
-                nav.classList.remove('open');
-            }
-        });
+    // ============================================================
+    // КНОПКА ПРОФИЛЯ
+    // ============================================================
 
-        // ============================================================
-        // ЛОГОТИП → ГЛАВНАЯ
-        // ============================================================
+    document.getElementById('profileBtn').addEventListener('click', function() {
+        showToast('👤 Личный кабинет в разработке', 'success');
+    });
 
-        document.getElementById('sidebarLogo').addEventListener('click', function() {
-            window.navigateTo('dashboard');
-        });
+    // ============================================================
+    // ЗАГРУЗКА
+    // ============================================================
 
-        // ============================================================
-        // КНОПКА ПРОФИЛЯ
-        // ============================================================
+    import('./src/init.js').then(() => {
+        console.log('✅ Инициализация завершена');
 
-        document.getElementById('profileBtn').addEventListener('click', function() {
-            showToast('👤 Личный кабинет в разработке', 'success');
-        });
-
-        // ============================================================
-        // ЗАГРУЗКА
-        // ============================================================
-
-        import('./src/init.js').then(() => {
-            console.log('✅ Инициализация завершена');
-
-            setTimeout(() => {
-                const currentPage = document.querySelector('.page.active');
-                if (currentPage) {
-                    const id = currentPage.id.replace('page-', '');
-                    if (id === 'products') renderProductList();
-                    if (id === 'supply-planning') renderOrderList();
-                    if (id === 'supplies') renderSupplyHistory();
-                    if (id === 'dashboard') renderDashboard();
-                    if (id === 'sales-analytics') renderSalesAnalytics();
-                    if (id === 'ads') renderAdsList();
-                    if (id === 'settings') renderSettings();
+        setTimeout(() => {
+            const currentPage = document.querySelector('.page.active');
+            if (currentPage) {
+                const id = currentPage.id.replace('page-', '');
+                const renderMap = {
+                    'products': renderProductList,
+                    'supply-planning': renderOrderList,
+                    'supplies': renderSupplyHistory,
+                    'dashboard': renderDashboard,
+                    'sales-analytics': renderSalesAnalytics,
+                    'ads': renderAdsList,
+                    'settings': renderSettings
+                };
+                if (renderMap[id]) {
+                    renderMap[id]();
                 }
-            }, 100);
-        }).catch(err => {
-            console.error('❌ Ошибка инициализации:', err.message);
+            }
+        }, 100);
+    }).catch(err => {
+        console.error('❌ Ошибка инициализации:', err.message);
+    });
+
+    // ============================================================
+    // НАСТРОЙКА DROP ZONE ДЛЯ ИМПОРТА
+    // ============================================================
+
+    function setupImportDropZone(dropZoneId, fileInputId, type) {
+        const dropZone = document.getElementById(dropZoneId);
+        const fileInput = document.getElementById(fileInputId);
+        const statusEl = document.getElementById(type + 'ImportStatus');
+
+        if (!dropZone || !fileInput) {
+            console.warn(`Drop zone ${dropZoneId} или input ${fileInputId} не найдены`);
+            return;
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
         });
 
-       // ============================================================
-// НАСТРОЙКА DROP ZONE ДЛЯ ИМПОРТА
-// ============================================================
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
 
-function setupImportDropZone(dropZoneId, fileInputId, type) {
-    const dropZone = document.getElementById(dropZoneId);
-    const fileInput = document.getElementById(fileInputId);
-    const statusEl = document.getElementById(type + 'ImportStatus');
-
-    if (!dropZone || !fileInput) {
-        console.warn(`Drop zone ${dropZoneId} или input ${fileInputId} не найдены`);
-        return;
-    }
-
-    dropZone.addEventListener('click', () => fileInput.click());
-
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleImport(files[0], type, statusEl);
-        }
-    });
-
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            handleImport(e.target.files[0], type, statusEl);
-            fileInput.value = '';
-        }
-    });
-}
-
-// ============================================================
-// НАСТРОЙКА DROP ZONE ДЛЯ ОСТАТКОВ (с выбором типа)
-// ============================================================
-
-function setupStockDropZone() {
-    const dropZone = document.getElementById('stockDropZone');
-    const fileInput = document.getElementById('stockFileInput');
-    const statusEl = document.getElementById('stockImportStatus');
-    const typeSelect = document.getElementById('stockTypeSelect');
-
-    if (!dropZone || !fileInput) {
-        console.warn('Stock drop zone не найдена');
-        return;
-    }
-
-    function handleStockFile(file) {
-        const type = typeSelect.value;
-        handleImport(file, type, statusEl);
-    }
-
-    dropZone.addEventListener('click', () => fileInput.click());
-
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleStockFile(files[0]);
-        }
-    });
-
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            handleStockFile(e.target.files[0]);
-            fileInput.value = '';
-        }
-    });
-}
-
-        // ============================================================
-        // ОБРАБОТКА ИМПОРТА
-        // ============================================================
-
-        async function handleImport(file, type, statusEl) {
-            if (statusEl) {
-                statusEl.innerHTML = '<span style="color:#F59E0B;">⏳ Обработка...</span>';
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleImport(files[0], type, statusEl);
             }
+        });
 
-            try {
-                const result = await ImportService.processFile(file, type);
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleImport(e.target.files[0], type, statusEl);
+                fileInput.value = '';
+            }
+        });
+    }
 
-                if (result.success) {
-                    let message = `✅ Импортировано: ${result.valid} записей`;
-                    if (result.invalid > 0) {
-                        message += `, ошибок: ${result.invalid}`;
-                    }
-                    if (statusEl) {
-                        statusEl.innerHTML = `<span style="color:#10B981;">${message}</span>`;
-                    }
-                    showToast(message, 'success');
-                } else {
-                    if (statusEl) {
-                        statusEl.innerHTML = `<span style="color:#EF4444;">❌ ${result.error}</span>`;
-                    }
-                    showToast(`❌ ${result.error}`, 'error');
+    // ============================================================
+    // НАСТРОЙКА DROP ZONE ДЛЯ ОСТАТКОВ (с выбором типа)
+    // ============================================================
+
+    function setupStockDropZone() {
+        const dropZone = document.getElementById('stockDropZone');
+        const fileInput = document.getElementById('stockFileInput');
+        const statusEl = document.getElementById('stockImportStatus');
+        const typeSelect = document.getElementById('stockTypeSelect');
+
+        if (!dropZone || !fileInput) {
+            console.warn('Stock drop zone не найдена');
+            return;
+        }
+
+        function handleStockFile(file) {
+            const type = typeSelect.value;
+            handleImport(file, type, statusEl);
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleStockFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleStockFile(e.target.files[0]);
+                fileInput.value = '';
+            }
+        });
+    }
+
+    // ============================================================
+    // ОБРАБОТКА ИМПОРТА
+    // ============================================================
+
+    async function handleImport(file, type, statusEl) {
+        if (statusEl) {
+            statusEl.innerHTML = '<span style="color:#F59E0B;">⏳ Обработка...</span>';
+        }
+
+        try {
+            const result = await ImportService.processFile(file, type);
+
+            if (result.success) {
+                let message = `✅ Импортировано: ${result.valid} записей`;
+                if (result.invalid > 0) {
+                    message += `, ошибок: ${result.invalid}`;
                 }
-            } catch (error) {
                 if (statusEl) {
-                    statusEl.innerHTML = `<span style="color:#EF4444;">❌ ${error.message}</span>`;
+                    statusEl.innerHTML = `<span style="color:#10B981;">${message}</span>`;
                 }
-                showToast(`❌ ${error.message}`, 'error');
+                showToast(message, 'success');
+            } else {
+                if (statusEl) {
+                    statusEl.innerHTML = `<span style="color:#EF4444;">❌ ${result.error}</span>`;
+                }
+                showToast(`❌ ${result.error}`, 'error');
             }
+        } catch (error) {
+            if (statusEl) {
+                statusEl.innerHTML = `<span style="color:#EF4444;">❌ ${error.message}</span>`;
+            }
+            showToast(`❌ ${error.message}`, 'error');
         }
+    }
 
-       // ============================================================
-// НАСТРАИВАЕМ DROP ZONES
-// ============================================================
+    // ============================================================
+    // НАСТРАИВАЕМ DROP ZONES
+    // ============================================================
 
-setupImportDropZone('nomenclatureDropZone', 'nomenclatureFileInput', 'nomenclature');
-setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
-setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
-// Остатки — отдельная настройка с выбором типа
-setupStockDropZone();
+    setupImportDropZone('nomenclatureDropZone', 'nomenclatureFileInput', 'nomenclature');
+    setupImportDropZone('salesDropZone', 'salesFileInput', 'sales');
+    setupImportDropZone('pricesDropZone', 'pricesFileInput', 'prices');
+    setupImportDropZone('adsDropZone', 'adsFileInput', 'ads');
+    setupStockDropZone();
 
     </script>
 
