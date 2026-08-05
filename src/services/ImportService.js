@@ -231,10 +231,6 @@ function parseNumber(value) {
     return isNaN(num) ? 0 : num;
 }
 
-// ============================================================
-// УНИВЕРСАЛЬНЫЙ ПАРСИНГ ЧИСЕЛ ДЛЯ МАРЖИНАЛЬНОСТИ
-// ============================================================
-
 function parseUniversalNumber(value) {
     if (value === null || value === undefined || value === '') return 0;
     
@@ -781,7 +777,7 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ РЕКЛАМЫ (ADS) — ОБНОВЛЕННЫЙ
+            // ПАРСИНГ РЕКЛАМЫ (ADS)
             // ============================================================
             if (type === ImportTypes.ADS) {
                 const campaign = findValue(row, ['Кампания', 'campaign']);
@@ -791,7 +787,6 @@ class ImportService {
                     return;
                 }
                 
-                // Парсинг даты с временем
                 const parseDateTime = (value) => {
                     if (!value) return null;
                     const str = cleanString(value);
@@ -891,7 +886,9 @@ class ImportService {
             return records;
         }
 
-        // Для MARGIN — обновляем экономические показатели
+        // ============================================================
+        // ✅ ИСПРАВЛЕНО: Для MARGIN — ищем по articleKey
+        // ============================================================
         if (type === ImportTypes.MARGIN) {
             let updated = 0;
             let skipped = 0;
@@ -899,10 +896,15 @@ class ImportService {
             const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
             
             for (const record of records) {
-                const matchingProducts = allProducts.filter(p => 
-                    p.article === record.article || 
-                    p.articleKey.startsWith(record.article + '|')
-                );
+                // Ищем товары, у которых articleKey начинается с артикула из маржинальности
+                // Например: record.article = "21_К_Вельвет"
+                // Ищем: articleKey = "21_К_Вельвет|42|бирюзовый" и т.д.
+                const matchingProducts = allProducts.filter(p => {
+                    if (!p.articleKey) return false;
+                    // Сравниваем начало articleKey с артикулом из маржинальности
+                    return p.articleKey.startsWith(record.article + '|') || 
+                           p.article === record.article;
+                });
                 
                 if (matchingProducts.length === 0) {
                     skipped++;
@@ -933,7 +935,7 @@ class ImportService {
                 }
             }
             
-            console.log(`[ImportService] Маржинальность: обновлено ${updated}, пропущено ${skipped}`);
+            console.log(`[ImportService] Маржинальность: обновлено ${updated} товаров, пропущено ${skipped}`);
             return records;
         }
 
