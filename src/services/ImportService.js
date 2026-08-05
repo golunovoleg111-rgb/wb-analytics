@@ -16,7 +16,7 @@ export const ImportTypes = {
 };
 
 // ============================================================
-// ШАБЛОНЫ КОЛОНОК
+// ШАБЛОНЫ КОЛОНОК (ОБНОВЛЕНЫ)
 // ============================================================
 
 const TEMPLATES = {
@@ -34,17 +34,16 @@ const TEMPLATES = {
         filename: 'StockFlow_Шаблон_Номенклатура.xlsx'
     },
     [ImportTypes.SALES]: {
+        // ✅ НОВЫЙ ШАБЛОН — под "Динамику продаж"
         columns: [
+            'День',
             'Артикул продавца',
-            'Размер',
-            'Склад',
-            'Дата',
-            'Заказано',
-            'Выкуплено',
-            'Сумма заказов',
-            'Возвраты'
+            'Выкупили, шт.',
+            'К перечислению за товар, руб.',
+            'Заказано, шт.',
+            'Сумма заказов минус комиссия WB, руб.'
         ],
-        required: ['Артикул продавца', 'Дата', 'Заказано', 'Выкуплено', 'Сумма заказов'],
+        required: ['День', 'Артикул продавца', 'Выкупили, шт.', 'Заказано, шт.', 'К перечислению за товар, руб.'],
         filename: 'StockFlow_Шаблон_Продажи.xlsx'
     },
     [ImportTypes.STOCK]: {
@@ -78,32 +77,31 @@ const TEMPLATES = {
 };
 
 // ============================================================
-// ПРИМЕРЫ ДЛЯ ШАБЛОНОВ
+// ПРИМЕРЫ ДЛЯ ШАБЛОНОВ (ОБНОВЛЕНЫ)
 // ============================================================
 
 const EXAMPLES = {
     [ImportTypes.NOMENCLATURE]: [
-        '21_К_Вельвет_серый_40',
-        'Костюм Вельвет',
-        '40',
+        '210_Комбез_графит',
+        'Комбез графит',
+        '42',
         '4601234567890',
         '6104.63.0000',
         '95% хлопок, 5% эластан',
         '04601234567890'
     ],
     [ImportTypes.SALES]: [
-        '21_К_Вельвет_серый_40',
-        '40',
-        'Коледино',
-        '23.07.2026',
-        '5',
-        '4',
-        '16000',
-        '0'
+        // ✅ НОВЫЙ ПРИМЕР — под "Динамику продаж"
+        '01.05.2026',
+        '210_Комбез_графит',
+        '3',
+        '6740,03',
+        '3',
+        '7131,48'
     ],
     [ImportTypes.STOCK]: [
-        '21_К_Вельвет_серый_40',
-        '40',
+        '210_Комбез_графит',
+        '42',
         '5',
         '2',
         '50',
@@ -135,55 +133,56 @@ function getYesterdayStr() {
            d.getFullYear();
 }
 
-function parseArticle(article) {
-    if (!article) return null;
+/**
+ * Парсинг даты из формата DD.MM.YYYY → YYYY-MM-DD
+ */
+function parseDateFromWB(dateStr) {
+    if (!dateStr) return null;
     
-    const parts = article.split('_');
-    let size = null;
-    let color = null;
-    let baseModel = article;
+    const str = dateStr.toString().trim();
     
-    const lastPart = parts[parts.length - 1];
-    if (lastPart && !isNaN(lastPart) && lastPart.length <= 3) {
-        size = lastPart;
-        baseModel = parts.slice(0, -1).join('_');
-        if (parts.length >= 2) {
-            const colorCandidate = parts[parts.length - 2];
-            if (colorCandidate && isNaN(colorCandidate)) {
-                color = colorCandidate;
-                baseModel = parts.slice(0, -2).join('_');
-                if (!baseModel) baseModel = parts.slice(0, -1).join('_');
-            }
-        }
-    } else {
-        if (lastPart && isNaN(lastPart)) {
-            color = lastPart;
-            baseModel = parts.slice(0, -1).join('_');
-        }
-        for (let i = 0; i < parts.length; i++) {
-            const part = parts[i];
-            if (part && !isNaN(part) && part.length <= 3) {
-                size = part;
-                const beforeSize = parts.slice(0, i).join('_');
-                const afterSize = parts.slice(i + 1).join('_');
-                baseModel = beforeSize ? (afterSize ? beforeSize + '_' + afterSize : beforeSize) : afterSize;
-                break;
-            }
-        }
+    // Формат DD.MM.YYYY
+    const match = str.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (match) {
+        const day = match[1];
+        const month = match[2];
+        const year = match[3];
+        return `${year}-${month}-${day}`;
     }
     
-    if (!baseModel) baseModel = article;
-    if (baseModel.endsWith('_' + size)) {
-        baseModel = baseModel.slice(0, -(size.length + 1));
+    // Формат YYYY-MM-DD (уже правильный)
+    if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return str;
     }
     
-    return {
-        article,
-        baseModel,
-        color,
-        size,
-        parts
-    };
+    // Пробуем через Date (запасной вариант)
+    const date = new Date(str);
+    if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    return null;
+}
+
+/**
+ * Преобразование числа с запятой как разделитель
+ */
+function parseNumberFromWB(value) {
+    if (value === null || value === undefined || value === '') return 0;
+    const str = value.toString().trim().replace(/\s/g, '').replace(',', '.');
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Создание уникального ключа товара (артикул + размер + цвет)
+ * Для продаж размер не известен → используем NOSIZE
+ */
+function createArticleKey(article, size = 'NOSIZE', color = 'NOCOLOR') {
+    return `${article}|${size}|${color}`.toLowerCase().trim();
 }
 
 // ============================================================
@@ -284,7 +283,7 @@ class ImportService {
     }
 
     // ============================================================
-    // ПАРСИНГ И ВАЛИДАЦИЯ
+    // ПАРСИНГ И ВАЛИДАЦИЯ (ОБНОВЛЕН)
     // ============================================================
 
     static _parseAndValidate(data, type, template) {
@@ -295,14 +294,13 @@ class ImportService {
         data.forEach((row, index) => {
             const rowNum = index + 1;
             const rowErrors = [];
-            const record = {};
 
+            // Проверяем обязательные поля
             for (const field of required) {
                 const value = String(row[field] || '').trim();
                 if (!value) {
                     rowErrors.push(`Поле "${field}" пустое`);
                 }
-                record[field] = value;
             }
 
             if (rowErrors.length > 0) {
@@ -310,102 +308,122 @@ class ImportService {
                 return;
             }
 
-            const article = String(row['Артикул продавца'] || '').trim();
-            const parsed = parseArticle(article);
+            // ============================================================
+            // ПАРСИНГ ПРОДАЖ (НОВАЯ ВЕРСИЯ)
+            // ============================================================
+            if (type === ImportTypes.SALES) {
+                const article = String(row['Артикул продавца'] || '').trim();
+                const dateStr = String(row['День'] || '').trim();
+                const parsedDate = parseDateFromWB(dateStr);
 
-            let finalRecord = {};
-
-            switch (type) {
-                case ImportTypes.NOMENCLATURE: {
-                    const size = String(row['Размер'] || '').trim() || (parsed ? parsed.size : '');
-                    const color = (parsed ? parsed.color : '') || '';
-                    const articleKey = [article, size || 'NOSIZE', color || 'NOCOLOR'].join('_');
-
-                    finalRecord = {
-                        article,
-                        articleKey,
-                        baseModel: parsed ? parsed.baseModel : article,
-                        color: color,
-                        size: size,
-                        name: String(row['Название карточки'] || '').trim() || parsed?.baseModel || article,
-                        barcode: String(row['Баркод'] || '').trim(),
-                        tnved: String(row['ТН ВЭД'] || '').trim(),
-                        fabric: String(row['Состав ткани'] || '').trim(),
-                        gtin: String(row['GTIN'] || '').trim(),
-                        category: '',
-                        purchasePrice: 0,
-                        price: 0,
-                        status: 'active'
-                    };
-                    break;
-                }
-
-                case ImportTypes.SALES: {
-                    let size = String(row['Размер'] || '').trim();
-                    if (!size) {
-                        const parts = article.split('_');
-                        const lastPart = parts[parts.length - 1];
-                        if (lastPart && !isNaN(lastPart)) {
-                            size = lastPart;
-                        }
-                    }
-
-                    let warehouse = String(row['Склад'] || '').trim();
-
-                    let date = String(row['Дата'] || '').trim();
-                    if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                        const parts = date.split('-');
-                        date = `${parts[2]}.${parts[1]}.${parts[0]}`;
-                    }
-
-                    finalRecord = {
-                        article,
-                        size: size || '',
-                        warehouse: warehouse || '',
-                        date: date || getYesterdayStr(),
-                        orders: parseInt(row['Заказано']) || 0,
-                        delivered: parseInt(row['Выкуплено']) || 0,
-                        amount: parseFloat(String(row['Сумма заказов'] || '0').replace(',', '.').replace(/\s/g, '')) || 0,
-                        returns: parseInt(row['Возвраты']) || 0
-                    };
-                    break;
-                }
-
-                case ImportTypes.STOCK: {
-                    const size = String(row['Размер'] || '').trim() || (parsed ? parsed.size : '');
-                    
-                    finalRecord = {
-                        article,
-                        size: size || '',
-                        toCustomer: parseInt(row['В пути до покупателя']) || 0,
-                        fromCustomer: parseInt(row['В пути от покупателя']) || 0,
-                        available: parseInt(row['Всего на складах']) || 0,
-                        warehouse: String(row['Склад'] || 'Коледино').trim()
-                    };
-                    break;
-                }
-
-                case ImportTypes.ADS: {
-                    finalRecord = {
-                        campaign: String(row['Кампания'] || '').trim(),
-                        type: String(row['Тип ставки'] || '').trim(),
-                        wbId: String(row['ID'] || '').trim(),
-                        impressions: parseInt(row['Показы']) || 0,
-                        clicks: parseInt(row['Клики']) || 0,
-                        cpc: parseFloat(String(row['CPC'] || '0').replace(',', '.')) || 0,
-                        ctr: parseFloat(String(row['CTR'] || '0').replace(',', '.')) || 0,
-                        cr: parseFloat(String(row['CR'] || '0').replace(',', '.')) || 0,
-                        spent: parseFloat(String(row['Затраты'] || '0').replace(',', '.')) || 0,
-                        orders_from_ad: parseInt(row['Заказанные товары, шт']) || 0
-                    };
-                    break;
-                }
-
-                default:
+                if (!article) {
+                    errors.push({ row: rowNum, errors: ['Артикул продавца пуст'] });
                     return;
+                }
+
+                if (!parsedDate) {
+                    errors.push({ row: rowNum, errors: [`Некорректная дата: "${dateStr}"`] });
+                    return;
+                }
+
+                // Создаём articleKey без размера (используем NOSIZE)
+                const articleKey = createArticleKey(article);
+
+                const record = {
+                    articleKey,
+                    productId: articleKey, // пока используем articleKey как productId
+                    article: article,
+                    size: 'NOSIZE',
+                    warehouse: 'Не указан', // в этом отчёте нет склада
+                    date: parsedDate,
+                    orders: parseNumberFromWB(row['Заказано, шт.']),
+                    redeemed: parseNumberFromWB(row['Выкупили, шт.']),
+                    delivered: parseNumberFromWB(row['Выкупили, шт.']), // дублируем для совместимости
+                    amount: parseNumberFromWB(row['К перечислению за товар, руб.']),
+                    totalAmount: parseNumberFromWB(row['Сумма заказов минус комиссия WB, руб.']),
+                    returns: 0, // в этом отчёте нет возвратов
+                    fileName: row._fileName || '',
+                    importDate: new Date().toISOString()
+                };
+
+                records.push(record);
+                return;
             }
 
-            records.push(finalRecord);
+            // ============================================================
+            // ПАРСИНГ НОМЕНКЛАТУРЫ
+            // ============================================================
+            if (type === ImportTypes.NOMENCLATURE) {
+                const article = String(row['Артикул продавца'] || '').trim();
+                const size = String(row['Размер'] || '').trim();
+                const color = ''; // в шаблоне пока нет цвета
+                const articleKey = createArticleKey(article, size || 'NOSIZE', color || 'NOCOLOR');
+
+                const record = {
+                    article,
+                    articleKey,
+                    baseModel: article,
+                    color: color,
+                    size: size || 'NOSIZE',
+                    name: String(row['Название карточки'] || '').trim() || article,
+                    barcode: String(row['Баркод'] || '').trim(),
+                    tnved: String(row['ТН ВЭД'] || '').trim(),
+                    fabric: String(row['Состав ткани'] || '').trim(),
+                    gtin: String(row['GTIN'] || '').trim(),
+                    category: '',
+                    purchasePrice: 0,
+                    price: 0,
+                    status: 'active'
+                };
+
+                records.push(record);
+                return;
+            }
+
+            // ============================================================
+            // ПАРСИНГ ОСТАТКОВ
+            // ============================================================
+            if (type === ImportTypes.STOCK) {
+                const article = String(row['Артикул продавца'] || '').trim();
+                const size = String(row['Размер'] || '').trim();
+                const articleKey = createArticleKey(article, size || 'NOSIZE');
+
+                const record = {
+                    productId: articleKey,
+                    article,
+                    size: size || 'NOSIZE',
+                    articleKey,
+                    toCustomer: parseNumberFromWB(row['В пути до покупателя']),
+                    fromCustomer: parseNumberFromWB(row['В пути от покупателя']),
+                    available: parseNumberFromWB(row['Всего на складах']),
+                    warehouse: String(row['Склад'] || 'Коледино').trim(),
+                    date: new Date().toISOString().split('T')[0]
+                };
+
+                records.push(record);
+                return;
+            }
+
+            // ============================================================
+            // ПАРСИНГ РЕКЛАМЫ
+            // ============================================================
+            if (type === ImportTypes.ADS) {
+                const record = {
+                    campaign: String(row['Кампания'] || '').trim(),
+                    type: String(row['Тип ставки'] || '').trim(),
+                    wbId: String(row['ID'] || '').trim(),
+                    impressions: parseNumberFromWB(row['Показы']),
+                    clicks: parseNumberFromWB(row['Клики']),
+                    cpc: parseNumberFromWB(row['CPC']),
+                    ctr: parseNumberFromWB(row['CTR']),
+                    cr: parseNumberFromWB(row['CR']),
+                    spent: parseNumberFromWB(row['Затраты']),
+                    orders_from_ad: parseNumberFromWB(row['Заказанные товары, шт'])
+                };
+
+                records.push(record);
+                return;
+            }
         });
 
         return {
@@ -459,6 +477,7 @@ class ImportService {
             return records.filter(r => !existingKeys.has(r.articleKey));
         }
 
+        // Для остальных типов — очищаем и загружаем заново
         await Database.clear(storeName);
         for (const record of records) {
             await Database.save(storeName, {
@@ -472,7 +491,7 @@ class ImportService {
     }
 
     // ============================================================
-    // ЭКСПОРТ ШАБЛОНА В EXCEL
+    // ЭКСПОРТ ШАБЛОНА В EXCEL (ОБНОВЛЕН)
     // ============================================================
 
     static downloadTemplate(type) {
