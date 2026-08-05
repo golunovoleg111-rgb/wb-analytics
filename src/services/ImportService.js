@@ -4,44 +4,64 @@
 
 import { Database } from '../infrastructure/db.js';
 
+// ============================================================
+// ТИПЫ ИМПОРТА
+// ============================================================
+
 export const ImportTypes = {
     NOMENCLATURE: 'nomenclature',
     SALES: 'sales',
-    STOCK: 'stock',
+    STOCK_DAILY: 'stock_daily',
+    STOCK_CURRENT: 'stock_current',
     ADS: 'ads'
 };
 
 // ============================================================
-// ШАБЛОНЫ
+// ШАБЛОНЫ КОЛОНОК
 // ============================================================
 
 const TEMPLATES = {
     [ImportTypes.NOMENCLATURE]: {
         columns: ['Артикул продавца', 'Название карточки', 'Размер', 'Баркод', 'ТН ВЭД', 'Состав ткани', 'GTIN'],
         required: ['Артикул продавца', 'Название карточки', 'Размер', 'Баркод'],
-        filename: 'StockFlow_Шаблон_Номенклатура.xlsx'
+        filename: 'StockFlow_Шаблон_Номенклатура.xlsx',
+        description: '📦 Номенклатура — товары и их характеристики'
     },
     [ImportTypes.SALES]: {
         columns: ['День', 'Артикул продавца', 'Выкупили, шт.', 'К перечислению за товар, руб.', 'Заказано, шт.', 'Сумма заказов минус комиссия WB, руб.'],
         required: ['День', 'Артикул продавца', 'Выкупили, шт.', 'Заказано, шт.', 'К перечислению за товар, руб.'],
-        filename: 'StockFlow_Шаблон_Продажи.xlsx'
+        filename: 'StockFlow_Шаблон_Продажи.xlsx',
+        description: '🛒 Продажи — динамика продаж по дням'
     },
-    [ImportTypes.STOCK]: {
-        columns: ['Артикул продавца', 'Размер', 'В пути до покупателя', 'В пути от покупателя', 'Всего на складах', 'Склад'],
-        required: ['Артикул продавца', 'Всего на складах', 'Склад'],
-        filename: 'StockFlow_Шаблон_Остатки.xlsx'
+    [ImportTypes.STOCK_DAILY]: {
+        columns: ['Артикул продавца', 'Название', 'Размер', 'Склад', '30.07.2026'],
+        required: ['Артикул продавца', 'Размер', 'Склад'],
+        filename: 'StockFlow_Шаблон_Остатки_по_дням.xlsx',
+        description: '📊 Остатки по дням — детализация по датам и складам'
+    },
+    [ImportTypes.STOCK_CURRENT]: {
+        columns: ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 'В пути возвраты', 'Всего на складах', 'Новосибирск'],
+        required: ['Артикул продавца', 'Размер вещи', 'Всего на складах'],
+        filename: 'StockFlow_Шаблон_Текущие_остатки.xlsx',
+        description: '📦 Текущие остатки — актуальные остатки и в пути'
     },
     [ImportTypes.ADS]: {
         columns: ['Кампания', 'Тип ставки', 'ID', 'Показы', 'Клики', 'CPC', 'CTR', 'CR', 'Затраты', 'Заказанные товары, шт'],
         required: ['Кампания', 'Затраты', 'Заказанные товары, шт'],
-        filename: 'StockFlow_Шаблон_Реклама.xlsx'
+        filename: 'StockFlow_Шаблон_Реклама.xlsx',
+        description: '📢 Реклама — эффективность рекламных кампаний'
     }
 };
+
+// ============================================================
+// ПРИМЕРЫ ДЛЯ ШАБЛОНОВ
+// ============================================================
 
 const EXAMPLES = {
     [ImportTypes.NOMENCLATURE]: ['210_Комбез_графит_42', 'Комбез графит', '42', '4601234567890', '6104.63.0000', '95% хлопок, 5% эластан', '04601234567890'],
     [ImportTypes.SALES]: ['01.05.2026', '210_Комбез_графит', '3', '6740,03', '3', '7131,48'],
-    [ImportTypes.STOCK]: ['210_Комбез_графит', '42', '5', '2', '50', 'Коледино'],
+    [ImportTypes.STOCK_DAILY]: ['210_Комбез_графит', 'Комбез графит', '42', 'Коледино', '50'],
+    [ImportTypes.STOCK_CURRENT]: ['210_Комбез_графит', '42', '5', '2', '50', '45'],
     [ImportTypes.ADS]: ['Кампания от 06.05.2025', 'Единая Ставка', '36386799', '12500', '320', '45.5', '2.56', '4.2', '14560', '13']
 };
 
@@ -87,22 +107,19 @@ function findValue(row, possibleKeys) {
     return null;
 }
 
-// ============================================================
-// ГЛАВНОЕ ИСПРАВЛЕНИЕ: ПАРСИНГ ДАТ
-// ============================================================
-
+/**
+ * Универсальный парсинг даты
+ * Поддерживает: DD.MM.YYYY, MM.DD.YYYY, YYYY.MM.DD, DD/MM/YYYY, Excel числа
+ */
 function parseDateUniversal(dateStr) {
     if (!dateStr) return null;
     
     const str = cleanString(dateStr);
     if (!str) return null;
     
-    // ============================================================
-    // ✅ ИСПРАВЛЕНИЕ: Excel числовой формат (46143 → 01.05.2026)
-    // ============================================================
+    // Excel числовой формат (46143 → 01.05.2026)
     const num = parseFloat(str);
     if (!isNaN(num) && num > 30000 && num < 60000) {
-        // Excel: 01.01.1900 = 1, 01.01.1970 = 25569
         const date = new Date((num - 25569) * 86400 * 1000);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -458,7 +475,6 @@ class ImportService {
                     return;
                 }
 
-                // ✅ ИСПРАВЛЕНИЕ: теперь парсит Excel-числа
                 const parsedDate = parseDateUniversal(dateStr);
                 if (!parsedDate) {
                     console.log(`🔴 НЕКОРРЕКТНАЯ ДАТА в строке ${rowNum}: "${dateStr}" (тип: ${typeof dateStr})`);
@@ -485,30 +501,145 @@ class ImportService {
             }
 
             // ============================================================
-            // ПАРСИНГ ОСТАТКОВ
+            // ПАРСИНГ ОСТАТКОВ ПО ДНЯМ (STOCK_DAILY)
             // ============================================================
-            if (type === ImportTypes.STOCK) {
+            if (type === ImportTypes.STOCK_DAILY) {
                 const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
+                const name = findValue(row, ['Название', 'name']);
                 const size = findValue(row, ['Размер', 'size']);
+                const warehouse = findValue(row, ['Склад', 'warehouse']);
                 
                 if (!article) {
                     errors.push({ row: rowNum, errors: ['Артикул продавца не найден'] });
                     return;
                 }
-
-                const cleanArticle = cleanString(article);
-                const cleanSize = cleanString(size) || 'NOSIZE';
-                const articleKey = createArticleKey(cleanArticle, cleanSize);
-
-                records.push({
-                    productId: articleKey, article: cleanArticle, size: cleanSize,
-                    articleKey,
-                    toCustomer: parseNumber(findValue(row, ['В пути до покупателя'])),
-                    fromCustomer: parseNumber(findValue(row, ['В пути от покупателя'])),
-                    available: parseNumber(findValue(row, ['Всего на складах'])),
-                    warehouse: findValue(row, ['Склад', 'warehouse']) || 'Коледино',
-                    date: new Date().toISOString().split('T')[0]
+                
+                if (!size) {
+                    errors.push({ row: rowNum, errors: ['Размер не найден'] });
+                    return;
+                }
+                
+                if (!warehouse) {
+                    errors.push({ row: rowNum, errors: ['Склад не найден'] });
+                    return;
+                }
+                
+                // Определяем все колонки с датами (начиная с E)
+                const knownColumns = ['Артикул продавца', 'Название', 'Размер', 'Склад'];
+                const dateColumns = Object.keys(row).filter(key => {
+                    if (knownColumns.includes(key)) return false;
+                    const val = row[key];
+                    if (val === null || val === undefined || val === '') return false;
+                    // Проверяем, похоже ли на дату
+                    const cleanKey = cleanString(key);
+                    return cleanKey.match(/^\d{2}\.\d{2}\.\d{4}$/) || 
+                           cleanKey.match(/^\d{4}\.\d{2}\.\d{2}$/) ||
+                           cleanKey.match(/^\d{2}\/\d{2}\/\d{4}$/);
                 });
+                
+                if (dateColumns.length === 0) {
+                    errors.push({ row: rowNum, errors: ['Не найдены колонки с датами'] });
+                    return;
+                }
+                
+                const cleanArticle = cleanString(article);
+                const cleanSize = cleanString(size);
+                const cleanWarehouse = cleanString(warehouse);
+                const articleKey = createArticleKey(cleanArticle, cleanSize);
+                
+                // Сохраняем по каждой дате
+                for (const dateKey of dateColumns) {
+                    const quantity = parseNumber(row[dateKey]);
+                    const parsedDate = parseDateUniversal(dateKey);
+                    if (parsedDate) {
+                        records.push({
+                            articleKey,
+                            productId: articleKey,
+                            article: cleanArticle,
+                            name: cleanString(name) || '',
+                            size: cleanSize,
+                            warehouse: cleanWarehouse,
+                            date: parsedDate,
+                            quantity: quantity,
+                            source: 'stock_daily',
+                            importDate: new Date().toISOString()
+                        });
+                    }
+                }
+                return;
+            }
+
+            // ============================================================
+            // ПАРСИНГ ТЕКУЩИХ ОСТАТКОВ (STOCK_CURRENT)
+            // ============================================================
+            if (type === ImportTypes.STOCK_CURRENT) {
+                const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
+                const size = findValue(row, ['Размер вещи', 'Размер', 'size']);
+                const inTransitTo = findValue(row, ['В пути до получателей']);
+                const inTransitFrom = findValue(row, ['В пути возвраты на склад WB', 'В пути возвраты']);
+                const total = findValue(row, ['Всего находится на складах', 'Всего на складах']);
+                
+                if (!article) {
+                    errors.push({ row: rowNum, errors: ['Артикул продавца не найден'] });
+                    return;
+                }
+                
+                if (!size) {
+                    errors.push({ row: rowNum, errors: ['Размер не найден'] });
+                    return;
+                }
+                
+                if (!total) {
+                    errors.push({ row: rowNum, errors: ['Всего на складах не найдено'] });
+                    return;
+                }
+                
+                // Определяем все колонки со складами (начиная с F)
+                const knownColumns = ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 
+                                      'В пути возвраты на склад WB', 'Всего находится на складах'];
+                const warehouseColumns = Object.keys(row).filter(key => {
+                    if (knownColumns.includes(key)) return false;
+                    const val = row[key];
+                    if (val === null || val === undefined || val === '') return false;
+                    return true;
+                });
+                
+                const cleanArticle = cleanString(article);
+                const cleanSize = cleanString(size);
+                const articleKey = createArticleKey(cleanArticle, cleanSize);
+                
+                const baseRecord = {
+                    articleKey,
+                    productId: articleKey,
+                    article: cleanArticle,
+                    size: cleanSize,
+                    inTransitTo: parseNumber(inTransitTo),
+                    inTransitFrom: parseNumber(inTransitFrom),
+                    total: parseNumber(total),
+                    date: new Date().toISOString().split('T')[0],
+                    source: 'stock_current',
+                    importDate: new Date().toISOString()
+                };
+                
+                // Если нет колонок со складами — сохраняем одну запись без склада
+                if (warehouseColumns.length === 0) {
+                    records.push({
+                        ...baseRecord,
+                        warehouse: 'Все склады',
+                        quantity: parseNumber(total)
+                    });
+                    return;
+                }
+                
+                // Сохраняем по каждому складу
+                for (const warehouse of warehouseColumns) {
+                    const quantity = parseNumber(row[warehouse]);
+                    records.push({
+                        ...baseRecord,
+                        warehouse: cleanString(warehouse),
+                        quantity: quantity
+                    });
+                }
                 return;
             }
 
@@ -516,7 +647,7 @@ class ImportService {
             // ПАРСИНГ РЕКЛАМЫ
             // ============================================================
             if (type === ImportTypes.ADS) {
-                records.push({
+                const record = {
                     campaign: findValue(row, ['Кампания', 'campaign']) || '',
                     type: findValue(row, ['Тип ставки', 'type']) || '',
                     wbId: findValue(row, ['ID', 'id']) || '',
@@ -527,7 +658,9 @@ class ImportService {
                     cr: parseNumber(findValue(row, ['CR', 'cr'])),
                     spent: parseNumber(findValue(row, ['Затраты', 'spent'])),
                     orders_from_ad: parseNumber(findValue(row, ['Заказанные товары, шт', 'orders_from_ad']))
-                });
+                };
+
+                records.push(record);
                 return;
             }
         });
@@ -555,7 +688,8 @@ class ImportService {
         const storeMap = {
             [ImportTypes.NOMENCLATURE]: 'products',
             [ImportTypes.SALES]: 'sales',
-            [ImportTypes.STOCK]: 'stock',
+            [ImportTypes.STOCK_DAILY]: 'stock',
+            [ImportTypes.STOCK_CURRENT]: 'stock',
             [ImportTypes.ADS]: 'ads'
         };
 
@@ -584,6 +718,7 @@ class ImportService {
             return records.filter(r => !existingKeys.has(r.articleKey));
         }
 
+        // Для остальных типов — очищаем и загружаем заново
         await Database.clear(storeName);
         for (const record of records) {
             await Database.save(storeName, {
