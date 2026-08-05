@@ -202,46 +202,51 @@
             </div>
         </section>
 
-        <!-- ===================== ТОВАРЫ (ОБНОВЛЕН) ===================== -->
-        <section id="page-products" class="page">
-            <div class="page-header">
-                <h1>📋 Карточки товаров</h1>
-                <span style="font-size:12px;color:var(--text-secondary);" class="products-count">Товаров: 0</span>
-            </div>
+       <!-- ===================== ТОВАРЫ ===================== -->
+<section id="page-products" class="page">
+    <div class="page-header">
+        <h1>📋 Карточки товаров</h1>
+        <span style="font-size:12px;color:var(--text-secondary);" class="products-count">Товаров: 0</span>
+    </div>
 
-            <div id="productsEmpty" class="card" style="text-align:center;">
-                <div style="font-size:48px;margin-bottom:12px;">📥</div>
-                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
-                <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
-                    Импортируйте <strong>номенклатуру</strong> в разделе «Импорт»
-                </div>
-                <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
-            </div>
+    <div id="productsEmpty" class="card" style="text-align:center;">
+        <div style="font-size:48px;margin-bottom:12px;">📥</div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Нет данных</div>
+        <div style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
+            Импортируйте <strong>номенклатуру</strong> в разделе «Импорт»
+        </div>
+        <button class="btn btn-primary" onclick="navigateTo('import')">📥 Перейти к импорту</button>
+    </div>
 
-            <div id="productsContent" style="display:none;">
-                <!-- Фильтры -->
-                <div class="card" style="margin-bottom:14px;">
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <input type="text" id="productSearch" placeholder="🔍 Поиск по артикулу или названию..." 
-                               style="flex:1;min-width:180px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);" 
-                               oninput="window.refreshProductTable()">
-                        <select id="productFilter" style="min-width:140px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);" 
-                                onchange="window.refreshProductTable()">
-                            <option value="all">📋 Все товары</option>
-                            <option value="normal">🟢 В наличии</option>
-                            <option value="warning">🟡 Внимание</option>
-                            <option value="deficit">🔴 Дефицит</option>
-                            <option value="no_stock">⚫ Нет остатков</option>
-                        </select>
-                        <button class="btn btn-secondary btn-sm" onclick="window.clearProductFilters()">🔄 Сбросить</button>
-                    </div>
-                </div>
+    <div id="productsContent" style="display:none;">
+        <!-- Панель фильтров -->
+        <div class="card" style="margin-bottom:14px;">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="productSearch" placeholder="🔍 Поиск по артикулу или названию..." 
+                       style="flex:1;min-width:180px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);" 
+                       oninput="window.refreshProductTable()">
+                <select id="productFilter" style="min-width:140px;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);" 
+                        onchange="window.refreshProductTable()">
+                    <option value="all">📋 Все товары</option>
+                    <option value="normal">🟢 В наличии</option>
+                    <option value="warning">🟡 Внимание</option>
+                    <option value="deficit">🔴 Дефицит</option>
+                    <option value="no_stock">⚫ Нет остатков</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="window.clearProductFilters()">🔄 Сбросить</button>
                 
-                <!-- Список товаров -->
-                <div id="productsGroupedList"></div>
+                <!-- Переключатель вида -->
+                <div style="display:flex;gap:4px;background:var(--bg-hover);padding:3px;border-radius:6px;margin-left:auto;">
+                    <button class="btn btn-sm view-toggle-btn active" data-view="grid" id="viewGridBtn" onclick="window.toggleViewMode('grid')" style="padding:4px 10px;font-size:11px;">📐 Сетка</button>
+                    <button class="btn btn-sm view-toggle-btn" data-view="list" id="viewListBtn" onclick="window.toggleViewMode('list')" style="padding:4px 10px;font-size:11px;">📋 Список</button>
+                </div>
             </div>
-        </section>
-
+        </div>
+        
+        <!-- Список товаров -->
+        <div id="productsGroupedList"></div>
+    </div>
+</section>
         <!-- ===================== ПЛАНИРОВАНИЕ ПОСТАВОК ===================== -->
         <section id="page-supply-planning" class="page">
             <div class="page-header">
