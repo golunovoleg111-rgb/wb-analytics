@@ -18,7 +18,6 @@ let salesChartInstance = null;
 async function getSalesAnalytics(startDate, endDate) {
     console.log('🔍 Загрузка аналитики продаж с', startDate, 'по', endDate);
     
-    // Получаем все продажи
     const allSales = await SalesService.getAll();
     console.log('📊 Всего продаж в базе:', allSales.length);
     
@@ -33,7 +32,6 @@ async function getSalesAnalytics(startDate, endDate) {
         };
     }
 
-    // Фильтруем по периоду
     const filtered = allSales.filter(s => s.date >= startDate && s.date <= endDate);
     console.log('📊 Продаж за период:', filtered.length);
 
@@ -60,7 +58,6 @@ async function getSalesAnalytics(startDate, endDate) {
         dailyData[s.date].count += 1;
     });
 
-    // Сортируем по датам
     const sortedDates = Object.keys(dailyData).sort();
     const chartData = sortedDates.map(date => {
         const parts = date.split('-');
@@ -76,7 +73,7 @@ async function getSalesAnalytics(startDate, endDate) {
         };
     });
 
-    // Топ-5 товаров по выручке
+    // Топ-5 товаров
     const productSales = {};
     filtered.forEach(s => {
         let article = s.article || s.productId || '';
@@ -97,20 +94,18 @@ async function getSalesAnalytics(startDate, endDate) {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
 
-    // Итоговые показатели
     const totalRevenue = filtered.reduce((sum, s) => sum + (s.amount || 0), 0);
     const totalOrders = filtered.reduce((sum, s) => sum + (s.orders || 0), 0);
     const totalDelivered = filtered.reduce((sum, s) => sum + (s.delivered || 0), 0);
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // ============================================================
-    // РАСЧЁТ ИЗМЕНЕНИЙ (сравнение с предыдущим периодом)
+    // РАСЧЁТ ИЗМЕНЕНИЙ
     // ============================================================
     const startDateObj = new Date(startDate);
     const endDateObj = new Date(endDate);
     const periodDays = Math.ceil((endDateObj - startDateObj) / (1000 * 60 * 60 * 24));
     
-    // Предыдущий период такой же длины
     const prevStartDate = new Date(startDateObj);
     prevStartDate.setDate(prevStartDate.getDate() - periodDays - 1);
     const prevEndDate = new Date(startDateObj);
@@ -125,17 +120,6 @@ async function getSalesAnalytics(startDate, endDate) {
     
     const revenueChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue * 100) : 0;
     const ordersChange = prevOrders > 0 ? ((totalOrders - prevOrders) / prevOrders * 100) : 0;
-
-    console.log('📊 Итоги:', {
-        revenue: totalRevenue,
-        orders: totalOrders,
-        delivered: totalDelivered,
-        avgOrderValue,
-        prevRevenue,
-        prevOrders,
-        revenueChange,
-        ordersChange
-    });
 
     return {
         chartData,
@@ -169,7 +153,9 @@ export async function renderSalesAnalytics() {
     }
 
     try {
-        // Получаем даты из полей ввода (или используем по умолчанию)
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // Получаем даты из полей ввода
         const startInput = document.getElementById('salesStartDate');
         const endInput = document.getElementById('salesEndDate');
         
@@ -178,7 +164,6 @@ export async function renderSalesAnalytics() {
             startDate = startInput.value;
             endDate = endInput.value;
         } else {
-            // По умолчанию: последние 30 дней
             const today = new Date();
             const start = new Date(today);
             start.setDate(start.getDate() - 30);
@@ -204,32 +189,42 @@ export async function renderSalesAnalytics() {
             return;
         }
 
-        // Строим HTML
         let html = '';
 
-        // 1. КАЛЕНДАРЬ для выбора периода
+        // ============================================================
+        // 1. КАЛЕНДАРЬ
+        // ============================================================
         html += `
-            <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;background:var(--bg-hover);padding:10px 14px;border-radius:var(--radius-sm);">
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">С</label>
-                    <input type="date" id="salesStartDate" value="${data.period.start}" 
-                           style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:12px;background:var(--bg-card);">
+            <div class="card" style="margin-bottom:16px;padding:12px 16px;">
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">📅 С</label>
+                        <input type="date" id="salesStartDate" value="${data.period.start}" 
+                               max="${todayStr}"
+                               style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">По</label>
+                        <input type="date" id="salesEndDate" value="${data.period.end}" 
+                               max="${todayStr}"
+                               style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);">
+                    </div>
+                    <button class="btn btn-primary btn-sm" id="applyDateRangeBtn">📊 Применить</button>
+                    <button class="btn btn-secondary btn-sm" id="resetDateRangeBtn">↺ Сбросить</button>
+                    <span style="flex:1;"></span>
+                    <span style="font-size:11px;color:var(--text-secondary);">
+                        ${data.period.start} — ${data.period.end}
+                    </span>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">По</label>
-                    <input type="date" id="salesEndDate" value="${data.period.end}" 
-                           style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:12px;background:var(--bg-card);">
+                <div id="dateRangeError" style="color:#EF4444;font-size:12px;margin-top:6px;display:none;">
+                    ⚠️ Дата начала не может быть позже даты окончания
                 </div>
-                <button class="btn btn-primary btn-sm" id="applyDateRangeBtn">📊 Применить</button>
-                <button class="btn btn-secondary btn-sm" id="resetDateRangeBtn">↺ Сбросить</button>
-                <span style="flex:1;"></span>
-                <span style="font-size:11px;color:var(--text-secondary);">
-                    ${data.period.start} — ${data.period.end}
-                </span>
             </div>
         `;
 
-        // 2. Итоговые показатели с изменением
+        // ============================================================
+        // 2. KPI
+        // ============================================================
         const revenueChange = data.changes?.revenue || 0;
         const ordersChange = data.changes?.orders || 0;
         
@@ -272,7 +267,9 @@ export async function renderSalesAnalytics() {
             </div>
         `;
 
-        // 3. График
+        // ============================================================
+        // 3. ГРАФИК
+        // ============================================================
         html += `
             <div class="card" style="margin-bottom:16px;">
                 <div class="card-title">📈 Динамика продаж</div>
@@ -282,7 +279,9 @@ export async function renderSalesAnalytics() {
             </div>
         `;
 
-        // 4. Топ-5 товаров
+        // ============================================================
+        // 4. ТОП-5
+        // ============================================================
         html += `
             <div class="card">
                 <div class="card-title">🏆 Топ-5 товаров по выручке</div>
@@ -316,20 +315,87 @@ export async function renderSalesAnalytics() {
 
         container.innerHTML = html;
 
-        // Навешиваем обработчики на календарь
-        document.getElementById('applyDateRangeBtn')?.addEventListener('click', () => {
+        // ============================================================
+        // 5. ОБРАБОТЧИКИ
+        // ============================================================
+        const startInputEl = document.getElementById('salesStartDate');
+        const endInputEl = document.getElementById('salesEndDate');
+        const errorEl = document.getElementById('dateRangeError');
+        const applyBtn = document.getElementById('applyDateRangeBtn');
+        const resetBtn = document.getElementById('resetDateRangeBtn');
+
+        function validateAndApply() {
+            const start = startInputEl?.value;
+            const end = endInputEl?.value;
+            
+            if (!start || !end) return;
+            
+            if (start > end) {
+                if (errorEl) errorEl.style.display = 'block';
+                return;
+            }
+            
+            if (errorEl) errorEl.style.display = 'none';
             renderSalesAnalytics();
+        }
+
+        // Валидация при изменении дат
+        startInputEl?.addEventListener('change', () => {
+            const start = startInputEl.value;
+            const end = endInputEl.value;
+            if (start && end && start > end) {
+                if (errorEl) errorEl.style.display = 'block';
+                if (applyBtn) applyBtn.disabled = true;
+                applyBtn.style.opacity = '0.5';
+                applyBtn.style.cursor = 'not-allowed';
+            } else {
+                if (errorEl) errorEl.style.display = 'none';
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.style.opacity = '1';
+                    applyBtn.style.cursor = 'pointer';
+                }
+            }
         });
-        document.getElementById('resetDateRangeBtn')?.addEventListener('click', () => {
+
+        endInputEl?.addEventListener('change', () => {
+            const start = startInputEl.value;
+            const end = endInputEl.value;
+            if (start && end && start > end) {
+                if (errorEl) errorEl.style.display = 'block';
+                if (applyBtn) {
+                    applyBtn.disabled = true;
+                    applyBtn.style.opacity = '0.5';
+                    applyBtn.style.cursor = 'not-allowed';
+                }
+            } else {
+                if (errorEl) errorEl.style.display = 'none';
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.style.opacity = '1';
+                    applyBtn.style.cursor = 'pointer';
+                }
+            }
+        });
+
+        applyBtn?.addEventListener('click', validateAndApply);
+        
+        resetBtn?.addEventListener('click', () => {
             const today = new Date();
             const start = new Date(today);
             start.setDate(start.getDate() - 30);
-            document.getElementById('salesStartDate').value = start.toISOString().split('T')[0];
-            document.getElementById('salesEndDate').value = today.toISOString().split('T')[0];
+            if (startInputEl) startInputEl.value = start.toISOString().split('T')[0];
+            if (endInputEl) endInputEl.value = today.toISOString().split('T')[0];
+            if (errorEl) errorEl.style.display = 'none';
+            if (applyBtn) {
+                applyBtn.disabled = false;
+                applyBtn.style.opacity = '1';
+                applyBtn.style.cursor = 'pointer';
+            }
             renderSalesAnalytics();
         });
 
-        // Рисуем график после рендеринга
+        // Рисуем график
         setTimeout(() => renderSalesChart(data.chartData), 100);
 
     } catch (error) {
