@@ -223,6 +223,12 @@ class ImportService {
             return { success: false, error: `Ошибка чтения файла: ${err.message}` };
         }
 
+        // 🔍 ДИАГНОСТИКА: выводим структуру файла
+        if (data && data.length > 0) {
+            console.log('📋 Фактические колонки в файле:', Object.keys(data[0]));
+            console.log('📋 Первая строка данных:', data[0]);
+        }
+
         const template = TEMPLATES[type];
         const columnCheck = this._validateColumns(data, template.columns);
         if (!columnCheck.valid) {
@@ -270,16 +276,40 @@ class ImportService {
         }
 
         const actualColumns = Object.keys(data[0]);
-        const missingColumns = expectedColumns.filter(col => !actualColumns.includes(col));
+        
+        // 🔍 ДИАГНОСТИКА
+        console.log('📋 Ожидаемые колонки:', expectedColumns);
 
-        if (missingColumns.length > 0) {
+        // Проверяем, что есть хотя бы основные колонки
+        const required = ['Артикул продавца', 'День', 'Выкупили', 'Заказано'];
+        const found = required.filter(col => 
+            actualColumns.some(actual => actual.includes(col) || col.includes(actual))
+        );
+
+        if (found.length < 2) {
             return {
                 valid: false,
-                error: `Отсутствуют обязательные колонки: ${missingColumns.join(', ')}`
+                error: `Не найдены обязательные колонки. Фактические колонки: ${actualColumns.join(', ')}`
             };
         }
 
         return { valid: true };
+    }
+
+    // ============================================================
+    // ПОИСК ЗНАЧЕНИЯ ПО НЕСКОЛЬКИМ КЛЮЧАМ
+    // ============================================================
+
+    static _findValueInRow(row, possibleKeys) {
+        for (const key of possibleKeys) {
+            if (row && row.hasOwnProperty(key)) {
+                const value = row[key];
+                if (value !== null && value !== undefined && value !== '') {
+                    return value;
+                }
+            }
+        }
+        return null;
     }
 
     // ============================================================
@@ -295,16 +325,9 @@ class ImportService {
             const rowNum = index + 1;
             const rowErrors = [];
 
-            // Проверяем обязательные поля
-            for (const field of required) {
-                const value = String(row[field] || '').trim();
-                if (!value) {
-                    rowErrors.push(`Поле "${field}" пустое`);
-                }
-            }
-
-            if (rowErrors.length > 0) {
-                errors.push({ row: rowNum, errors: rowErrors });
+            // Проверяем, что row не пустой
+            if (!row || typeof row !== 'object') {
+                errors.push({ row: rowNum, errors: ['Строка пуста или не является объектом'] });
                 return;
             }
 
@@ -312,36 +335,105 @@ class ImportService {
             // ПАРСИНГ ПРОДАЖ (НОВАЯ ВЕРСИЯ)
             // ============================================================
             if (type === ImportTypes.SALES) {
-                const article = String(row['Артикул продавца'] || '').trim();
-                const dateStr = String(row['День'] || '').trim();
-                const parsedDate = parseDateFromWB(dateStr);
+                // Гибкий поиск колонок
+                const article = this._findValueInRow(row, [
+                    'Артикул продавца',
+                    'Артикул',
+                    'article'
+                ]);
 
+                const dateStr = this._findValueInRow(row, [
+                    'День',
+                    'Дата',
+                    'Date',
+                    'Дата заказа'
+                ]);
+
+                const redeemed = this._findValueInRow(row, [
+                    'Выкупили, шт.',
+                    'Выкупили шт.',
+                    'Выкупили',
+                    'Выкуплено, шт.',
+                    'Выкуплено'
+                ]);
+
+                const amount = this._findValueInRow(row, [
+                    'К перечислению за товар, руб.',
+                    'К перечислению за товар руб.',
+                    'К перечислению за товар',
+                    'Сумма выкупа'
+                ]);
+
+                const orders = this._findValueInRow(row, [
+                    'Заказано, шт.',
+                    'Заказано шт.',
+                    'Заказано',
+                    'Количество заказов'
+                ]);
+
+                const totalAmount = this._findValueInRow(row, [
+                    'Сумма заказов минус комиссия WB, руб.',
+                    'Сумма заказов минус комиссия WB руб.',
+                    'Сумма заказов минус комиссия WB',
+                    'Сумма заказов'
+                ]);
+
+                // 🔍 ДИАГНОСТИКА
+                if (index === 0) {
+                    console.log('🔍 Найденные значения в первой строке:', {
+                        article,
+                        dateStr,
+                        redeemed,
+                        amount,
+                        orders,
+                        totalAmount
+                    });
+                }
+
+                // Проверяем обязательные поля
                 if (!article) {
-                    errors.push({ row: rowNum, errors: ['Артикул продавца пуст'] });
+                    rowErrors.push('Артикул продавца не найден');
+                }
+                if (!dateStr) {
+                    rowErrors.push('Дата (День) не найдена');
+                }
+                if (!redeemed || redeemed === '') {
+                    rowErrors.push('Выкупили, шт. не найдено');
+                }
+                if (!orders || orders === '') {
+                    rowErrors.push('Заказано, шт. не найдено');
+                }
+                if (!amount || amount === '') {
+                    rowErrors.push('К перечислению за товар, руб. не найдено');
+                }
+
+                if (rowErrors.length > 0) {
+                    errors.push({ row: rowNum, errors: rowErrors });
                     return;
                 }
 
+                const parsedDate = parseDateFromWB(dateStr);
                 if (!parsedDate) {
                     errors.push({ row: rowNum, errors: [`Некорректная дата: "${dateStr}"`] });
                     return;
                 }
 
-                // Создаём articleKey без размера (используем NOSIZE)
+                // Создаём articleKey без размера
                 const articleKey = createArticleKey(article);
 
                 const record = {
                     articleKey,
-                    productId: articleKey, // пока используем articleKey как productId
+                    productId: articleKey,
                     article: article,
                     size: 'NOSIZE',
-                    warehouse: 'Не указан', // в этом отчёте нет склада
+                    warehouse: 'Не указан',
                     date: parsedDate,
-                    orders: parseNumberFromWB(row['Заказано, шт.']),
-                    redeemed: parseNumberFromWB(row['Выкупили, шт.']),
-                    delivered: parseNumberFromWB(row['Выкупили, шт.']), // дублируем для совместимости
-                    amount: parseNumberFromWB(row['К перечислению за товар, руб.']),
-                    totalAmount: parseNumberFromWB(row['Сумма заказов минус комиссия WB, руб.']),
-                    returns: 0, // в этом отчёте нет возвратов
+                    orders: parseNumberFromWB(orders),
+                    redeemed: parseNumberFromWB(redeemed),
+                    delivered: parseNumberFromWB(redeemed),
+                    amount: parseNumberFromWB(amount),
+                    totalAmount: parseNumberFromWB(totalAmount || amount),
+                    returns: 0,
                     fileName: row._fileName || '',
                     importDate: new Date().toISOString()
                 };
@@ -358,6 +450,11 @@ class ImportService {
                 const size = String(row['Размер'] || '').trim();
                 const color = ''; // в шаблоне пока нет цвета
                 const articleKey = createArticleKey(article, size || 'NOSIZE', color || 'NOCOLOR');
+
+                if (!article) {
+                    errors.push({ row: rowNum, errors: ['Артикул продавца пуст'] });
+                    return;
+                }
 
                 const record = {
                     article,
@@ -387,6 +484,11 @@ class ImportService {
                 const article = String(row['Артикул продавца'] || '').trim();
                 const size = String(row['Размер'] || '').trim();
                 const articleKey = createArticleKey(article, size || 'NOSIZE');
+
+                if (!article) {
+                    errors.push({ row: rowNum, errors: ['Артикул продавца пуст'] });
+                    return;
+                }
 
                 const record = {
                     productId: articleKey,
@@ -425,6 +527,9 @@ class ImportService {
                 return;
             }
         });
+
+        // 🔍 ДИАГНОСТИКА: итоги
+        console.log(`📊 Итоги парсинга: всего ${data.length} строк, валидных ${records.length}, ошибок ${errors.length}`);
 
         return {
             success: errors.length === 0,
@@ -487,6 +592,7 @@ class ImportService {
             });
         }
 
+        console.log(`[ImportService] ${type}: сохранено ${records.length} записей`);
         return records;
     }
 
