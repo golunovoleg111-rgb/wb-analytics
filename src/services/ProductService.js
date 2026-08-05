@@ -28,7 +28,6 @@ class ProductService {
         try {
             const product = await ProductAggregate.create(data);
             
-            // Генерируем событие
             this._emitEvent('ProductCreated', {
                 productId: product.id,
                 article: product.article,
@@ -96,7 +95,7 @@ class ProductService {
     }
 
     /**
-     * Получить товар по артикулу
+     * Получить товар по артикулу (возвращает массив, т.к. артикул не уникален)
      */
     static async findByArticle(article) {
         return await ProductAggregate.findByArticle(article);
@@ -121,6 +120,37 @@ class ProductService {
      */
     static async getArchived() {
         return await ProductAggregate.getArchived();
+    }
+
+    // ============================================================
+    // ПОЛУЧИТЬ ТОВАРЫ ПО БАЗЕ АРТИКУЛА (НОВЫЙ МЕТОД)
+    // ============================================================
+
+    /**
+     * Получить все товары, относящиеся к одной базе (модели)
+     * Например: baseModel = "21_К_Вельвет" → все размеры и цвета
+     */
+    static async getByBaseModel(baseModel) {
+        if (!baseModel) return [];
+        const all = await this.getAll();
+        return all.filter(p => 
+            p.baseModel === baseModel || 
+            p.article === baseModel ||
+            (p.articleKey && p.articleKey.startsWith(baseModel + '|'))
+        );
+    }
+
+    /**
+     * Получить список всех уникальных базовых моделей
+     */
+    static async getBaseModels() {
+        const all = await this.getAll();
+        const bases = new Set();
+        all.forEach(p => {
+            const base = p.baseModel || p.article;
+            if (base) bases.add(base);
+        });
+        return Array.from(bases);
     }
 
     // ============================================================
@@ -207,18 +237,14 @@ class ProductService {
 
     /**
      * Получить товары с дополнительными метриками (для списка)
-     * В будущем здесь будет подключение к Calculation Engine
      */
     static async getWithMetrics() {
         const products = await this.getActive();
-        
-        // Пока возвращаем только товары
-        // Позже здесь будет добавление метрик из Calculation Engine
         return products;
     }
 
     // ============================================================
-    // СОБЫТИЯ (простая реализация)
+    // СОБЫТИЯ
     // ============================================================
 
     static _eventListeners = {};
@@ -252,9 +278,5 @@ class ProductService {
         await Database.clear(Database.STORES.PRODUCTS);
     }
 }
-
-// ============================================================
-// ЭКСПОРТ
-// ============================================================
 
 export default ProductService;
