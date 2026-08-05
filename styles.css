@@ -1485,3 +1485,105 @@ input[type="text"][readonly]:focus {
         font-size: 11px;
     }
 }
+/* ============================================================
+   СЕТКА ТОВАРОВ
+   ============================================================ */
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.product-card-grid {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: all var(--transition);
+    cursor: pointer;
+}
+
+.product-card-grid:hover {
+    border-color: var(--primary-light);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+.product-card-grid .status-badge {
+    font-size: 14px;
+}
+
+/* ============================================================
+   СПИСОК ТОВАРОВ
+   ============================================================ */
+
+.products-list {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.product-card-list {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-light);
+    transition: background var(--transition);
+    cursor: pointer;
+}
+
+.product-card-list:hover {
+    background: var(--bg-hover);
+}
+
+.product-card-list:last-child {
+    border-bottom: none;
+}
+
+/* ============================================================
+   ПЕРЕКЛЮЧАТЕЛЬ ВИДА
+   ============================================================ */
+
+.view-toggle-btn {
+    background: transparent;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+    font-family: var(--font);
+}
+
+.view-toggle-btn:hover {
+    background: var(--bg-hover);
+}
+
+.view-toggle-btn.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* ============================================================
+   АДАПТИВНОСТЬ
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 8px;
+    }
+    
+    .product-card-grid {
+        padding: 10px 12px;
+    }
+    
+    .product-card-grid .grid-metrics {
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 8px;
+        font-size: 11px;
+    }
+}
