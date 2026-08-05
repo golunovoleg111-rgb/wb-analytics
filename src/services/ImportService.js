@@ -646,8 +646,15 @@ class ImportService {
             }
         });
 
-        console.log(`📊 Итоги парсинга: всего ${data.length} строк, валидных ${records.length}, ошибок ${errors.length}`);
+       console.log(`📊 Итоги парсинга: всего ${data.length} строк, валидных ${records.length}, ошибок ${errors.length}`);
 
+// ВЫВОДИМ ПЕРВЫЕ 20 ОШИБОК ДЛЯ ДИАГНОСТИКИ
+if (errors.length > 0) {
+    console.log('🔴 ПРИМЕРЫ ОШИБОК (первые 20):');
+    errors.slice(0, 20).forEach(err => {
+        console.log(`  Строка ${err.row}: ${err.errors.join(', ')}`);
+    });
+}
         return {
             success: errors.length === 0,
             records,
