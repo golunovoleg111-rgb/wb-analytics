@@ -4,6 +4,7 @@
 
 import SalesService from '../services/SalesService.js';
 import ProductService from '../services/ProductService.js';
+import createDatePicker from './datePicker.js';
 
 // ============================================================
 // СОСТОЯНИЕ
@@ -199,15 +200,17 @@ export async function renderSalesAnalytics() {
                 <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
                     <div style="display:flex;align-items:center;gap:6px;">
                         <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">📅 С</label>
-                        <input type="date" id="salesStartDate" value="${data.period.start}" 
-                               max="${todayStr}"
-                               style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);">
+                        <input type="text" id="salesStartDate" value="${data.period.start}" 
+                               placeholder="Выберите дату"
+                               readonly
+                               style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);cursor:pointer;min-width:140px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <label style="font-size:12px;font-weight:500;color:var(--text-secondary);">По</label>
-                        <input type="date" id="salesEndDate" value="${data.period.end}" 
-                               max="${todayStr}"
-                               style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);">
+                        <input type="text" id="salesEndDate" value="${data.period.end}" 
+                               placeholder="Выберите дату"
+                               readonly
+                               style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-input);color:var(--text-primary);cursor:pointer;min-width:140px;">
                     </div>
                     <button class="btn btn-primary btn-sm" id="applyDateRangeBtn">📊 Применить</button>
                     <button class="btn btn-secondary btn-sm" id="resetDateRangeBtn">↺ Сбросить</button>
@@ -316,10 +319,17 @@ export async function renderSalesAnalytics() {
         container.innerHTML = html;
 
         // ============================================================
-        // 5. ОБРАБОТЧИКИ
+        // 5. ПОДКЛЮЧАЕМ КАСТОМНЫЙ КАЛЕНДАРЬ
         // ============================================================
         const startInputEl = document.getElementById('salesStartDate');
         const endInputEl = document.getElementById('salesEndDate');
+
+        if (startInputEl) createDatePicker(startInputEl);
+        if (endInputEl) createDatePicker(endInputEl);
+
+        // ============================================================
+        // 6. ОБРАБОТЧИКИ
+        // ============================================================
         const errorEl = document.getElementById('dateRangeError');
         const applyBtn = document.getElementById('applyDateRangeBtn');
         const resetBtn = document.getElementById('resetDateRangeBtn');
@@ -340,27 +350,9 @@ export async function renderSalesAnalytics() {
         }
 
         // Валидация при изменении дат
-        startInputEl?.addEventListener('change', () => {
-            const start = startInputEl.value;
-            const end = endInputEl.value;
-            if (start && end && start > end) {
-                if (errorEl) errorEl.style.display = 'block';
-                if (applyBtn) applyBtn.disabled = true;
-                applyBtn.style.opacity = '0.5';
-                applyBtn.style.cursor = 'not-allowed';
-            } else {
-                if (errorEl) errorEl.style.display = 'none';
-                if (applyBtn) {
-                    applyBtn.disabled = false;
-                    applyBtn.style.opacity = '1';
-                    applyBtn.style.cursor = 'pointer';
-                }
-            }
-        });
-
-        endInputEl?.addEventListener('change', () => {
-            const start = startInputEl.value;
-            const end = endInputEl.value;
+        function validateDates() {
+            const start = startInputEl?.value;
+            const end = endInputEl?.value;
             if (start && end && start > end) {
                 if (errorEl) errorEl.style.display = 'block';
                 if (applyBtn) {
@@ -376,7 +368,10 @@ export async function renderSalesAnalytics() {
                     applyBtn.style.cursor = 'pointer';
                 }
             }
-        });
+        }
+
+        startInputEl?.addEventListener('change', validateDates);
+        endInputEl?.addEventListener('change', validateDates);
 
         applyBtn?.addEventListener('click', validateAndApply);
         
