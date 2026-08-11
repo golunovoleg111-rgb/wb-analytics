@@ -1,16 +1,42 @@
 // ============================================================
-// STOCK AGGREGATE — ЛОГИКА РАБОТЫ С ОСТАТКАМИ
+// STOCK AGGREGATE — ОСТАТКИ
 // ============================================================
 
 import StockRecord from './StockRecord.js';
 import { Database } from '../../infrastructure/db.js';
 
-class StockAggregate {
-    
-    // ============================================================
-    // СОЗДАНИЕ
-    // ============================================================
+const TOTAL_COLUMN_NAMES = new Set([
+    'всего на складах',
+    'всего находится на складах',
+    'итого на складах',
+    'остаток всего',
+    'всего'
+]);
 
+function isRealWarehouse(name) {
+    const value = String(name || '').trim().toLowerCase();
+    return value && !TOTAL_COLUMN_NAMES.has(value);
+}
+
+function latestByWarehouse(records) {
+    const latest = {};
+
+    for (const record of records || []) {
+        if (!isRealWarehouse(record.warehouseName)) continue;
+        const key = record.warehouseName;
+        const current = latest[key];
+
+        if (!current ||
+            String(record.date) > String(current.date) ||
+            (String(record.date) === String(current.date) && String(record.createdAt) > String(current.createdAt))) {
+            latest[key] = record;
+        }
+    }
+
+    return Object.values(latest);
+}
+
+class StockAggregate {
     static async create(data) {
         const record = StockRecord.createFromImport(data);
         await Database.save(Database.STORES.STOCK, record);
@@ -18,94 +44,54 @@ class StockAggregate {
     }
 
     static async createMany(items) {
-        const results = [];
+        const records = [];
         const errors = [];
 
-        for (const item of items) {
+        for (const item of items || []) {
             try {
-                const record = await this.create(item);
-                results.push(record);
+                records.push(await this.create(item));
             } catch (error) {
                 errors.push({ data: item, error: error.message });
             }
         }
 
-        return { results, errors };
+        return { results: records, errors };
     }
-
-    // ============================================================
-    // ЧТЕНИЕ
-    // ============================================================
 
     static async getByProduct(productId) {
         const all = await Database.getAll(Database.STORES.STOCK);
-        return all
-            .filter(r => r.productId === productId)
-            .map(r => new StockRecord(r));
+        return all.filter(r => r.productId === productId).map(r => new StockRecord(r));
     }
 
     static async getCurrent(productId) {
-        const all = await this.getByProduct(productId);
-        // Берём последние записи по каждому складу
-        const latest = {};
-        all.forEach(r => {
-            const key = r.warehouseName || 'unknown';
-            if (!latest[key] || r.date > latest[key].date) {
-                latest[key] = r;
-            }
-        });
-        return Object.values(latest);
+        return latestByWarehouse(await this.getByProduct(productId));
     }
 
     static async getAggregated(productId) {
-        const current = await this.getCurrent(productId);
-        return StockRecord.aggregate(current);
+        return StockRecord.aggregate(await this.getCurrent(productId));
     }
 
     static async getAllAggregated() {
-        const all = await Database.getAll(Database.STORES.STOCK);
-        const records = all.map(r => new StockRecord(r));
-        
-        // Группируем по productId
+        const all = (await Database.getAll(Database.STORES.STOCK)).map(r => new StockRecord(r));
         const groups = {};
-        records.forEach(r => {
-            if (!groups[r.productId]) {
-                groups[r.productId] = [];
-            }
-            groups[r.productId].push(r);
-        });
 
-        // Агрегируем по каждому товару
+        for (const record of all) {
+            if (!groups[record.productId]) groups[record.productId] = [];
+            groups[record.productId].push(record);
+        }
+
         const result = {};
-        Object.keys(groups).forEach(productId => {
-            // Берём последние записи по каждому складу
-            const latest = {};
-            groups[productId].forEach(r => {
-                const key = r.warehouseName || 'unknown';
-                if (!latest[key] || r.date > latest[key].date) {
-                    latest[key] = r;
-                }
-            });
-            const current = Object.values(latest);
-            result[productId] = StockRecord.aggregate(current);
-        });
+        for (const [productId, records] of Object.entries(groups)) {
+            result[productId] = StockRecord.aggregate(latestByWarehouse(records));
+        }
 
         return result;
     }
 
-    // Получить склады, где есть остатки
     static async getWarehouses() {
         const all = await Database.getAll(Database.STORES.STOCK);
-        const warehouses = new Set();
-        all.forEach(r => {
-            if (r.warehouseName) warehouses.add(r.warehouseName);
-        });
-        return Array.from(warehouses).sort();
+        return [...new Set(all.map(r => r.warehouseName).filter(isRealWarehouse))].sort();
     }
-
-    // ============================================================
-    // ОЧИСТКА
-    // ============================================================
 
     static async clearAll() {
         await Database.clear(Database.STORES.STOCK);
