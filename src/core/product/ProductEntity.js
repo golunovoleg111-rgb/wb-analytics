@@ -1,71 +1,70 @@
 // ============================================================
-// PRODUCT ENTITY — СУЩНОСТЬ ТОВАРА
+// PRODUCT ENTITY — ДАННЫЕ ТОВАРА
 // ============================================================
 
+function clean(value) {
+    return String(value ?? '').trim();
+}
+
 class ProductEntity {
-    constructor(data) {
-        this.id = data.id || this._generateId();
-        this.article = data.article || '';
-        this.articleKey = data.articleKey || this._generateArticleKey(data.article, data.size, data.color);
-        this.baseModel = data.baseArticle || data.baseModel || this._extractBaseArticle(data.article);
-        this.category = data.category || 'Товар';
-        this.color = data.color || '';
-        this.size = data.size || '';
-        this.barcode = data.barcode || '';
-        this.tnved = data.tnved || '';
-        this.gtin = data.gtin || '';
-        this.fabric = data.fabric || '';
-        this.name = data.name || '';
-        this.price = data.price || 0;
-        this.purchasePrice = data.purchasePrice || 0;
-        this.status = data.status || 'active';
+    constructor(data = {}) {
+        this.article = clean(data.article);
+        this.size = clean(data.size);
+        this.color = clean(data.color);
+        this.articleKey = clean(data.articleKey) || this._generateArticleKey(this.article, this.size, this.color);
+        this.id = clean(data.id) || this.articleKey;
+        this.baseModel = clean(data.baseArticle || data.baseModel) || this._extractBaseArticle(this.article);
+        this.category = clean(data.category) || 'Товар';
+        this.barcode = clean(data.barcode);
+        this.tnved = clean(data.tnved);
+        this.gtin = clean(data.gtin);
+        this.fabric = clean(data.fabric);
+        this.name = clean(data.name) || this.baseModel || this.article;
+        this.price = Number(data.price) || 0;
+        this.purchasePrice = Number(data.purchasePrice) || 0;
+        this.status = data.status === 'archived' ? 'archived' : 'active';
         this.createdAt = data.createdAt || new Date().toISOString();
         this.updatedAt = new Date().toISOString();
         this.archivedAt = data.archivedAt || null;
     }
 
-    // ============================================================
-    // ГЕНЕРАТОРЫ ID
-    // ============================================================
-
-    _generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substring(2);
-    }
-
     _generateArticleKey(article, size, color) {
-        const s = size || 'NOSIZE';
-        const c = color || 'NOCOLOR';
-        return `${article}_${s}_${c}`;
+        const a = clean(article);
+        const s = clean(size) || 'NOSIZE';
+        const c = clean(color) || 'NOCOLOR';
+        return `${a}|${s}|${c}`;
     }
 
     _extractBaseArticle(article) {
-        if (!article) return '';
-        const parts = article.split('_');
-        if (parts.length >= 3) {
-            return parts.slice(0, -2).join('_');
+        const value = clean(article);
+        if (!value) return '';
+
+        const parts = value.split('_').filter(Boolean);
+        if (parts.length < 2) return value;
+
+        // Для WB чаще всего размер и цвет идут последними сегментами.
+        // Если последний сегмент похож на размер — убираем его;
+        // цвет убираем только если он очевидно отделён.
+        const sizePattern = /^(\d{2,3}|XXS|XS|S|M|L|XL|XXL|XXXL)$/i;
+        const last = parts[parts.length - 1];
+        if (sizePattern.test(last) && parts.length >= 2) {
+            return parts.slice(0, -1).join('_');
         }
-        return article;
+
+        return parts.slice(0, -1).join('_');
     }
 
-    // ============================================================
-    // МЕТОДЫ ДЛЯ РАБОТЫ С СУЩНОСТЬЮ
-    // ============================================================
-
-    update(data) {
+    update(data = {}) {
         Object.assign(this, data);
-        this.updatedAt = new Date().toISOString();
         if (data.article || data.size || data.color) {
-            this.articleKey = this._generateArticleKey(
-                data.article || this.article,
-                data.size || this.size,
-                data.color || this.color
-            );
+            this.articleKey = this._generateArticleKey(this.article, this.size, this.color);
+            this.id = this.articleKey;
         }
+        this.updatedAt = new Date().toISOString();
         return this;
     }
 
     archive() {
-        if (this.status === 'archived') return this;
         this.status = 'archived';
         this.archivedAt = new Date().toISOString();
         this.updatedAt = new Date().toISOString();
@@ -73,7 +72,6 @@ class ProductEntity {
     }
 
     restore() {
-        if (this.status === 'active') return this;
         this.status = 'active';
         this.archivedAt = null;
         this.updatedAt = new Date().toISOString();
@@ -88,46 +86,12 @@ class ProductEntity {
         return this.status === 'archived';
     }
 
-    // ============================================================
-    // СТАТИЧЕСКИЕ МЕТОДЫ — СОЗДАНИЕ
-    // ============================================================
-
     static createFromImport(data) {
-        return new ProductEntity({
-            article: data.article,
-            articleKey: data.articleKey,
-            baseArticle: data.baseModel || data.baseArticle,
-            category: data.category || 'Товар',
-            color: data.color || '',
-            size: data.size || '',
-            barcode: data.barcode || '',
-            tnved: data.tnved || '',
-            gtin: data.gtin || '',
-            fabric: data.fabric || '',
-            name: data.name || data.baseModel || data.article,
-            price: data.price || 0,
-            purchasePrice: data.purchasePrice || 0,
-            status: 'active'
-        });
+        return new ProductEntity({ ...data, status: 'active' });
     }
 
     static createManual(data) {
-        return new ProductEntity({
-            article: data.article,
-            articleKey: data.articleKey,
-            baseArticle: data.baseArticle,
-            category: data.category || 'Товар',
-            color: data.color || '',
-            size: data.size || '',
-            barcode: data.barcode || '',
-            tnved: data.tnved || '',
-            gtin: data.gtin || '',
-            fabric: data.fabric || '',
-            name: data.name || data.article,
-            price: data.price || 0,
-            purchasePrice: data.purchasePrice || 0,
-            status: 'active'
-        });
+        return new ProductEntity({ ...data, status: 'active' });
     }
 }
 
