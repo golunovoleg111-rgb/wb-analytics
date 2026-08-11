@@ -8,6 +8,7 @@ import StockService from './services/StockService.js';
 import DataIntegrityService from './services/DataIntegrityService.js';
 import Database from './infrastructure/db.js';
 import { installV61Pages } from './ui/v61AnalyticsPages.js';
+import { initImportController } from './ui/importController.js';
 import { showLoading, setLoadingMessage, hideLoading } from './ui/loadingScreen.js';
 
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
@@ -55,9 +56,9 @@ async function checkArchitecture() {
 }
 async function init() {
     showLoading('Запускаем BELTANEE…'); document.title = 'BELTANEE — Аналитическая платформа';
-    document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE')); const badge = document.querySelector('.logo-badge'); if (badge) badge.textContent = '1.0';
-    ensureProfilePage(); patchProfileButton(); setLoadingMessage('Загружаем рабочее пространство…'); installV61Pages();
-    try { const report = await checkArchitecture(); setLoadingMessage(report.integrity.ok ? 'Рабочее пространство готово' : 'Найдены предупреждения — открываем рабочее пространство'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.0 ready'); }
+    document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE')); const badge = document.querySelector('.logo-badge'); if (badge) badge.textContent = '1.6';
+    ensureProfilePage(); patchProfileButton(); setLoadingMessage('Подключаем импорт шаблонов WB…'); installV61Pages(); initImportController();
+    try { const report = await checkArchitecture(); setLoadingMessage(report.integrity.ok ? 'Рабочее пространство готово' : 'Найдены предупреждения — открываем рабочее пространство'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.6 ready'); }
     catch (error) { console.error('[BELTANEE] Startup failed', error); setLoadingMessage(`Ошибка запуска: ${error.message}`); window.showToast?.(`Ошибка запуска: ${error.message}`, 'error'); await new Promise(resolve => setTimeout(resolve, 1400)); hideLoading(); }
 }
 init();
