@@ -7,6 +7,7 @@ import SalesService from './services/SalesService.js';
 import StockService from './services/StockService.js';
 import Database from './infrastructure/db.js';
 import { installV61Pages } from './ui/v61AnalyticsPages.js';
+import { showLoading, setLoadingMessage, hideLoading } from './ui/loadingScreen.js';
 
 function escapeHtml(value) {
     return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
@@ -83,25 +84,32 @@ function patchProfileButton() {
 }
 
 async function checkArchitecture() {
+    setLoadingMessage('Проверяем локальное хранилище…');
     try {
         const [products, sales, stock] = await Promise.all([ProductService.getAll(), SalesService.getAll(), StockService.getAllAggregated()]);
         console.log('[BELTANEE v6.1] База готова:', { products: products.length, sales: sales.length, stockProducts: Object.keys(stock).length, database: Database.DB_NAME });
         return true;
     } catch (error) {
         console.error('[BELTANEE v6.1] Ошибка инициализации:', error);
+        window.showToast?.(`Ошибка базы данных: ${error.message}`, 'error');
         return false;
     }
 }
 
 async function init() {
+    showLoading('Запускаем BELTANEE…');
     document.title = 'BELTANEE v6.1 — Аналитика бизнеса на Wildberries';
     document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE'));
     const badge = document.querySelector('.logo-badge');
     if (badge) badge.textContent = 'v6.1';
     ensureProfilePage();
     patchProfileButton();
+    setLoadingMessage('Загружаем разделы аналитики…');
     installV61Pages();
-    await checkArchitecture();
+    const ready = await checkArchitecture();
+    setLoadingMessage(ready ? 'Рабочее пространство готово' : 'Завершение запуска…');
+    await new Promise(resolve => setTimeout(resolve, ready ? 350 : 700));
+    hideLoading();
     console.log('✅ BELTANEE v6.1 готов');
 }
 
