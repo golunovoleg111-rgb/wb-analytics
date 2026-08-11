@@ -1,47 +1,12 @@
 // BELTANEE v6.1 — unified application loading screen
-// Covers the application while IndexedDB, services and UI are initializing.
-
 let shown = false;
-
-function ensureLoadingScreen() {
-    if (document.getElementById('beltaneeLoadingScreen')) return document.getElementById('beltaneeLoadingScreen');
-
-    const el = document.createElement('div');
-    el.id = 'beltaneeLoadingScreen';
-    el.innerHTML = `
-        <div class="beltanee-loader-shell" role="status" aria-live="polite" aria-label="Загрузка BELTANEE">
-            <div class="beltanee-loader-mark"><span>B</span></div>
-            <div class="beltanee-loader-brand">BELTANEE</div>
-            <div class="beltanee-loader-subtitle">Аналитическая платформа</div>
-            <div class="beltanee-loader-line"><i></i></div>
-            <div class="beltanee-loader-status" id="beltaneeLoadingStatus">Подготавливаем рабочее пространство…</div>
-        </div>`;
-    document.body.appendChild(el);
-    return el;
+function ensureLoadingScreen(){
+    if(document.getElementById('beltaneeLoadingScreen')) return document.getElementById('beltaneeLoadingScreen');
+    const el=document.createElement('div'); el.id='beltaneeLoadingScreen';
+    el.innerHTML='<div class="beltanee-loader-shell" role="status" aria-live="polite" aria-label="Загрузка BELTANEE"><div class="beltanee-loader-mark"><span>B</span></div><div class="beltanee-loader-brand">BELTANEE</div><div class="beltanee-loader-subtitle">Аналитическая платформа</div><div class="beltanee-loader-line"><i></i></div><div class="beltanee-loader-status" id="beltaneeLoadingStatus">Подготавливаем рабочее пространство…</div></div>';
+    document.body.appendChild(el); return el;
 }
-
-export function showLoading(message = 'Подготавливаем рабочее пространство…') {
-    const el = ensureLoadingScreen();
-    el.querySelector('#beltaneeLoadingStatus').textContent = message;
-    el.classList.remove('beltanee-loader-hidden');
-    shown = true;
-}
-
-export function setLoadingMessage(message) {
-    const el = document.getElementById('beltaneeLoadingScreen');
-    if (el) el.querySelector('#beltaneeLoadingStatus').textContent = message;
-}
-
-export function hideLoading() {
-    const el = document.getElementById('beltaneeLoadingScreen');
-    if (!el || !shown) return;
-    el.classList.add('beltanee-loader-hidden');
-    setTimeout(() => el.remove(), 500);
-    shown = false;
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => showLoading(), { once: true });
-} else {
-    showLoading();
-}
+export function showLoading(message='Подготавливаем рабочее пространство…'){const el=ensureLoadingScreen();el.querySelector('#beltaneeLoadingStatus').textContent=message;el.classList.remove('beltanee-loader-hidden');shown=true;}
+export function setLoadingMessage(message){const el=document.getElementById('beltaneeLoadingScreen');if(el)el.querySelector('#beltaneeLoadingStatus').textContent=message;}
+export function hideLoading(){const el=document.getElementById('beltaneeLoadingScreen');if(!el||!shown)return;el.classList.add('beltanee-loader-hidden');setTimeout(()=>el.remove(),500);shown=false;}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>showLoading(),{once:true});else showLoading();
