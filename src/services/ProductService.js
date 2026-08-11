@@ -7,25 +7,9 @@
 import ProductAggregate from '../core/product/ProductAggregate.js';
 import Database from '../infrastructure/db.js';
 
-function clean(value) {
-    return String(value ?? '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
-}
+function clean(value) { return String(value ?? '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim(); }
+function normalize(value) { return clean(value).toLowerCase().replace(/\s+/g, ' '); }
 
-function normalize(value) {
-    return clean(value).toLowerCase().replace(/\s+/g, ' ');
-}
-
-/**
- * Ключ изделия.
- * WB-артикулы в нашем бизнесе могут выглядеть, например:
- *   21_К_Вельвет_голубой
- *   21_К_Вельвет_темно-синий
- *   21_К_Вельвет_голубой_M
- *
- * Все такие варианты относятся к одному изделию с кодом 21.
- * Если код состоит из нескольких цифр, сохраняем его целиком:
- * 211 ≠ 21.
- */
 export function getProductGroupKey(article) {
     const value = clean(article);
     const match = value.match(/^(\d+)/);
@@ -42,10 +26,7 @@ class ProductService {
             const product = await ProductAggregate.create(data);
             this._emitEvent('ProductCreated', { productId: product.id, article: product.article, source: 'import' });
             return product;
-        } catch (error) {
-            console.error('[ProductService] createFromImport error:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('[ProductService] createFromImport error:', error.message); throw error; }
     }
 
     static async createManual(data) {
@@ -53,15 +34,11 @@ class ProductService {
             const product = await ProductAggregate.createManual(data);
             this._emitEvent('ProductCreated', { productId: product.id, article: product.article, source: 'manual' });
             return product;
-        } catch (error) {
-            console.error('[ProductService] createManual error:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('[ProductService] createManual error:', error.message); throw error; }
     }
 
     static async createManyFromImport(items) {
-        const results = [];
-        const errors = [];
+        const results = [], errors = [];
         for (const item of items) {
             try { results.push(await this.createFromImport(item)); }
             catch (error) { errors.push({ article: item.article, error: error.message }); }
@@ -77,16 +54,17 @@ class ProductService {
 
     /**
      * Получить все варианты одного физического изделия.
-     * Основной идентификатор изделия — цифровой код в начале артикула.
-     * Это намеренно не зависит от цвета/размера/остатка.
+     * Принимает как новый groupKey (21), так и старый baseModel (21_К_Вельвет),
+     * поэтому переход на новую модель данных не ломает уже сохранённые записи.
      */
     static async getByBaseModel(baseModel) {
         if (!baseModel) return [];
         const target = normalize(baseModel);
+        const targetGroup = getProductGroupKey(baseModel);
         const all = await this.getAll();
         return all.filter(product => {
             const groupKey = normalize(product.productGroupKey || product.baseModel || getProductGroupKey(product.article));
-            return groupKey === target || normalize(product.article) === target;
+            return groupKey === target || groupKey === targetGroup || normalize(product.article) === target;
         });
     }
 
@@ -99,7 +77,7 @@ class ProductService {
         const groups = new Map();
 
         for (const product of all) {
-            const key = normalize(product.productGroupKey || product.baseModel || getProductGroupKey(product.article));
+            const key = normalize(product.productGroupKey || getProductGroupKey(product.article));
             if (!key) continue;
 
             if (!groups.has(key)) {
@@ -122,10 +100,6 @@ class ProductService {
             if (product.size) group.sizes.add(product.size);
             if (product.article) group.articles.add(product.article);
             if (product.barcode) group.barcodes.add(product.barcode);
-
-            // Рабочее название берём из номенклатуры, а не из артикула.
-            // Если у одной группы название заполнено только у части вариантов,
-            // используем первое непустое значение.
             if ((!group.name || group.name === key) && product.name) group.name = product.name;
         }
 
@@ -151,10 +125,7 @@ class ProductService {
             const product = await ProductAggregate.update(id, data);
             this._emitEvent('ProductUpdated', { productId: product.id, article: product.article, changes: data });
             return product;
-        } catch (error) {
-            console.error('[ProductService] update error:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('[ProductService] update error:', error.message); throw error; }
     }
 
     static async archive(id, options = {}) {
@@ -162,10 +133,7 @@ class ProductService {
             const product = await ProductAggregate.archive(id, options);
             this._emitEvent('ProductArchived', { productId: product.id, article: product.article, archivedAt: product.archivedAt });
             return product;
-        } catch (error) {
-            console.error('[ProductService] archive error:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('[ProductService] archive error:', error.message); throw error; }
     }
 
     static async restore(id) {
@@ -173,10 +141,7 @@ class ProductService {
             const product = await ProductAggregate.restore(id);
             this._emitEvent('ProductRestored', { productId: product.id, article: product.article });
             return product;
-        } catch (error) {
-            console.error('[ProductService] restore error:', error.message);
-            throw error;
-        }
+        } catch (error) { console.error('[ProductService] restore error:', error.message); throw error; }
     }
 
     static async search(query) { return ProductAggregate.search(query); }
