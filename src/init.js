@@ -4,6 +4,7 @@
 
 import DataIntegrityService from './services/DataIntegrityService.js';
 import Database from './infrastructure/db.js';
+import DemoDataService from './services/DemoDataService.js';
 import { installV61Pages } from './ui/v61AnalyticsPages.js';
 import { initImportController } from './ui/importController.js';
 import { showLoading, setLoadingMessage, hideLoading } from './ui/loadingScreen.js';
@@ -26,6 +27,14 @@ function ensureProfilePage() {
 }
 function patchProfileButton() { const button = document.getElementById('profileBtn'); if (!button || button.dataset.beltaneePatched) return; const replacement = button.cloneNode(true); replacement.dataset.beltaneePatched = '1'; replacement.addEventListener('click', () => { ensureProfilePage(); window.navigateTo?.('profile'); }); button.replaceWith(replacement); }
 async function checkArchitecture() { setLoadingMessage('Проверяем подключение локального хранилища…'); const names = [Database.STORES.PRODUCTS, Database.STORES.SALES, Database.STORES.STOCK, Database.STORES.ADVERTISING]; const counts = await withTimeout(Promise.all(names.map(store => Database.count(store))), 12000, 'Локальное хранилище не отвечает за 12 секунд. Закройте другие вкладки BELTANEE и повторите запуск.'); const report = { products: counts[0], sales: counts[1], stock: counts[2], advertising: counts[3], database: Database.DB_NAME, schema: Database.DB_VERSION, integrityDeferred: true }; console.info('[BELTANEE] Startup report', report); window.__BELTANEE_STARTUP_REPORT__ = report; return report; }
-async function init() { showLoading('Запускаем BELTANEE…'); document.title = 'BELTANEE — Аналитическая платформа'; document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE')); const badge = document.querySelector('.logo-badge'); if (badge) badge.textContent = '1.6'; ensureProfilePage(); patchProfileButton(); setLoadingMessage('Подключаем импорт шаблонов WB…'); installV61Pages(); initImportController(); try { const report = await checkArchitecture(); setLoadingMessage('Рабочее пространство готово'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.6 ready', report); } catch (error) { console.error('[BELTANEE] Startup failed', error); setLoadingMessage(`Ошибка запуска: ${error.message}`); window.showToast?.(`Ошибка запуска: ${error.message}`, 'error'); await new Promise(resolve => setTimeout(resolve, 1400)); hideLoading(); } }
+async function seedDemoIfEmpty() {
+    const demoResult = await DemoDataService.seedDemoData();
+    if (!demoResult.seeded) return demoResult;
+    console.info('[BELTANEE] Demo 1 seeded', demoResult);
+    window.__BELTANEE_DEMO__ = demoResult;
+    window.showToast?.('Демо-данные загружены: можно показать аналитику', 'success');
+    return demoResult;
+}
+async function init() { showLoading('Запускаем BELTANEE…'); document.title = 'BELTANEE — Аналитическая платформа'; document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE')); const badge = document.querySelector('.logo-badge'); if (badge) badge.textContent = '1.6'; ensureProfilePage(); patchProfileButton(); setLoadingMessage('Подготавливаем демонстрационные данные…'); try { await seedDemoIfEmpty(); } catch (error) { console.warn('[BELTANEE] Demo seed skipped:', error); } setLoadingMessage('Подключаем импорт шаблонов WB…'); installV61Pages(); initImportController(); try { const report = await checkArchitecture(); setLoadingMessage('Рабочее пространство готово'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.6 ready', report); } catch (error) { console.error('[BELTANEE] Startup failed', error); setLoadingMessage(`Ошибка запуска: ${error.message}`); window.showToast?.(`Ошибка запуска: ${error.message}`, 'error'); await new Promise(resolve => setTimeout(resolve, 1400)); hideLoading(); } }
 init();
-export { checkArchitecture, ensureProfilePage };
+export { checkArchitecture, ensureProfilePage, seedDemoIfEmpty };
