@@ -25,6 +25,29 @@ function escapeHtml(value) {
         .replaceAll("'", '&#039;');
 }
 
+function matchesProductKey(key, product) {
+    if (!key || !product) return false;
+    const normalizedKey = String(key).toLowerCase();
+    const article = String(product.article || '').toLowerCase();
+    const articleKey = String(product.articleKey || '').toLowerCase();
+
+    return normalizedKey === articleKey ||
+        normalizedKey === String(product.id || '').toLowerCase() ||
+        normalizedKey === article ||
+        normalizedKey.startsWith(`${article}_`) ||
+        normalizedKey.startsWith(`${article}|`);
+}
+
+function findAggregated(dataMap, product) {
+    if (!dataMap || !product) return null;
+
+    for (const [key, value] of Object.entries(dataMap)) {
+        if (matchesProductKey(key, product)) return value;
+    }
+
+    return null;
+}
+
 function getStockStatus(stock, sales30d) {
     if (stock <= 0) return { text: 'Нет остатков', color: '#6B7280' };
     if (sales30d <= 0) return { text: 'Нет продаж', color: '#6B7280' };
@@ -39,9 +62,15 @@ function getStockStatus(stock, sales30d) {
 
 async function loadProductData(baseModel) {
     const products = await ProductService.getByBaseModel(baseModel);
-    if (!products.length) {
-        return { error: 'Товар не найден', products: [] };
-    }
+    if (!products.length) return { error: 'Товар не найден', products: [] };
+
+    // В импортах WB продажи и остатки могут быть привязаны не к UUID,
+    // а к артикулу / articleKey. Поэтому сначала получаем агрегаты целиком
+    // и сопоставляем их с вариантами товара по ключу.
+    const [stockAggregated, allSales] = await Promise.all([
+        StockService.getAllAggregated(),
+        SalesService.getAll()
+    ]);
 
     const stockByWarehouse = {};
     let totalStock = 0;
@@ -50,26 +79,29 @@ async function loadProductData(baseModel) {
     const salesByDate = {};
 
     for (const product of products) {
-        const [stock, sales, history] = await Promise.all([
-            StockService.getAggregated(product.id),
-            SalesService.getAggregated(product.id, 30),
-            SalesService.getLastDays(product.id, 30)
-        ]);
+        const stock = findAggregated(stockAggregated, product) || { available: 0, byWarehouse: {} };
 
-        totalStock += Number(stock?.available) || 0;
-        totalSales += Number(sales?.orders) || 0;
-        totalRevenue += Number(sales?.revenue) || 0;
-
-        for (const [warehouse, data] of Object.entries(stock?.byWarehouse || {})) {
+        totalStock += Number(stock.available) || 0;
+        for (const [warehouse, data] of Object.entries(stock.byWarehouse || {})) {
             stockByWarehouse[warehouse] = (stockByWarehouse[warehouse] || 0) + (Number(data.available) || 0);
         }
 
-        for (const row of history || []) {
-            const date = row.date;
-            if (!date) continue;
-            if (!salesByDate[date]) salesByDate[date] = { orders: 0, revenue: 0 };
-            salesByDate[date].orders += Number(row.orders) || 0;
-            salesByDate[date].revenue += Number(row.amount) || 0;
+        const productSales = allSales.filter(row => {
+            if (matchesProductKey(row.productId, product)) return true;
+            return String(row.article || '').toLowerCase() === String(product.article || '').toLowerCase();
+        });
+
+        for (const row of productSales) {
+            const orders = Number(row.orders) || 0;
+            const amount = Number(row.amount) || 0;
+            totalSales += orders;
+            totalRevenue += amount;
+
+            if (row.date) {
+                if (!salesByDate[row.date]) salesByDate[row.date] = { orders: 0, revenue: 0 };
+                salesByDate[row.date].orders += orders;
+                salesByDate[row.date].revenue += amount;
+            }
         }
     }
 
@@ -113,7 +145,6 @@ function renderChart(chartData) {
         const parts = item.date.split('-');
         return parts.length === 3 ? `${parts[2]}.${parts[1]}` : item.date;
     });
-    const orders = chartData.map(item => item.orders);
 
     chartInstance = new Chart(canvas.getContext('2d'), {
         type: 'line',
@@ -121,7 +152,7 @@ function renderChart(chartData) {
             labels,
             datasets: [{
                 label: 'Заказы',
-                data: orders,
+                data: chartData.map(item => item.orders),
                 borderWidth: 2,
                 tension: 0.25,
                 fill: false
@@ -131,9 +162,7 @@ function renderChart(chartData) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 } }
-            }
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
         }
     });
 }
@@ -177,13 +206,9 @@ export async function renderProductCard() {
                 <div>
                     <h1 style="font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:5px;">${escapeHtml(data.name)}</h1>
                     <div style="font-size:13px;color:var(--text-secondary);">Модель: ${escapeHtml(data.baseModel)}</div>
-                    <div style="font-size:13px;color:var(--text-secondary);margin-top:5px;">
-                        Размеров: ${data.sizes.length || 0}${data.colors.length ? ` · Цветов: ${data.colors.length}` : ''} · Вариантов: ${data.products.length}
-                    </div>
+                    <div style="font-size:13px;color:var(--text-secondary);margin-top:5px;">Размеров: ${data.sizes.length || 0}${data.colors.length ? ` · Цветов: ${data.colors.length}` : ''} · Вариантов: ${data.products.length}</div>
                 </div>
-                <span style="display:inline-block;padding:5px 14px;border-radius:12px;font-size:13px;font-weight:600;background:${status.color}20;color:${status.color};border:1px solid ${status.color}40;">
-                    ${status.text}
-                </span>
+                <span style="display:inline-block;padding:5px 14px;border-radius:12px;font-size:13px;font-weight:600;background:${status.color}20;color:${status.color};border:1px solid ${status.color}40;">${status.text}</span>
             </div>
 
             <div class="grid-4" style="margin-bottom:20px;">
@@ -195,9 +220,7 @@ export async function renderProductCard() {
 
             <div class="card" style="margin-bottom:20px;">
                 <div class="card-title">📈 Продажи за последние 30 дней</div>
-                <div style="height:260px;">
-                    ${data.chartData.length ? '<canvas id="productCardChart"></canvas>' : '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);">Нет данных о продажах за период</div>'}
-                </div>
+                <div style="height:260px;">${data.chartData.length ? '<canvas id="productCardChart"></canvas>' : '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);">Нет данных о продажах за период</div>'}</div>
             </div>
 
             <div class="card">
@@ -207,14 +230,12 @@ export async function renderProductCard() {
                         <thead><tr><th>Склад</th><th>Доступно</th><th>Статус</th></tr></thead>
                         <tbody>
                             ${Object.entries(data.stockByWarehouse).length
-                                ? Object.entries(data.stockByWarehouse).sort((a, b) => b[1] - a[1]).map(([warehouse, quantity]) => `
-                                    <tr><td><strong>${escapeHtml(warehouse)}</strong></td><td>${formatNumber(quantity)} шт</td><td>${quantity > 0 ? '🟢 Есть' : '⚫ Нет'}</td></tr>`).join('')
+                                ? Object.entries(data.stockByWarehouse).sort((a, b) => b[1] - a[1]).map(([warehouse, quantity]) => `<tr><td><strong>${escapeHtml(warehouse)}</strong></td><td>${formatNumber(quantity)} шт</td><td>${quantity > 0 ? '🟢 Есть' : '⚫ Нет'}</td></tr>`).join('')
                                 : '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-secondary);">Нет данных по складам</td></tr>'}
                         </tbody>
                     </table>
                 </div>
-            </div>
-        `;
+            </div>`;
 
         if (data.chartData.length) renderChart(data.chartData);
     } catch (error) {
