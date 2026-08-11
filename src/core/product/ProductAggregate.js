@@ -1,5 +1,5 @@
 // ============================================================
-// PRODUCT AGGREGATE — ТОВАРЫ
+// PRODUCT AGGREGATE — ИЗДЕЛИЯ И ВАРИАНТЫ
 // ============================================================
 
 import ProductEntity from './ProductEntity.js';
@@ -7,38 +7,25 @@ import { Database } from '../../infrastructure/db.js';
 
 class ProductAggregate {
     static async create(data) {
-        const normalized = { ...data };
-        normalized.articleKey = normalized.articleKey || new ProductEntity(normalized).articleKey;
-
-        const existing = await this.findByArticleKey(normalized.articleKey);
+        const product = ProductEntity.createFromImport(data);
+        const existing = await this.findByArticleKey(product.articleKey);
         if (existing) {
-            existing.update(normalized);
+            existing.update({ ...data, articleKey: product.articleKey });
             await Database.save(Database.STORES.PRODUCTS, existing);
             return existing;
         }
-
-        const product = ProductEntity.createFromImport(normalized);
         await Database.save(Database.STORES.PRODUCTS, product);
         return product;
     }
 
-    static async createManual(data) {
-        const product = await this.create({ ...data, status: 'active' });
-        return product;
-    }
+    static async createManual(data) { return this.create({ ...data, status: 'active' }); }
 
     static async createMany(items) {
-        const results = [];
-        const errors = [];
-
+        const results = [], errors = [];
         for (const item of items || []) {
-            try {
-                results.push(await this.create(item));
-            } catch (error) {
-                errors.push({ data: item, error: error.message });
-            }
+            try { results.push(await this.create(item)); }
+            catch (error) { errors.push({ data: item, error: error.message }); }
         }
-
         return { results, errors };
     }
 
@@ -61,18 +48,79 @@ class ProductAggregate {
     }
 
     static async getActive() {
-        const products = await Database.getByIndex(Database.STORES.PRODUCTS, 'status', 'active');
-        return products.map(item => new ProductEntity(item));
+        return (await Database.getByIndex(Database.STORES.PRODUCTS, 'status', 'active')).map(item => new ProductEntity(item));
     }
 
     static async getArchived() {
-        const products = await Database.getByIndex(Database.STORES.PRODUCTS, 'status', 'archived');
-        return products.map(item => new ProductEntity(item));
+        return (await Database.getByIndex(Database.STORES.PRODUCTS, 'status', 'archived')).map(item => new ProductEntity(item));
     }
 
     static async getAll() {
-        const products = await Database.getAll(Database.STORES.PRODUCTS);
-        return products.map(item => new ProductEntity(item));
+        return (await Database.getAll(Database.STORES.PRODUCTS)).map(item => new ProductEntity(item));
+    }
+
+    /**
+     * Главная бизнес-модель: одна карточка = одно изделие.
+     * Например 21_* и 21_* с разными цветами/размерами → одна группа 21.
+     * 211_* остаётся отдельной группой.
+     */
+    static async getProductGroups() {
+        const variants = await this.getActive();
+        const groups = new Map();
+        for (const variant of variants) {
+            const key = variant.productGroupKey || variant.baseModel || variant.article;
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    productGroupKey: key,
+                    name: variant.name || variant.baseModel || key,
+                    category: variant.category,
+                    variants: [],
+                    colors: new Set(),
+                    sizes: new Set(),
+                    articles: new Set(),
+                    barcodes: new Set(),
+                    prices: []
+                });
+            }
+            const group = groups.get(key);
+            group.variants.push(variant);
+            if (variant.color) group.colors.add(variant.color);
+            if (variant.size) group.sizes.add(variant.size);
+            if (variant.article) group.articles.add(variant.article);
+            if (variant.barcode) group.barcodes.add(variant.barcode);
+            if (variant.price > 0) group.prices.push(variant.price);
+            if (!group.name || group.name === key) group.name = variant.name || group.name;
+        }
+        return Array.from(groups.values()).map(group => ({
+            productGroupKey: group.productGroupKey,
+            name: group.name,
+            category: group.category,
+            variants: group.variants,
+            colors: Array.from(group.colors),
+            sizes: Array.from(group.sizes),
+            articles: Array.from(group.articles),
+            barcodes: Array.from(group.barcodes),
+            variantCount: group.variants.length,
+            minPrice: group.prices.length ? Math.min(...group.prices) : 0,
+            maxPrice: group.prices.length ? Math.max(...group.prices) : 0
+        }));
+    }
+
+    static async getByProductGroup(productGroupKey) {
+        const key = String(productGroupKey ?? '').trim();
+        if (!key) return [];
+        const all = await this.getAll();
+        return all.filter(product => product.productGroupKey === key);
+    }
+
+    static async search(query = '') {
+        const value = String(query).trim().toLowerCase();
+        const products = await this.getAll();
+        if (!value) return products;
+        return products.filter(product =>
+            [product.productGroupKey, product.article, product.baseModel, product.name, product.barcode, product.color, product.size]
+                .some(field => String(field || '').toLowerCase().includes(value))
+        );
     }
 
     static async update(id, data) {
@@ -99,19 +147,7 @@ class ProductAggregate {
         return product;
     }
 
-    static async search(query = '') {
-        const value = String(query).trim().toLowerCase();
-        const products = await this.getAll();
-        if (!value) return products;
-        return products.filter(product =>
-            [product.article, product.baseModel, product.name, product.barcode]
-                .some(field => String(field || '').toLowerCase().includes(value))
-        );
-    }
-
-    static async clearAll() {
-        await Database.clear(Database.STORES.PRODUCTS);
-    }
+    static async clearAll() { await Database.clear(Database.STORES.PRODUCTS); }
 }
 
 export default ProductAggregate;
