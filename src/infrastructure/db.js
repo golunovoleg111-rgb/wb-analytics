@@ -1,11 +1,11 @@
 // ============================================================
 // BELTANEE v6.1 — IndexedDB
-// Один чистый слой хранения. Все ключи данных детерминированные,
-// поэтому повторный импорт не создаёт дубликаты.
+// Единый слой хранения. Схема версионируется, ключи данных
+// детерминированы, повторный импорт не создаёт дубликаты.
 // ============================================================
 
 const DB_NAME = 'BeltaneeDB_v6_1';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
     PRODUCTS: 'products',
@@ -23,14 +23,12 @@ const STORES = {
 };
 
 function createStore(db, name) {
-    if (db.objectStoreNames.contains(name)) return db.transaction;
+    if (db.objectStoreNames.contains(name)) return null;
     return db.createObjectStore(name, { keyPath: 'id' });
 }
 
 function ensureIndex(store, name, keyPath, options = {}) {
-    if (!store.indexNames.contains(name)) {
-        store.createIndex(name, keyPath, options);
-    }
+    if (!store.indexNames.contains(name)) store.createIndex(name, keyPath, options);
 }
 
 function configureIndexes(db, transaction) {
@@ -50,6 +48,7 @@ function configureIndexes(db, transaction) {
         ensureIndex(store, 'productId', 'productId');
         ensureIndex(store, 'article', 'article');
         ensureIndex(store, 'date', 'date');
+        ensureIndex(store, 'importBatchId', 'importBatchId');
     });
 
     configure(STORES.STOCK, store => {
@@ -57,12 +56,14 @@ function configureIndexes(db, transaction) {
         ensureIndex(store, 'articleKey', 'articleKey');
         ensureIndex(store, 'warehouseName', 'warehouseName');
         ensureIndex(store, 'date', 'date');
+        ensureIndex(store, 'importBatchId', 'importBatchId');
     });
 
     configure(STORES.STOCK_HISTORY, store => {
         ensureIndex(store, 'productId', 'productId');
         ensureIndex(store, 'warehouseName', 'warehouseName');
         ensureIndex(store, 'date', 'date');
+        ensureIndex(store, 'importBatchId', 'importBatchId');
     });
 
     configure(STORES.SUPPLY, store => {
@@ -71,7 +72,7 @@ function configureIndexes(db, transaction) {
     });
 
     configure(STORES.ADVERTISING, store => {
-        ensureIndex(store, 'campaignId', 'campaignId', { unique: true });
+        ensureIndex(store, 'campaignId', 'campaignId');
         ensureIndex(store, 'productId', 'productId');
         ensureIndex(store, 'date', 'date');
     });
@@ -111,31 +112,26 @@ function openDB() {
 function withTransaction(storeName, mode, callback) {
     return openDB().then(db => new Promise((resolve, reject) => {
         let result;
-        const tx = db.transaction(storeName, mode);
-        const store = tx.objectStore(storeName);
-
+        let settled = false;
+        const finish = (fn, value) => {
+            if (settled) return;
+            settled = true;
+            db.close();
+            fn(value);
+        };
+        let tx;
         try {
+            tx = db.transaction(storeName, mode);
+            const store = tx.objectStore(storeName);
             result = callback(store, tx);
         } catch (error) {
-            reject(error);
-            db.close();
+            finish(reject, error);
             return;
         }
 
-        tx.oncomplete = () => {
-            db.close();
-            resolve(result);
-        };
-        tx.onerror = () => {
-            const error = tx.error || new Error('Ошибка транзакции IndexedDB');
-            db.close();
-            reject(error);
-        };
-        tx.onabort = () => {
-            const error = tx.error || new Error('Транзакция IndexedDB отменена');
-            db.close();
-            reject(error);
-        };
+        tx.oncomplete = () => finish(resolve, result);
+        tx.onerror = () => finish(reject, tx.error || new Error('Ошибка транзакции IndexedDB'));
+        tx.onabort = () => finish(reject, tx.error || new Error('Транзакция IndexedDB отменена'));
     }));
 }
 
@@ -161,40 +157,34 @@ function replaceAll(storeName, records) {
 }
 
 function getAll(storeName) {
-    return withTransaction(storeName, 'readonly', store => {
-        return new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
-    });
+    return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    }));
 }
 
 function getById(storeName, id) {
-    return withTransaction(storeName, 'readonly', store => {
-        return new Promise((resolve, reject) => {
-            const request = store.get(id);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-        });
-    });
+    return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => {
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+    }));
 }
 
 function getByIndex(storeName, indexName, value) {
-    return withTransaction(storeName, 'readonly', store => {
-        return new Promise((resolve, reject) => {
-            let index;
-            try {
-                index = store.index(indexName);
-            } catch (error) {
-                reject(new Error(`Индекс ${indexName} отсутствует в ${storeName}`));
-                return;
-            }
-            const request = index.getAll(value);
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
-    });
+    return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => {
+        let index;
+        try {
+            index = store.index(indexName);
+        } catch (error) {
+            reject(new Error(`Индекс ${indexName} отсутствует в ${storeName}`));
+            return;
+        }
+        const request = index.getAll(value);
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    }));
 }
 
 function deleteById(storeName, id) {
@@ -206,13 +196,11 @@ function clear(storeName) {
 }
 
 function count(storeName) {
-    return withTransaction(storeName, 'readonly', store => {
-        return new Promise((resolve, reject) => {
-            const request = store.count();
-            request.onsuccess = () => resolve(request.result || 0);
-            request.onerror = () => reject(request.error);
-        });
-    });
+    return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => {
+        const request = store.count();
+        request.onsuccess = () => resolve(request.result || 0);
+        request.onerror = () => reject(request.error);
+    }));
 }
 
 export const Database = {
