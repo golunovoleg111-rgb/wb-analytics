@@ -1,400 +1,121 @@
 // ============================================================
-// UI: PRODUCT LIST — СТРАНИЦА "ТОВАРЫ"
+// PRODUCT LIST — BELTANEE v6.1
 // ============================================================
 
 import ProductService from '../services/ProductService.js';
 import SalesService from '../services/SalesService.js';
 import StockService from '../services/StockService.js';
 
-// ============================================================
-// СОСТОЯНИЕ
-// ============================================================
-
 let currentFilters = { search: '', status: 'all' };
-let viewMode = 'grid'; // grid | list
-let allProducts = [];
-let allStock = {};
-let allSales = {};
-let cachedGroups = null;
+let viewMode = 'grid';
+let cache = null;
 
-// ============================================================
-// ЗАГРУЗКА ДАННЫХ (С КЕШИРОВАНИЕМ)
-// ============================================================
+const norm = value => String(value ?? '').trim().toLowerCase();
+const fmt = value => Math.round(Number(value) || 0).toLocaleString('ru-RU');
+const money = value => `${fmt(value)} ₽`;
+
+function statusFor(stock, sales30d) {
+    if (stock <= 0) return 'no_stock';
+    if (sales30d <= 0) return 'no_sales';
+    const io = stock / sales30d;
+    if (io < 0.2) return 'deficit';
+    if (io < 0.5) return 'warning';
+    if (io > 2) return 'excess';
+    return 'normal';
+}
+
+function findMetric(map, product) {
+    if (!map || !product) return null;
+    const keys = [product.articleKey, product.id, product.article].map(norm).filter(Boolean);
+    for (const key of keys) if (map[key]) return map[key];
+    const article = norm(product.article);
+    for (const [key, value] of Object.entries(map)) {
+        const normalized = norm(key);
+        if (normalized === article || normalized.startsWith(`${article}|`)) return value;
+    }
+    return null;
+}
 
 async function loadData(force = false) {
-    if (!force && cachedGroups) return cachedGroups;
-    
-    console.log('📦 Загрузка данных для товаров...');
-    
-    const [products, stockAggregated, salesAggregated] = await Promise.all([
+    if (!force && cache) return cache;
+    const [products, stock, sales] = await Promise.all([
         ProductService.getActive(),
         StockService.getAllAggregated(),
         SalesService.getAllAggregated(30)
     ]);
-    
-    allProducts = products;
-    allStock = stockAggregated;
-    allSales = salesAggregated;
-    
-    console.log(`📦 Товаров: ${allProducts.length}`);
-    console.log(`📦 Записей остатков: ${Object.keys(allStock).length}`);
-    console.log(`📦 Записей продаж: ${Object.keys(allSales).length}`);
-    
-    // Группируем и кешируем
-    cachedGroups = buildGroups(allProducts);
-    return cachedGroups;
-}
 
-// ============================================================
-// ПОИСК ДАННЫХ ПО ТОВАРУ
-// ============================================================
-
-function findDataByProduct(product, dataMap) {
-    if (!product || !dataMap) return null;
-    
-    const keys = [
-        product.articleKey,
-        product.id,
-        `${product.article}|${product.size || 'NOSIZE'}|${product.color || 'NOCOLOR'}`.toLowerCase(),
-        `${product.article}|${product.size || 'NOSIZE'}`.toLowerCase(),
-        product.article?.toLowerCase(),
-        product.article
-    ];
-    
-    for (const key of keys) {
-        if (key && dataMap[key]) return dataMap[key];
-    }
-    
-    const lowerArticle = product.article?.toLowerCase() || '';
-    for (const [key, value] of Object.entries(dataMap)) {
-        if (key && key.toLowerCase().includes(lowerArticle)) return value;
-        if (key && key.toLowerCase().startsWith(lowerArticle + '|')) return value;
-    }
-    
-    return null;
-}
-
-function getStockForProduct(product) {
-    const result = findDataByProduct(product, allStock);
-    return result || { available: 0, total: 0, byWarehouse: {} };
-}
-
-function getSalesForProduct(product) {
-    const result = findDataByProduct(product, allSales);
-    return result || { orders: 0, revenue: 0 };
-}
-
-// ============================================================
-// ГРУППИРОВКА
-// ============================================================
-
-function buildGroups(products) {
     const groups = {};
-    
-    products.forEach(product => {
-        const base = product.baseModel || product.article || 'unknown';
-        
-        if (!groups[base]) {
-            groups[base] = {
-                baseModel: base,
-                name: product.name || base,
-                products: [],
-                sizes: new Set(),
-                colors: new Set(),
-                totalStock: 0,
-                totalSales: 0,
-                minPrice: Infinity,
-                maxPrice: 0,
-                minPurchase: Infinity,
-                maxMargin: 0,
-                minMargin: Infinity,
-                status: 'normal',
-                io: 0
-            };
-        }
-        
+    for (const product of products) {
+        const base = product.baseModel || product.article || 'Без артикула';
+        if (!groups[base]) groups[base] = { baseModel: base, name: product.name || base, products: [], sizes: new Set(), colors: new Set(), totalStock: 0, totalSales: 0, revenue: 0, prices: [], purchasePrices: [] };
         const group = groups[base];
         group.products.push(product);
-        
         if (product.size && product.size !== 'NOSIZE') group.sizes.add(product.size);
         if (product.color && product.color !== 'NOCOLOR') group.colors.add(product.color);
-        
-        const stock = getStockForProduct(product);
-        const available = stock.available || 0;
-        group.totalStock += available;
-        
-        const sales = getSalesForProduct(product);
-        group.totalSales += sales.orders || 0;
-        
-        const price = product.price || 0;
-        if (price > 0) {
-            group.minPrice = Math.min(group.minPrice, price);
-            group.maxPrice = Math.max(group.maxPrice, price);
-        }
-        
-        const purchase = product.purchasePrice || 0;
-        if (purchase > 0) group.minPurchase = Math.min(group.minPurchase, purchase);
-        
-        const margin = product.margin || 0;
-        if (margin > 0) {
-            group.minMargin = Math.min(group.minMargin, margin);
-            group.maxMargin = Math.max(group.maxMargin, margin);
-        }
-    });
-    
-    Object.values(groups).forEach(group => {
-        const dailySales = group.totalSales / 30;
-        const io = dailySales > 0 ? group.totalStock / dailySales : (group.totalStock > 0 ? 999 : 0);
-        group.io = io;
-        
-        if (group.totalStock === 0) group.status = 'no_stock';
-        else if (io < 1) group.status = 'deficit';
-        else if (io < 3) group.status = 'warning';
-        else group.status = 'normal';
-    });
-    
-    console.log(`📦 Сгруппировано: ${Object.values(groups).length} групп`);
-    return Object.values(groups);
-}
+        const stockData = findMetric(stock, product);
+        group.totalStock += Number(stockData?.available) || 0;
+        const salesData = findMetric(sales, product);
+        group.totalSales += Number(salesData?.orders) || 0;
+        group.revenue += Number(salesData?.revenue) || 0;
+        if (Number(product.price) > 0) group.prices.push(Number(product.price));
+        if (Number(product.purchasePrice) > 0) group.purchasePrices.push(Number(product.purchasePrice));
+    }
 
-// ============================================================
-// ФИЛЬТРАЦИЯ
-// ============================================================
+    cache = Object.values(groups).map(group => {
+        const avgPrice = group.prices.length ? group.prices.reduce((a, b) => a + b, 0) / group.prices.length : 0;
+        const avgPurchase = group.purchasePrices.length ? group.purchasePrices.reduce((a, b) => a + b, 0) / group.purchasePrices.length : 0;
+        const margin = avgPrice ? ((avgPrice - avgPurchase) / avgPrice) * 100 : 0;
+        const io = group.totalSales > 0 ? group.totalStock / group.totalSales : null;
+        return { ...group, sizes: [...group.sizes].sort(), colors: [...group.colors].sort(), avgPrice, avgPurchase, margin, io, status: statusFor(group.totalStock, group.totalSales) };
+    });
+    return cache;
+}
 
 function filterGroups(groups) {
-    const { search, status } = currentFilters;
-    
+    const query = norm(currentFilters.search);
     return groups.filter(group => {
-        if (search) {
-            const q = search.toLowerCase();
-            const match = group.baseModel.toLowerCase().includes(q) ||
-                         group.name.toLowerCase().includes(q) ||
-                         group.products.some(p => p.article?.toLowerCase().includes(q));
-            if (!match) return false;
-        }
-        if (status !== 'all' && group.status !== status) return false;
-        return true;
+        if (query && !(norm(group.baseModel).includes(query) || norm(group.name).includes(query) || group.products.some(product => norm(product.article).includes(query)))) return false;
+        return currentFilters.status === 'all' || group.status === currentFilters.status;
     });
 }
 
-// ============================================================
-// ФОРМАТИРОВАНИЕ
-// ============================================================
+function renderGroup(group) {
+    const status = { no_stock: ['⚫', 'Нет остатков'], no_sales: ['⚪', 'Нет продаж'], deficit: ['🔴', 'Дефицит'], warning: ['🟡', 'Недостаток'], normal: ['🟢', 'Норма'], excess: ['🔵', 'Избыток'] }[group.status] || ['⚪', 'Нет данных'];
+    const minPrice = group.prices.length ? Math.min(...group.prices) : 0;
+    const maxPrice = group.prices.length ? Math.max(...group.prices) : 0;
+    const price = minPrice ? `${money(minPrice)}${minPrice !== maxPrice ? ` — ${money(maxPrice)}` : ''}` : '—';
+    const io = group.io === null ? '—' : group.io.toFixed(2);
+    const base = String(group.baseModel).replaceAll("'", "\\'");
 
-function fmtPrice(v) {
-    if (!v || v === Infinity || v === -Infinity) return '0 ₽';
-    return Math.round(v).toLocaleString() + ' ₽';
+    if (viewMode === 'list') return `<div class="product-list-item" onclick="window.openProductCard('${base}')"><span class="product-list-status">${status[0]}</span><div class="product-list-info"><span class="product-list-name">${group.baseModel}</span><span class="product-list-sub">${group.name}</span><span class="product-list-detail">${group.sizes.join(', ') || 'Размеры не указаны'}</span></div><div class="product-list-metrics"><span>${price}</span><span>${fmt(group.totalStock)} шт</span><span>${fmt(group.totalSales)} заказов</span><span>${io}</span></div></div>`;
+
+    return `<div class="product-grid-item" onclick="window.openProductCard('${base}')"><div class="product-grid-header"><div><div class="product-grid-name">${group.baseModel}</div><div class="product-grid-sub">${group.name}</div></div><span title="${status[1]}">${status[0]}</span></div><div class="product-grid-sizes">${group.sizes.slice(0, 8).join(', ') || 'Размеры не указаны'}${group.colors.length ? ` · ${group.colors.length} цв.` : ''}</div><div class="product-grid-metrics"><div><span class="metric-label">Цена</span><strong>${price}</strong></div><div><span class="metric-label">Остаток</span><strong>${fmt(group.totalStock)} шт</strong></div><div><span class="metric-label">30 дней</span><strong>${fmt(group.totalSales)}</strong></div><div><span class="metric-label">ИО</span><strong>${io}</strong></div></div></div>`;
 }
 
-function fmtMargin(v) {
-    if (!v || v === Infinity || v === -Infinity) return '0%';
-    return Math.round(v) + '%';
-}
-
-function fmtIO(v) {
-    if (v === Infinity || v === -Infinity || v === 0) return '0';
-    return v.toFixed(1);
-}
-
-// ============================================================
-// РЕНДЕРИНГ КАРТОЧКИ (СЕТКА)
-// ============================================================
-
-function renderGridCard(group) {
-    const statusMap = {
-        no_stock: { icon: '⚫', color: '#6B7280' },
-        deficit: { icon: '🔴', color: '#EF4444' },
-        warning: { icon: '🟡', color: '#F59E0B' },
-        normal: { icon: '🟢', color: '#10B981' }
-    };
-    const st = statusMap[group.status] || statusMap.normal;
-    
-    const sizes = Array.from(group.sizes).sort();
-    const colorsCount = group.colors.size;
-    const sizesDisplay = sizes.length > 0 ? sizes.slice(0, 5).join(', ') + (sizes.length > 5 ? ` +${sizes.length - 5}` : '') : 'Нет размеров';
-    
-    let priceDisplay = '0 ₽';
-    if (group.minPrice > 0 && group.minPrice !== Infinity) {
-        priceDisplay = group.minPrice === group.maxPrice ? fmtPrice(group.minPrice) : `${fmtPrice(group.minPrice)} — ${fmtPrice(group.maxPrice)}`;
-    }
-    
-    let marginDisplay = '0%';
-    if (group.maxMargin > 0) marginDisplay = fmtMargin(group.maxMargin);
-    else if (group.minMargin > 0 && group.minMargin !== Infinity) marginDisplay = fmtMargin(group.minMargin);
-    
-    return `
-        <div class="product-grid-item" data-base="${group.baseModel}" onclick="window.openProductCard('${group.baseModel}')">
-            <div class="product-grid-header">
-                <div>
-                    <div class="product-grid-name">${group.baseModel}</div>
-                    <div class="product-grid-sub">${group.name}</div>
-                </div>
-                <span class="product-grid-status">${st.icon}</span>
-            </div>
-            <div class="product-grid-sizes">${sizesDisplay} ${colorsCount > 0 ? `· ${colorsCount} цв.` : ''}</div>
-            <div class="product-grid-metrics">
-                <div><span class="metric-label">Цена</span> <strong>${priceDisplay}</strong></div>
-                <div><span class="metric-label">Остаток</span> <strong>${group.totalStock} шт</strong></div>
-                <div><span class="metric-label">Маржа</span> <strong style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</strong></div>
-                <div><span class="metric-label">ИО</span> <strong>${fmtIO(group.io)}</strong></div>
-            </div>
-        </div>
-    `;
-}
-
-// ============================================================
-// РЕНДЕРИНГ КАРТОЧКИ (СПИСОК)
-// ============================================================
-
-function renderListCard(group) {
-    const statusMap = {
-        no_stock: { icon: '⚫' },
-        deficit: { icon: '🔴' },
-        warning: { icon: '🟡' },
-        normal: { icon: '🟢' }
-    };
-    const st = statusMap[group.status] || statusMap.normal;
-    
-    const sizes = Array.from(group.sizes).sort();
-    const colorsCount = group.colors.size;
-    const sizesDisplay = sizes.length > 0 ? sizes.join(', ') : 'Нет размеров';
-    
-    let priceDisplay = '0 ₽';
-    if (group.minPrice > 0 && group.minPrice !== Infinity) {
-        priceDisplay = group.minPrice === group.maxPrice ? fmtPrice(group.minPrice) : `${fmtPrice(group.minPrice)} — ${fmtPrice(group.maxPrice)}`;
-    }
-    
-    let marginDisplay = '0%';
-    if (group.maxMargin > 0) marginDisplay = fmtMargin(group.maxMargin);
-    else if (group.minMargin > 0 && group.minMargin !== Infinity) marginDisplay = fmtMargin(group.minMargin);
-    
-    return `
-        <div class="product-list-item" onclick="window.openProductCard('${group.baseModel}')">
-            <span class="product-list-status">${st.icon}</span>
-            <div class="product-list-info">
-                <span class="product-list-name">${group.baseModel}</span>
-                <span class="product-list-sub">${group.name}</span>
-                <span class="product-list-detail">${sizesDisplay} ${colorsCount > 0 ? `· ${colorsCount} цв.` : ''}</span>
-            </div>
-            <div class="product-list-metrics">
-                <span>${priceDisplay}</span>
-                <span>${group.totalStock} шт</span>
-                <span style="color:${group.maxMargin > 20 ? '#10B981' : '#F59E0B'};">${marginDisplay}</span>
-                <span>${fmtIO(group.io)}</span>
-            </div>
-        </div>
-    `;
-}
-
-// ============================================================
-// ОСНОВНАЯ ФУНКЦИЯ
-// ============================================================
-
-export async function renderProductList() {
-    console.log('📦 Рендеринг списка товаров...');
-    
+export async function renderProductList(force = false) {
     const container = document.getElementById('productsGroupedList');
-    const emptyContainer = document.getElementById('productsEmpty');
-    const contentContainer = document.getElementById('productsContent');
-    const countEl = document.querySelector('.products-count');
-    
-    if (!container) {
-        console.warn('⚠️ Контейнер productsGroupedList не найден');
-        return;
-    }
-    
+    const empty = document.getElementById('productsEmpty');
+    const content = document.getElementById('productsContent');
+    const count = document.querySelector('.products-count');
+    if (!container) return;
+
     try {
-        const groups = await loadData();
-        
-        if (!groups || groups.length === 0) {
-            if (emptyContainer) emptyContainer.style.display = 'block';
-            if (contentContainer) contentContainer.style.display = 'none';
-            if (countEl) countEl.textContent = 'Товаров: 0';
-            return;
-        }
-        
-        if (emptyContainer) emptyContainer.style.display = 'none';
-        if (contentContainer) contentContainer.style.display = 'block';
-        
-        let filtered = filterGroups(groups);
-        
-        const statusOrder = { deficit: 0, warning: 1, normal: 2, no_stock: 3 };
-        filtered.sort((a, b) => (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0));
-        
-        if (countEl) countEl.textContent = `Товаров: ${filtered.length}`;
-        
-        if (filtered.length === 0) {
-            container.innerHTML = `
-                <div class="card" style="text-align:center;padding:30px;">
-                    <div style="font-size:36px;margin-bottom:8px;">🔍</div>
-                    <div style="font-size:14px;font-weight:500;">Ничего не найдено</div>
-                    <div style="font-size:12px;color:var(--text-secondary);">Попробуйте изменить параметры поиска</div>
-                </div>
-            `;
-            return;
-        }
-        
-        const renderFn = viewMode === 'grid' ? renderGridCard : renderListCard;
-        const wrapperClass = viewMode === 'grid' ? 'products-grid-wrapper' : 'products-list-wrapper';
-        
-        container.innerHTML = `<div class="${wrapperClass}">${filtered.map(renderFn).join('')}</div>`;
-        
-        // Навешиваем обработчики на переключатели вида
-        document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.view === viewMode);
-        });
-        
-        console.log(`✅ Отображено ${filtered.length} групп (${viewMode})`);
-        
+        const groups = filterGroups(await loadData(force));
+        if (empty) empty.style.display = groups.length ? 'none' : 'block';
+        if (content) content.style.display = groups.length ? 'block' : 'none';
+        if (count) count.textContent = `Товаров: ${groups.length}`;
+        groups.sort((a, b) => ({ deficit: 0, warning: 1, no_stock: 2, excess: 3, no_sales: 4, normal: 5 }[a.status] ?? 9) - ({ deficit: 0, warning: 1, no_stock: 2, excess: 3, no_sales: 4, normal: 5 }[b.status] ?? 9));
+        container.innerHTML = groups.length ? `<div class="${viewMode === 'grid' ? 'products-grid-wrapper' : 'products-list-wrapper'}">${groups.map(renderGroup).join('')}</div>` : '';
+        document.querySelectorAll('.view-toggle-btn').forEach(button => button.classList.toggle('active', button.dataset.view === viewMode));
     } catch (error) {
-        console.error('❌ Ошибка:', error);
-        container.innerHTML = `
-            <div class="card" style="text-align:center;padding:30px;color:#EF4444;">
-                <div style="font-size:48px;margin-bottom:12px;">❌</div>
-                <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Ошибка загрузки</div>
-                <div style="font-size:13px;color:var(--text-secondary);">${error.message}</div>
-            </div>
-        `;
+        console.error('[ProductList]', error);
+        container.innerHTML = `<div class="card" style="padding:30px;color:#EF4444;">Ошибка загрузки товаров: ${error.message}</div>`;
     }
 }
 
-// ============================================================
-// ГЛОБАЛЬНЫЕ ФУНКЦИИ
-// ============================================================
-
-window.openProductCard = function(baseModel) {
-    if (!baseModel) return;
-    window._selectedBaseModel = baseModel;
-    window.navigateTo('product-card');
-};
-
-window.refreshProductTable = function() {
-    const searchInput = document.getElementById('productSearch');
-    const statusSelect = document.getElementById('productFilter');
-    if (searchInput) currentFilters.search = searchInput.value;
-    if (statusSelect) currentFilters.status = statusSelect.value;
-    renderProductList();
-};
-
-window.clearProductFilters = function() {
-    const searchInput = document.getElementById('productSearch');
-    const statusSelect = document.getElementById('productFilter');
-    if (searchInput) searchInput.value = '';
-    if (statusSelect) statusSelect.value = 'all';
-    currentFilters = { search: '', status: 'all' };
-    renderProductList();
-};
-
-window.toggleViewMode = function(mode) {
-    viewMode = mode;
-    document.querySelectorAll('.view-toggle-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.view === mode);
-    });
-    renderProductList();
-};
-
-// ============================================================
-// ЭКСПОРТ
-// ============================================================
+window.openProductCard = baseModel => { window._selectedBaseModel = baseModel; window.navigateTo('product-card'); };
+window.refreshProductTable = () => { currentFilters.search = document.getElementById('productSearch')?.value || ''; currentFilters.status = document.getElementById('productFilter')?.value || 'all'; cache = null; renderProductList(true); };
+window.clearProductFilters = () => { const search = document.getElementById('productSearch'); const filter = document.getElementById('productFilter'); if (search) search.value = ''; if (filter) filter.value = 'all'; currentFilters = { search: '', status: 'all' }; cache = null; renderProductList(true); };
+window.setProductView = mode => { viewMode = mode === 'list' ? 'list' : 'grid'; renderProductList(); };
 
 export default renderProductList;
