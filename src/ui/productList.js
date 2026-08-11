@@ -26,12 +26,13 @@ function statusFor(stock, sales30d) {
 
 function findMetric(map, product) {
     if (!map || !product) return null;
-    const keys = [product.articleKey, product.id, product.article].map(norm).filter(Boolean);
+    const keys = [product.articleKey, product.id, product.article, product.baseModel].map(norm).filter(Boolean);
     for (const key of keys) if (map[key]) return map[key];
     const article = norm(product.article);
+    const base = norm(product.baseModel);
     for (const [key, value] of Object.entries(map)) {
         const normalized = norm(key);
-        if (normalized === article || normalized.startsWith(`${article}|`)) return value;
+        if (normalized === base || normalized === article || normalized.startsWith(`${article}|`)) return value;
     }
     return null;
 }
@@ -88,7 +89,6 @@ function renderGroup(group) {
     const base = String(group.baseModel).replaceAll("'", "\\'");
 
     if (viewMode === 'list') return `<div class="product-list-item" onclick="window.openProductCard('${base}')"><span class="product-list-status">${status[0]}</span><div class="product-list-info"><span class="product-list-name">${group.baseModel}</span><span class="product-list-sub">${group.name}</span><span class="product-list-detail">${group.sizes.join(', ') || 'Размеры не указаны'}</span></div><div class="product-list-metrics"><span>${price}</span><span>${fmt(group.totalStock)} шт</span><span>${fmt(group.totalSales)} заказов</span><span>${io}</span></div></div>`;
-
     return `<div class="product-grid-item" onclick="window.openProductCard('${base}')"><div class="product-grid-header"><div><div class="product-grid-name">${group.baseModel}</div><div class="product-grid-sub">${group.name}</div></div><span title="${status[1]}">${status[0]}</span></div><div class="product-grid-sizes">${group.sizes.slice(0, 8).join(', ') || 'Размеры не указаны'}${group.colors.length ? ` · ${group.colors.length} цв.` : ''}</div><div class="product-grid-metrics"><div><span class="metric-label">Цена</span><strong>${price}</strong></div><div><span class="metric-label">Остаток</span><strong>${fmt(group.totalStock)} шт</strong></div><div><span class="metric-label">30 дней</span><strong>${fmt(group.totalSales)}</strong></div><div><span class="metric-label">ИО</span><strong>${io}</strong></div></div></div>`;
 }
 
@@ -98,7 +98,6 @@ export async function renderProductList(force = false) {
     const content = document.getElementById('productsContent');
     const count = document.querySelector('.products-count');
     if (!container) return;
-
     try {
         const groups = filterGroups(await loadData(force));
         if (empty) empty.style.display = groups.length ? 'none' : 'block';
@@ -114,11 +113,7 @@ export async function renderProductList(force = false) {
     }
 }
 
-export function toggleViewMode(mode) {
-    viewMode = mode === 'list' ? 'list' : 'grid';
-    renderProductList();
-}
-
+export function toggleViewMode(mode) { viewMode = mode === 'list' ? 'list' : 'grid'; renderProductList(); }
 window.openProductCard = baseModel => { window._selectedBaseModel = baseModel; window.navigateTo('product-card'); };
 window.refreshProductTable = () => { currentFilters.search = document.getElementById('productSearch')?.value || ''; currentFilters.status = document.getElementById('productFilter')?.value || 'all'; cache = null; renderProductList(true); };
 window.clearProductFilters = () => { const search = document.getElementById('productSearch'); const filter = document.getElementById('productFilter'); if (search) search.value = ''; if (filter) filter.value = 'all'; currentFilters = { search: '', status: 'all' }; cache = null; renderProductList(true); };
