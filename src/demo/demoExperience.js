@@ -56,3 +56,38 @@ export function getDemoStatusLabel(status) {
     watch: 'Наблюдать'
   })[status] || 'Наблюдать';
 }
+
+// Панель Demo 1 относится только к главной странице.
+// Синхронизация через MutationObserver также покрывает программную навигацию.
+export function installDemoExperienceVisibility() {
+  if (window.__BELTANEE_DEMO_VISIBILITY__) return;
+  window.__BELTANEE_DEMO_VISIBILITY__ = true;
+
+  const sync = () => {
+    const bar = document.getElementById('demoExperienceBar');
+    const dashboard = document.getElementById('page-dashboard');
+    if (!bar || !dashboard) return;
+    const isDashboard = dashboard.classList.contains('active');
+    bar.style.display = isDashboard ? '' : 'none';
+    bar.setAttribute('aria-hidden', isDashboard ? 'false' : 'true');
+  };
+
+  const start = () => {
+    sync();
+    const root = document.querySelector('main.content') || document.body;
+    new MutationObserver(sync).observe(root, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
+    [50, 250, 600].forEach(delay => setTimeout(sync, delay));
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+}
+
+installDemoExperienceVisibility();
