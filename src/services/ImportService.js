@@ -1,12 +1,10 @@
 // ============================================================
-// IMPORT SERVICE — ЕДИНЫЙ СЕРВИС ДЛЯ ВСЕХ ТИПОВ ИМПОРТА
+// IMPORT SERVICE — BELTANEE v6.1
+// Единая точка входа для Excel/CSV. Повторный импорт одного
+// отчёта заменяет соответствующий набор данных, а не добавляет его.
 // ============================================================
 
 import { Database } from '../infrastructure/db.js';
-
-// ============================================================
-// ТИПЫ ИМПОРТА
-// ============================================================
 
 export const ImportTypes = {
     NOMENCLATURE: 'nomenclature',
@@ -18,382 +16,228 @@ export const ImportTypes = {
     ADS: 'ads'
 };
 
-// ============================================================
-// ШАБЛОНЫ КОЛОНОК
-// ============================================================
-
 const TEMPLATES = {
     [ImportTypes.NOMENCLATURE]: {
         columns: ['Артикул продавца', 'Название карточки', 'Размер', 'Баркод', 'ТН ВЭД', 'Состав ткани', 'GTIN'],
-        required: ['Артикул продавца', 'Название карточки', 'Размер', 'Баркод'],
-        filename: 'StockFlow_Шаблон_Номенклатура.xlsx',
-        description: '📦 Номенклатура — товары и их характеристики'
+        required: ['Артикул продавца', 'Размер'],
+        filename: 'Beltanee_v6_1_Номенклатура.xlsx',
+        description: '📦 Номенклатура'
     },
     [ImportTypes.SALES]: {
         columns: ['День', 'Артикул продавца', 'Выкупили, шт.', 'К перечислению за товар, руб.', 'Заказано, шт.', 'Сумма заказов минус комиссия WB, руб.'],
-        required: ['День', 'Артикул продавца', 'Выкупили, шт.', 'Заказано, шт.', 'К перечислению за товар, руб.'],
-        filename: 'StockFlow_Шаблон_Продажи.xlsx',
-        description: '🛒 Продажи — динамика продаж по дням'
+        required: ['День', 'Артикул продавца', 'Заказано, шт.'],
+        filename: 'Beltanee_v6_1_Продажи.xlsx',
+        description: '🛒 Продажи по дням'
     },
     [ImportTypes.STOCK_DAILY]: {
         columns: ['Артикул продавца', 'Название', 'Размер', 'Склад', '30.07.2026'],
         required: ['Артикул продавца', 'Размер', 'Склад'],
-        filename: 'StockFlow_Шаблон_Остатки_по_дням.xlsx',
-        description: '📊 Остатки по дням — детализация по датам и складам'
+        filename: 'Beltanee_v6_1_Остатки_по_дням.xlsx',
+        description: '📊 История остатков'
     },
     [ImportTypes.STOCK_CURRENT]: {
-        columns: ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 'В пути возвраты', 'Всего на складах', 'Новосибирск'],
+        columns: ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 'В пути возвраты на склад WB', 'Всего на складах', 'Новосибирск'],
         required: ['Артикул продавца', 'Размер вещи'],
-        filename: 'StockFlow_Шаблон_Текущие_остатки.xlsx',
-        description: '📦 Текущие остатки — актуальные остатки и в пути'
+        filename: 'Beltanee_v6_1_Текущие_остатки.xlsx',
+        description: '📦 Текущие остатки'
     },
     [ImportTypes.PRICES]: {
         columns: ['Артикул продавца', 'Текущая цена', 'Текущая скидка', 'Цена со скидкой'],
         required: ['Артикул продавца', 'Текущая цена'],
-        filename: 'StockFlow_Шаблон_Цены_и_скидки.xlsx',
-        description: '💰 Цены и скидки — актуальные цены из WB'
+        filename: 'Beltanee_v6_1_Цены.xlsx',
+        description: '💰 Цены и скидки'
     },
     [ImportTypes.MARGIN]: {
-        columns: [
-            'Артикул', 'Остаток', 'Закупочная цена', 'Рыночная цена - сейчас',
-            'Цена для клиента', 'Комиссия WB', 'Налог, %', 'Стоимость хранения',
-            'Срок хранения', 'Упаковка', 'Логистика', 'Итого себестоимость',
-            'Прибыль с 1 шт', 'Прибыль итого', 'Выручка', 'Вложения',
-            'Маржинальность', 'Объем', '% выкупа (месяц)'
-        ],
+        columns: ['Артикул', 'Остаток', 'Закупочная цена', 'Рыночная цена - сейчас', 'Цена для клиента', 'Комиссия WB', 'Налог, %', 'Стоимость хранения', 'Срок хранения', 'Упаковка', 'Логистика', 'Итого себестоимость', 'Прибыль с 1 шт', 'Прибыль итого', 'Выручка', 'Вложения', 'Маржинальность', 'Объем', '% выкупа (месяц)'],
         required: ['Артикул', 'Закупочная цена'],
-        filename: 'StockFlow_Шаблон_Маржинальность.xlsx',
-        description: '📊 Маржинальность — экономические показатели по товарам'
+        filename: 'Beltanee_v6_1_Маржинальность.xlsx',
+        description: '📈 Юнит-экономика'
     },
     [ImportTypes.ADS]: {
-        columns: [
-            'Кампания', 'Старт', 'Финиш', 'Показы', 'Частота',
-            'Клики', 'CPC', 'CPM', 'CTR(%)', 'Длительность',
-            'CR(%)', 'Затраты', 'Заказанные товары, шт', 'Добавления в корзину'
-        ],
-        required: ['Кампания', 'Затраты', 'Заказанные товары, шт'],
-        filename: 'StockFlow_Шаблон_Реклама.xlsx',
-        description: '📢 Реклама — эффективность рекламных кампаний'
+        columns: ['Кампания', 'Старт', 'Финиш', 'Показы', 'Частота', 'Клики', 'CPC', 'CPM', 'CTR(%)', 'Длительность', 'CR(%)', 'Затраты', 'Заказанные товары, шт', 'Добавления в корзину'],
+        required: ['Кампания', 'Затраты'],
+        filename: 'Beltanee_v6_1_Реклама.xlsx',
+        description: '📢 Реклама'
     }
 };
 
-// ============================================================
-// ПРИМЕРЫ ДЛЯ ШАБЛОНОВ
-// ============================================================
-
-const EXAMPLES = {
-    [ImportTypes.NOMENCLATURE]: ['210_Комбез_графит_42', 'Комбез графит', '42', '4601234567890', '6104.63.0000', '95% хлопок, 5% эластан', '04601234567890'],
-    [ImportTypes.SALES]: ['01.05.2026', '210_Комбез_графит', '3', '6740,03', '3', '7131,48'],
-    [ImportTypes.STOCK_DAILY]: ['210_Комбез_графит', 'Комбез графит', '42', 'Коледино', '50'],
-    [ImportTypes.STOCK_CURRENT]: ['210_Комбез_графит', '42', '5', '2', '50', '45'],
-    [ImportTypes.PRICES]: ['210_Комбез_графит', '7000', '67', '2310'],
-    [ImportTypes.MARGIN]: [
-        '21_К_Вельвет_бирюзовый', '1098', 'р.796,00', 'р.2 627,00',
-        '2049,06 р.', '25%', '2%', '0,845 р.',
-        '60', '10,00 р.', 'р.980,24', '2 546,23 р.',
-        '80,77 р.', '88 682,32 р.', '2 884 446,00 р.', '884 988,00 р.',
-        '3%', '8,45', '35'
-    ],
-    [ImportTypes.ADS]: [
-        'Кампания от 29.06.2026 - КЗЖ№2 - Беж - Авто',
-        '2026-06-29 11:02:28',
-        '2026-08-05 15:42:54',
-        '2', '1', '0', '0', '320', '0', '892:40:26',
-        '0', '0,64', '0', '0'
-    ]
-};
-
-// ============================================================
-// УНИВЕРСАЛЬНЫЕ ФУНКЦИИ ПАРСИНГА
-// ============================================================
-
-function cleanString(value) {
-    if (!value && value !== 0) return '';
-    const str = String(value).trim();
-    return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+function clean(value) {
+    return String(value ?? '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
 }
 
-function findValue(row, possibleKeys) {
-    if (!row || typeof row !== 'object') return null;
-    
-    const normalizedKeys = {};
-    for (const key of Object.keys(row)) {
-        const cleanKey = cleanString(key);
-        normalizedKeys[cleanKey] = key;
-    }
-    
-    for (const searchKey of possibleKeys) {
-        const cleanSearchKey = cleanString(searchKey);
-        
-        if (normalizedKeys[cleanSearchKey]) {
-            const value = row[normalizedKeys[cleanSearchKey]];
-            const cleaned = cleanString(value);
-            if (cleaned !== '') return cleaned;
-        }
-        
-        const lowerSearch = cleanSearchKey.toLowerCase();
-        for (const [cleanKey, origKey] of Object.entries(normalizedKeys)) {
-            const lowerKey = cleanKey.toLowerCase();
-            if (lowerKey.includes(lowerSearch) || lowerSearch.includes(lowerKey)) {
-                const value = row[origKey];
-                const cleaned = cleanString(value);
-                if (cleaned !== '') return cleaned;
-            }
-        }
-    }
-    
-    return null;
+function normalizeKey(value) {
+    return clean(value).toLowerCase().replace(/\s+/g, ' ');
 }
 
-function parseDateUniversal(dateStr) {
-    if (!dateStr) return null;
-    
-    const str = cleanString(dateStr);
-    if (!str) return null;
-    
-    const num = parseFloat(str);
-    if (!isNaN(num) && num > 30000 && num < 60000) {
-        const date = new Date((num - 25569) * 86400 * 1000);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-    
-    if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        return str;
-    }
-    
-    const separators = ['.', '/', '-', ' '];
-    let parts = null;
-    
-    for (const sep of separators) {
-        const split = str.split(sep);
-        if (split.length === 3) {
-            parts = split.map(p => cleanString(p));
-            break;
-        }
-    }
-    
-    if (!parts) {
-        const date = new Date(str);
-        if (!isNaN(date.getTime())) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-        return null;
-    }
-    
-    let day, month, year;
-    const p1 = parseInt(parts[0]);
-    const p2 = parseInt(parts[1]);
-    const p3 = parseInt(parts[2]);
-    
-    if (p3 >= 1900 && p3 <= 2100) {
-        year = p3;
-        if (p1 <= 12 && p2 <= 31) {
-            month = p1;
-            day = p2;
-        } else {
-            day = p1;
-            month = p2;
-        }
-    } else if (p1 >= 1900 && p1 <= 2100) {
-        year = p1;
-        month = p2;
-        day = p3;
+function number(value) {
+    if (value === null || value === undefined || value === '') return 0;
+    let text = clean(value).replace(/\s/g, '').replace(/р\./gi, '').replace(/₽/g, '').replace(/%/g, '');
+    if (text.includes(',') && text.includes('.')) {
+        if (text.lastIndexOf(',') > text.lastIndexOf('.')) text = text.replace(/\./g, '').replace(',', '.');
+        else text = text.replace(/,/g, '');
     } else {
-        const date = new Date(str);
-        if (!isNaN(date.getTime())) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-        return null;
+        text = text.replace(',', '.');
     }
-    
-    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) {
-        return null;
-    }
-    
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const result = Number.parseFloat(text);
+    return Number.isFinite(result) ? result : 0;
 }
 
-function parseNumber(value) {
-    if (!value && value !== 0) return 0;
-    const str = cleanString(String(value));
-    if (!str) return 0;
-    const cleaned = str.replace(/\s/g, '').replace(',', '.');
-    const num = parseFloat(cleaned);
-    return isNaN(num) ? 0 : num;
+function percent(value) {
+    return number(value);
 }
 
-function parseUniversalNumber(value) {
-    if (value === null || value === undefined || value === '') return 0;
-    
-    let str = cleanString(String(value));
-    if (!str) return 0;
-    
-    const naPatterns = ['n/a', 'н/д', '—', '-', 'na', 'undefined', 'null'];
-    if (naPatterns.some(p => str.toLowerCase() === p)) {
-        return 0;
+function date(value) {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+    const text = clean(value);
+    if (!text) return null;
+
+    const excel = Number(text);
+    if (Number.isFinite(excel) && excel > 30000 && excel < 60000) {
+        return new Date((excel - 25569) * 86400000).toISOString().slice(0, 10);
     }
-    
-    str = str.replace(/р\./g, '').replace(/\s/g, '');
-    str = str.replace(/%/g, '');
-    str = str.replace(/,/g, '.');
-    
-    const num = parseFloat(str);
-    return isNaN(num) ? 0 : num;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+    const parts = text.split(/[.\/-]/).map(Number);
+    if (parts.length === 3 && parts.every(Number.isFinite)) {
+        let [a, b, c] = parts;
+        if (a >= 1900) return `${a}-${String(b).padStart(2, '0')}-${String(c).padStart(2, '0')}`;
+        if (c >= 1900) return `${c}-${String(b).padStart(2, '0')}-${String(a).padStart(2, '0')}`;
+    }
+
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
 }
 
-function parseUniversalPercent(value) {
-    if (value === null || value === undefined || value === '') return 0;
-    
-    let str = cleanString(String(value));
-    if (!str) return 0;
-    
-    const naPatterns = ['n/a', 'н/д', '—', '-', 'na', 'undefined', 'null'];
-    if (naPatterns.some(p => str.toLowerCase() === p)) {
-        return 0;
+function valueFrom(row, names) {
+    const entries = Object.entries(row || {});
+    const wanted = names.map(normalizeKey);
+
+    for (const [key, value] of entries) {
+        if (wanted.includes(normalizeKey(key)) && clean(value) !== '') return value;
     }
-    
-    str = str.replace(/%/g, '').replace(/\s/g, '').replace(/,/g, '.');
-    const num = parseFloat(str);
-    return isNaN(num) ? 0 : num;
+
+    for (const target of wanted) {
+        const found = entries.find(([key, value]) => {
+            const current = normalizeKey(key);
+            return clean(value) !== '' && (current.includes(target) || target.includes(current));
+        });
+        if (found) return found[1];
+    }
+
+    return '';
 }
 
 function parseArticle(article) {
-    if (!article) return { baseModel: '', color: '', size: '', full: '' };
-    const full = cleanString(article);
-    let baseModel = full;
+    const full = clean(article);
+    const parts = full.split('_').filter(Boolean);
+    if (!full) return { baseModel: '', color: '', size: '' };
+
+    const sizePattern = /^(\d{2,3}|XXS|XS|S|M|L|XL|XXL|XXXL)$/i;
+    let sizeIndex = parts.findIndex(part => sizePattern.test(part));
+    const size = sizeIndex >= 0 ? parts[sizeIndex] : '';
+
+    const colorWords = new Set(['белый', 'черный', 'серый', 'красный', 'синий', 'зеленый', 'желтый', 'розовый', 'голубой', 'фиолетовый', 'оранжевый', 'коричневый', 'бежевый', 'графит', 'бордовый', 'бирюзовый', 'хаки', 'фуксия', 'шоколадный', 'кремовый', 'изумрудный', 'лавандовый']);
     let color = '';
-    let size = '';
+    const modelParts = [];
 
-    const parts = full.split('_');
-    if (parts.length === 1) {
-        return { baseModel: full, color: '', size: '', full };
-    }
+    parts.forEach((part, index) => {
+        if (index === sizeIndex) return;
+        if (!color && colorWords.has(part.toLowerCase())) color = part;
+        else modelParts.push(part);
+    });
 
-    let sizeIndex = -1;
-    for (let i = 0; i < parts.length; i++) {
-        const part = parts[i].trim();
-        if (part.match(/^\d{2,3}$/) || part.match(/^[XxSsMmLl]{1,4}$/)) {
-            sizeIndex = i;
-            size = part;
-            break;
+    if (!color && modelParts.length > 1) {
+        const last = modelParts[modelParts.length - 1];
+        if (!/^\d+$/.test(last)) {
+            color = last;
+            modelParts.pop();
         }
     }
 
-    const nameParts = [];
-    let colorPart = '';
-    const colorKeywords = ['белый', 'черный', 'серый', 'красный', 'синий', 'зеленый', 'желтый', 
-                           'розовый', 'голубой', 'фиолетовый', 'оранжевый', 'коричневый', 
-                           'бежевый', 'графит', 'бордовый', 'бирюзовый', 'салатовый', 
-                           'лавандовый', 'графитовый', 'изумрудный', 'шоколадный', 
-                           'кремовый', 'золотистый', 'серебристый', 'персиковый', 
-                           'васильковый', 'лимонный', 'темный', 'светлый', 'хаки', 'фуксия'];
-
-    for (let i = 0; i < parts.length; i++) {
-        if (i === sizeIndex) continue;
-        const part = parts[i].trim();
-        if (!part) continue;
-        
-        const lowerPart = part.toLowerCase();
-        if (colorKeywords.some(keyword => lowerPart.includes(keyword))) {
-            colorPart = part;
-        } else {
-            nameParts.push(part);
-        }
-    }
-
-    baseModel = nameParts.join('_');
-    color = colorPart;
-
-    if (!color && nameParts.length > 1) {
-        const lastPart = nameParts[nameParts.length - 1];
-        if (lastPart && !lastPart.match(/^\d+$/)) {
-            color = lastPart;
-            nameParts.pop();
-            baseModel = nameParts.join('_');
-        }
-    }
-
-    if (!baseModel) {
-        baseModel = full.replace('_' + size, '');
-        if (baseModel.endsWith('_')) baseModel = baseModel.slice(0, -1);
-    }
-
-    return { baseModel: baseModel || full, color, size, full };
+    return { baseModel: modelParts.join('_') || full, color, size };
 }
 
-function createArticleKey(article, size = 'NOSIZE', color = 'NOCOLOR') {
-    return `${cleanString(article)}|${cleanString(size)}|${cleanString(color)}`.toLowerCase();
+function makeArticleKey(article, size = '', color = '') {
+    return `${clean(article)}|${clean(size) || 'NOSIZE'}|${clean(color) || 'NOCOLOR'}`.toLowerCase();
 }
 
-// ============================================================
-// ОСНОВНОЙ КЛАСС
-// ============================================================
+function makeProductData(article, size, extra = {}) {
+    const parsed = parseArticle(article);
+    const finalSize = clean(size) || parsed.size || 'NOSIZE';
+    const finalColor = parsed.color || '';
+    return {
+        article: clean(article),
+        articleKey: makeArticleKey(article, finalSize, finalColor),
+        baseModel: parsed.baseModel,
+        color: finalColor,
+        size: finalSize,
+        ...extra
+    };
+}
+
+const AGGREGATE_STOCK_COLUMNS = new Set([
+    'всего на складах',
+    'всего находится на складах',
+    'итого на складах',
+    'остаток всего',
+    'всего'
+].map(normalizeKey));
 
 class ImportService {
-    
     static getTemplate(type) {
         return TEMPLATES[type] || null;
     }
 
+    static getTemplates() {
+        return { ...TEMPLATES };
+    }
+
     static async processFile(file, type) {
-        console.log(`📥 Импорт ${type} из файла:`, file.name);
+        if (!TEMPLATES[type]) return { success: false, error: `Неизвестный тип импорта: ${type}` };
+        if (!file) return { success: false, error: 'Файл не выбран' };
 
-        if (!TEMPLATES[type]) {
-            return { success: false, error: `Неизвестный тип импорта: ${type}` };
-        }
-
-        const validExtensions = ['.xlsx', '.xls', '.csv'];
-        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-        if (!validExtensions.includes(ext)) {
-            return { success: false, error: 'Неверный формат файла. Поддерживаются XLSX, XLS, CSV.' };
-        }
-
-        let data;
         try {
-            data = await this._readFile(file);
-        } catch (err) {
-            return { success: false, error: `Ошибка чтения файла: ${err.message}` };
+            const rows = await this._readFile(file);
+            const validation = this._validateColumns(rows, TEMPLATES[type]);
+            if (!validation.valid) return { success: false, error: validation.error, records: [], errors: [] };
+
+            const parsed = this._parseAndValidate(rows, type);
+            if (!parsed.records.length) {
+                return { ...parsed, success: false, error: 'В файле нет валидных записей для импорта' };
+            }
+
+            await this._saveData(parsed.records, type);
+            await Database.save(Database.STORES.IMPORTS, {
+                id: `${type}|${Date.now()}`,
+                type,
+                fileName: file.name,
+                rows: parsed.records.length,
+                errors: parsed.errors.length,
+                createdAt: new Date().toISOString()
+            });
+
+            return { ...parsed, success: parsed.errors.length === 0, fileName: file.name };
+        } catch (error) {
+            console.error('[ImportService]', error);
+            return { success: false, error: error.message, records: [], errors: [] };
         }
+    }
 
-        if (data && data.length > 0) {
-            console.log('📋 Колонки в файле:', Object.keys(data[0]));
-        }
-
-        const template = TEMPLATES[type];
-        const columnCheck = this._validateColumns(data, template);
-        if (!columnCheck.valid) {
-            return { success: false, error: columnCheck.error };
-        }
-
-        const result = this._parseAndValidate(data, type, template);
-
-        if (result.records.length > 0) {
-            await this._saveData(result.records, type);
-        }
-
-        return result;
+    static async importFile(file, type) {
+        return this.processFile(file, type);
     }
 
     static _readFile(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = event => {
                 try {
-                    const wb = XLSX.read(e.target.result, { type: 'array' });
-                    const sh = wb.Sheets[wb.SheetNames[0]];
-                    const data = XLSX.utils.sheet_to_json(sh, { defval: '' });
-                    resolve(data);
-                } catch (err) {
-                    reject(new Error(`Ошибка парсинга: ${err.message}`));
+                    const workbook = XLSX.read(event.target.result, { type: 'array', cellDates: true });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    resolve(XLSX.utils.sheet_to_json(sheet, { defval: '' }));
+                } catch (error) {
+                    reject(new Error(`Не удалось распознать Excel/CSV: ${error.message}`));
                 }
             };
             reader.onerror = () => reject(new Error('Ошибка чтения файла'));
@@ -401,595 +245,282 @@ class ImportService {
         });
     }
 
-    static _validateColumns(data, template) {
-        if (!data || data.length === 0) {
-            return { valid: false, error: 'Файл пуст' };
-        }
-
-        const actualColumns = Object.keys(data[0]);
-        const required = template.required || [];
-        
-        const missing = [];
-        for (const req of required) {
-            const found = actualColumns.some(col => {
-                const cleanCol = cleanString(col).toLowerCase();
-                const cleanReq = cleanString(req).toLowerCase();
-                return cleanCol === cleanReq || cleanCol.includes(cleanReq) || cleanReq.includes(cleanCol);
-            });
-            if (!found) {
-                missing.push(req);
-            }
-        }
-        
-        if (missing.length > 0) {
-            return {
-                valid: false,
-                error: `Отсутствуют обязательные колонки: ${missing.join(', ')}`
-            };
-        }
-
-        return { valid: true };
+    static _validateColumns(rows, template) {
+        if (!rows?.length) return { valid: false, error: 'Файл пуст' };
+        const columns = Object.keys(rows[0]).map(normalizeKey);
+        const missing = (template.required || []).filter(required => {
+            const target = normalizeKey(required);
+            return !columns.some(column => column === target || column.includes(target) || target.includes(column));
+        });
+        return missing.length ? { valid: false, error: `Отсутствуют обязательные колонки: ${missing.join(', ')}` } : { valid: true };
     }
 
-    static _parseAndValidate(data, type, template) {
+    static _parseAndValidate(rows, type) {
         const records = [];
         const errors = [];
+        const seen = new Set();
 
-        data.forEach((row, index) => {
-            const rowNum = index + 1;
-            const rowErrors = [];
-
-            if (!row || typeof row !== 'object') {
-                errors.push({ row: rowNum, errors: ['Строка пуста'] });
+        const add = (record, key) => {
+            if (!record) return;
+            if (seen.has(key)) {
+                // Внутри одного файла последняя строка является актуальной.
+                const index = records.findIndex(item => item.id === key);
+                if (index >= 0) records[index] = record;
                 return;
             }
+            seen.add(key);
+            records.push(record);
+        };
 
-            const hasAnyData = Object.values(row).some(v => v !== null && v !== undefined && cleanString(v) !== '');
-            if (!hasAnyData) {
-                return;
-            }
+        rows.forEach((row, index) => {
+            const rowNumber = index + 2;
+            if (!Object.values(row || {}).some(value => clean(value) !== '')) return;
 
-            // ============================================================
-            // ПАРСИНГ НОМЕНКЛАТУРЫ
-            // ============================================================
-            if (type === ImportTypes.NOMENCLATURE) {
-                const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
-                const name = findValue(row, ['Название карточки', 'Название', 'name']);
-                const sizeFromCol = findValue(row, ['Размер', 'size']);
-                const barcode = findValue(row, ['Баркод', 'barcode']);
-                const tnved = findValue(row, ['ТН ВЭД', 'tnved']);
-                const fabric = findValue(row, ['Состав ткани', 'fabric']);
-                const gtin = findValue(row, ['GTIN', 'gtin']);
-
-                if (!article) rowErrors.push('Артикул продавца не найден');
-                if (!name) rowErrors.push('Название карточки не найдено');
-                if (!sizeFromCol) rowErrors.push('Размер не найден');
-                if (!barcode) rowErrors.push('Баркод не найден');
-
-                if (rowErrors.length > 0) {
-                    errors.push({ row: rowNum, errors: rowErrors });
-                    return;
-                }
-
-                const parsed = parseArticle(article);
-                const finalSize = sizeFromCol || parsed.size || 'NOSIZE';
-                const finalColor = parsed.color || '';
-                const baseModel = parsed.baseModel || article;
-                const finalName = name || baseModel || article;
-                const articleKey = createArticleKey(article, finalSize, finalColor);
-
-                records.push({
-                    article, articleKey, baseModel, color: finalColor, size: finalSize,
-                    name: finalName, barcode, tnved: tnved || '', fabric: fabric || '',
-                    gtin: gtin || '', category: '', purchasePrice: 0, price: 0, status: 'active'
-                });
-                return;
-            }
-
-            // ============================================================
-            // ПАРСИНГ ПРОДАЖ
-            // ============================================================
-            if (type === ImportTypes.SALES) {
-                const article = findValue(row, [
-                    'Артикул продавца', 'Артикул', 'article', 'Артикул продавца (артикул)'
-                ]);
-                
-                const dateStr = findValue(row, [
-                    'День', 'Дата', 'Date', 'Дата заказа', 'Дата заказа (местное время)'
-                ]);
-                
-                const redeemed = findValue(row, [
-                    'Выкупили, шт.', 'Выкупили шт.', 'Выкупили', 'Выкуплено, шт.', 
-                    'Выкуплено', 'Количество выкупов', 'Выкупили, шт'
-                ]);
-                
-                const amount = findValue(row, [
-                    'К перечислению за товар, руб.', 'К перечислению за товар руб.', 
-                    'К перечислению за товар', 'Сумма выкупа', 'Сумма выкупа, руб.'
-                ]);
-                
-                const orders = findValue(row, [
-                    'Заказано, шт.', 'Заказано шт.', 'Заказано', 'Количество заказов',
-                    'Заказов, шт.', 'Заказано, шт'
-                ]);
-                
-                const totalAmount = findValue(row, [
-                    'Сумма заказов минус комиссия WB, руб.', 'Сумма заказов минус комиссия WB руб.',
-                    'Сумма заказов минус комиссия WB', 'Сумма заказов, руб.', 'Сумма заказов'
-                ]);
-
-                const hasError = !article || !dateStr;
-                
-                if (hasError) {
-                    const errorDetails = [];
-                    if (!article) errorDetails.push('Артикул продавца не найден');
-                    if (!dateStr) errorDetails.push('Дата (День) не найдена');
-                    
-                    console.log(`🔴 ОШИБКА в строке ${rowNum}:`, {
-                        row,
-                        found: { article, dateStr, redeemed, amount, orders, totalAmount },
-                        keys: Object.keys(row)
+            try {
+                if (type === ImportTypes.NOMENCLATURE) {
+                    const article = clean(valueFrom(row, ['Артикул продавца', 'Артикул', 'article']));
+                    const size = clean(valueFrom(row, ['Размер', 'Размер вещи', 'size']));
+                    if (!article || !size) throw new Error('Не найден артикул или размер');
+                    const parsed = makeProductData(article, size, {
+                        name: clean(valueFrom(row, ['Название карточки', 'Название', 'name'])) || article,
+                        barcode: clean(valueFrom(row, ['Баркод', 'barcode'])),
+                        tnved: clean(valueFrom(row, ['ТН ВЭД', 'tnved'])),
+                        fabric: clean(valueFrom(row, ['Состав ткани', 'fabric'])),
+                        gtin: clean(valueFrom(row, ['GTIN', 'gtin'])),
+                        category: clean(valueFrom(row, ['Предмет', 'Категория', 'category'])) || 'Товар',
+                        price: 0,
+                        purchasePrice: 0,
+                        status: 'active'
                     });
-                    
-                    errors.push({ row: rowNum, errors: errorDetails });
+                    add({ ...parsed, id: parsed.articleKey }, parsed.articleKey);
                     return;
                 }
 
-                const cleanArticle = cleanString(article);
-                if (!cleanArticle) {
-                    errors.push({ row: rowNum, errors: ['Артикул пустой после очистки'] });
+                if (type === ImportTypes.SALES) {
+                    const article = clean(valueFrom(row, ['Артикул продавца', 'Артикул', 'article']));
+                    const day = date(valueFrom(row, ['День', 'Дата', 'Дата заказа', 'Date']));
+                    if (!article || !day) throw new Error('Не найден артикул или дата');
+                    const id = `${article.toLowerCase()}|${day}`;
+                    add({
+                        id,
+                        productId: article,
+                        article,
+                        date: day,
+                        orders: number(valueFrom(row, ['Заказано, шт.', 'Заказано шт.', 'Заказано', 'Количество заказов'])),
+                        delivered: number(valueFrom(row, ['Выкупили, шт.', 'Выкупили шт.', 'Выкупили', 'Выкуплено'])),
+                        returns: number(valueFrom(row, ['Возвраты, шт.', 'Возвраты', 'Возвратов'])),
+                        amount: number(valueFrom(row, ['К перечислению за товар, руб.', 'К перечислению за товар', 'Сумма выкупа'])),
+                        totalAmount: number(valueFrom(row, ['Сумма заказов минус комиссия WB, руб.', 'Сумма заказов минус комиссия WB', 'Сумма заказов, руб.'])),
+                        createdAt: new Date().toISOString()
+                    }, id);
                     return;
                 }
 
-                const parsedDate = parseDateUniversal(dateStr);
-                if (!parsedDate) {
-                    console.log(`🔴 НЕКОРРЕКТНАЯ ДАТА в строке ${rowNum}: "${dateStr}"`);
-                    errors.push({ row: rowNum, errors: [`Некорректная дата: "${dateStr}"`] });
-                    return;
-                }
+                if (type === ImportTypes.STOCK_DAILY) {
+                    const article = clean(valueFrom(row, ['Артикул продавца', 'Артикул', 'article']));
+                    const size = clean(valueFrom(row, ['Размер', 'Размер вещи', 'size']));
+                    const warehouse = clean(valueFrom(row, ['Склад', 'warehouse']));
+                    if (!article || !size || !warehouse) throw new Error('Не найден артикул, размер или склад');
 
-                const articleKey = createArticleKey(cleanArticle);
-
-                records.push({
-                    articleKey, productId: articleKey, article: cleanArticle,
-                    size: 'NOSIZE', warehouse: 'Не указан',
-                    date: parsedDate,
-                    orders: parseNumber(orders),
-                    redeemed: parseNumber(redeemed),
-                    delivered: parseNumber(redeemed),
-                    amount: parseNumber(amount),
-                    totalAmount: parseNumber(totalAmount || amount),
-                    returns: 0,
-                    fileName: row._fileName || '',
-                    importDate: new Date().toISOString()
-                });
-                return;
-            }
-
-            // ============================================================
-            // ПАРСИНГ ОСТАТКОВ ПО ДНЯМ (STOCK_DAILY)
-            // ============================================================
-            if (type === ImportTypes.STOCK_DAILY) {
-                const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
-                const name = findValue(row, ['Название', 'name']);
-                const size = findValue(row, ['Размер', 'size']);
-                const warehouse = findValue(row, ['Склад', 'warehouse']);
-                
-                if (!article) {
-                    errors.push({ row: rowNum, errors: ['Артикул продавца не найден'] });
-                    return;
-                }
-                
-                if (!size) {
-                    errors.push({ row: rowNum, errors: ['Размер не найден'] });
-                    return;
-                }
-                
-                if (!warehouse) {
-                    errors.push({ row: rowNum, errors: ['Склад не найден'] });
-                    return;
-                }
-                
-                const knownColumns = ['Артикул продавца', 'Название', 'Размер', 'Склад'];
-                const dateColumns = Object.keys(row).filter(key => {
-                    if (knownColumns.includes(key)) return false;
-                    const val = row[key];
-                    if (val === null || val === undefined || val === '') return false;
-                    const cleanKey = cleanString(key);
-                    return cleanKey.match(/^\d{2}\.\d{2}\.\d{4}$/) || 
-                           cleanKey.match(/^\d{4}\.\d{2}\.\d{2}$/) ||
-                           cleanKey.match(/^\d{2}\/\d{2}\/\d{4}$/);
-                });
-                
-                if (dateColumns.length === 0) {
-                    errors.push({ row: rowNum, errors: ['Не найдены колонки с датами'] });
-                    return;
-                }
-                
-                const cleanArticle = cleanString(article);
-                const cleanSize = cleanString(size);
-                const cleanWarehouse = cleanString(warehouse);
-                const articleKey = createArticleKey(cleanArticle, cleanSize);
-                
-                for (const dateKey of dateColumns) {
-                    const quantity = parseNumber(row[dateKey]);
-                    const parsedDate = parseDateUniversal(dateKey);
-                    if (parsedDate) {
-                        records.push({
-                            articleKey,
-                            productId: articleKey,
-                            article: cleanArticle,
-                            name: cleanString(name) || '',
-                            size: cleanSize,
-                            warehouse: cleanWarehouse,
-                            date: parsedDate,
-                            quantity: quantity,
+                    const parsed = makeProductData(article, size);
+                    for (const [column, raw] of Object.entries(row)) {
+                        const day = date(column);
+                        if (!day || raw === '') continue;
+                        const id = `${parsed.articleKey}|${warehouse}|${day}`;
+                        add({
+                            id,
+                            productId: parsed.articleKey,
+                            articleKey: parsed.articleKey,
+                            article,
+                            warehouseName: warehouse,
+                            warehouseType: 'wb',
+                            date: day,
+                            quantity: number(raw),
+                            reserved: 0,
                             source: 'stock_daily',
-                            importDate: new Date().toISOString()
-                        });
+                            createdAt: new Date().toISOString()
+                        }, id);
                     }
+                    return;
                 }
-                return;
-            }
 
-            // ============================================================
-            // ПАРСИНГ ТЕКУЩИХ ОСТАТКОВ (STOCK_CURRENT)
-            // ============================================================
-            if (type === ImportTypes.STOCK_CURRENT) {
-                const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
-                const size = findValue(row, ['Размер вещи', 'Размер', 'size']);
-                const inTransitTo = findValue(row, ['В пути до получателей']);
-                const inTransitFrom = findValue(row, ['В пути возвраты на склад WB', 'В пути возвраты']);
-                const total = findValue(row, ['Всего находится на складах', 'Всего на складах', 'Итого на складах']);
-                
-                if (!article) {
-                    errors.push({ row: rowNum, errors: ['Артикул продавца не найден'] });
-                    return;
-                }
-                
-                if (!size) {
-                    errors.push({ row: rowNum, errors: ['Размер не найден'] });
-                    return;
-                }
-                
-                const totalValue = total ? parseNumber(total) : 0;
-                
-                const knownColumns = ['Артикул продавца', 'Размер вещи', 'В пути до получателей', 
-                                      'В пути возвраты на склад WB', 'Всего находится на складах'];
-                const warehouseColumns = Object.keys(row).filter(key => {
-                    if (knownColumns.includes(key)) return false;
-                    const val = row[key];
-                    if (val === null || val === undefined || val === '') return false;
-                    return true;
-                });
-                
-                if (warehouseColumns.length === 0) {
-                    return;
-                }
-                
-                const cleanArticle = cleanString(article);
-                const cleanSize = cleanString(size);
-                const articleKey = createArticleKey(cleanArticle, cleanSize);
-                
-                const baseRecord = {
-                    articleKey,
-                    productId: articleKey,
-                    article: cleanArticle,
-                    size: cleanSize,
-                    inTransitTo: parseNumber(inTransitTo),
-                    inTransitFrom: parseNumber(inTransitFrom),
-                    total: totalValue,
-                    date: new Date().toISOString().split('T')[0],
-                    source: 'stock_current',
-                    importDate: new Date().toISOString()
-                };
-                
-                for (const warehouse of warehouseColumns) {
-                    const quantity = parseNumber(row[warehouse]);
-                    records.push({
-                        ...baseRecord,
-                        warehouse: cleanString(warehouse),
-                        quantity: quantity
-                    });
-                }
-                return;
-            }
+                if (type === ImportTypes.STOCK_CURRENT) {
+                    const article = clean(valueFrom(row, ['Артикул продавца', 'Артикул', 'article']));
+                    const size = clean(valueFrom(row, ['Размер вещи', 'Размер', 'size']));
+                    if (!article || !size) throw new Error('Не найден артикул или размер');
 
-            // ============================================================
-            // ПАРСИНГ ЦЕН И СКИДОК (PRICES)
-            // ============================================================
-            if (type === ImportTypes.PRICES) {
-                const article = findValue(row, ['Артикул продавца', 'Артикул', 'article']);
-                const price = findValue(row, ['Текущая цена', 'Цена', 'price']);
-                const discount = findValue(row, ['Текущая скидка', 'Скидка', 'discount']);
-                const priceWithDiscount = findValue(row, ['Цена со скидкой', 'Цена со скидкой, руб.']);
-                
-                if (!article) {
-                    errors.push({ row: rowNum, errors: ['Артикул продавца не найден'] });
-                    return;
-                }
-                
-                if (!price) {
-                    errors.push({ row: rowNum, errors: ['Текущая цена не найдена'] });
-                    return;
-                }
-                
-                const cleanArticle = cleanString(article);
-                const priceValue = parseNumber(price);
-                const discountValue = parseNumber(discount);
-                const priceWithDiscountValue = priceWithDiscount ? parseNumber(priceWithDiscount) : 0;
-                
-                records.push({
-                    article: cleanArticle,
-                    price: priceValue,
-                    discount: discountValue,
-                    priceWithDiscount: priceWithDiscountValue,
-                    importDate: new Date().toISOString(),
-                    _type: 'price_record'
-                });
-                return;
-            }
+                    const parsed = makeProductData(article, size);
+                    const inTransitTo = number(valueFrom(row, ['В пути до получателей']));
+                    const inTransitFrom = number(valueFrom(row, ['В пути возвраты на склад WB', 'В пути возвраты']));
+                    const today = new Date().toISOString().slice(0, 10);
 
-            // ============================================================
-            // ПАРСИНГ МАРЖИНАЛЬНОСТИ (MARGIN)
-            // ============================================================
-            if (type === ImportTypes.MARGIN) {
-                const article = findValue(row, ['Артикул']);
-                const purchasePrice = findValue(row, ['Закупочная цена']);
-                
-                if (!article) {
-                    errors.push({ row: rowNum, errors: ['Артикул не найден'] });
-                    return;
-                }
-                
-                if (!purchasePrice) {
-                    errors.push({ row: rowNum, errors: ['Закупочная цена не найдена'] });
-                    return;
-                }
-                
-                const cleanArticle = cleanString(article);
-                
-                const record = {
-                    article: cleanArticle,
-                    stock: parseUniversalNumber(findValue(row, ['Остаток'])),
-                    purchasePrice: parseUniversalNumber(purchasePrice),
-                    marketPrice: parseUniversalNumber(findValue(row, ['Рыночная цена - сейчас'])),
-                    clientPrice: parseUniversalNumber(findValue(row, ['Цена для клиента'])),
-                    wbCommission: parseUniversalPercent(findValue(row, ['Комиссия WB'])),
-                    tax: parseUniversalPercent(findValue(row, ['Налог, %'])),
-                    storageCost: parseUniversalNumber(findValue(row, ['Стоимость хранения'])),
-                    storageDays: parseUniversalNumber(findValue(row, ['Срок хранения'])),
-                    packaging: parseUniversalNumber(findValue(row, ['Упаковка'])),
-                    logistics: parseUniversalNumber(findValue(row, ['Логистика'])),
-                    totalCost: parseUniversalNumber(findValue(row, ['Итого себестоимость'])),
-                    profitPerUnit: parseUniversalNumber(findValue(row, ['Прибыль с 1 шт'])),
-                    profitTotal: parseUniversalNumber(findValue(row, ['Прибыль итого'])),
-                    revenue: parseUniversalNumber(findValue(row, ['Выручка'])),
-                    investment: parseUniversalNumber(findValue(row, ['Вложения'])),
-                    margin: parseUniversalPercent(findValue(row, ['Маржинальность'])),
-                    volume: parseUniversalNumber(findValue(row, ['Объем'])),
-                    buyoutPercent: parseUniversalPercent(findValue(row, ['% выкупа (месяц)'])),
-                    importDate: new Date().toISOString()
-                };
-                
-                records.push(record);
-                return;
-            }
+                    for (const [column, raw] of Object.entries(row)) {
+                        const warehouse = clean(column);
+                        if (!warehouse || AGGREGATE_STOCK_COLUMNS.has(normalizeKey(warehouse))) continue;
+                        if (['Артикул продавца', 'Артикул', 'Размер вещи', 'Размер', 'В пути до получателей', 'В пути возвраты на склад WB', 'В пути возвраты'].map(normalizeKey).includes(normalizeKey(warehouse))) continue;
+                        if (raw === '') continue;
 
-            // ============================================================
-            // ПАРСИНГ РЕКЛАМЫ (ADS)
-            // ============================================================
-            if (type === ImportTypes.ADS) {
-                const campaign = findValue(row, ['Кампания', 'campaign']);
-                
-                if (!campaign) {
-                    errors.push({ row: rowNum, errors: ['Название кампании не найдено'] });
+                        const id = `${parsed.articleKey}|${warehouse}|${today}`;
+                        add({
+                            id,
+                            productId: parsed.articleKey,
+                            articleKey: parsed.articleKey,
+                            article,
+                            warehouseName: warehouse,
+                            warehouseType: 'wb',
+                            date: today,
+                            quantity: number(raw),
+                            reserved: 0,
+                            inTransitTo,
+                            inTransitFrom,
+                            source: 'stock_current',
+                            createdAt: new Date().toISOString()
+                        }, id);
+                    }
                     return;
                 }
-                
-                const parseDateTime = (value) => {
-                    if (!value) return null;
-                    const str = cleanString(value);
-                    if (!str) return null;
-                    const date = new Date(str);
-                    return isNaN(date.getTime()) ? null : date.toISOString();
-                };
-                
-                const record = {
-                    campaign: cleanString(campaign),
-                    startDate: parseDateTime(findValue(row, ['Старт', 'start'])),
-                    finishDate: parseDateTime(findValue(row, ['Финиш', 'finish'])),
-                    impressions: parseNumber(findValue(row, ['Показы'])),
-                    frequency: parseNumber(findValue(row, ['Частота'])),
-                    clicks: parseNumber(findValue(row, ['Клики'])),
-                    cpc: parseNumber(findValue(row, ['CPC'])),
-                    cpm: parseNumber(findValue(row, ['CPM'])),
-                    ctr: parseNumber(findValue(row, ['CTR(%)', 'CTR'])),
-                    duration: cleanString(findValue(row, ['Длительность']) || ''),
-                    cr: parseNumber(findValue(row, ['CR(%)', 'CR'])),
-                    spent: parseNumber(findValue(row, ['Затраты'])),
-                    orders: parseNumber(findValue(row, ['Заказанные товары, шт'])),
-                    cartAdds: parseNumber(findValue(row, ['Добавления в корзину'])),
-                    linkedArticle: null,
-                    importDate: new Date().toISOString()
-                };
-                
-                records.push(record);
-                return;
+
+                if (type === ImportTypes.PRICES) {
+                    const article = clean(valueFrom(row, ['Артикул продавца', 'Артикул', 'article']));
+                    if (!article) throw new Error('Не найден артикул');
+                    add({
+                        article,
+                        price: number(valueFrom(row, ['Текущая цена', 'Цена', 'price'])),
+                        discount: number(valueFrom(row, ['Текущая скидка', 'Скидка', 'discount'])),
+                        priceWithDiscount: number(valueFrom(row, ['Цена со скидкой', 'Цена со скидкой, руб.']))
+                    }, article.toLowerCase());
+                    return;
+                }
+
+                if (type === ImportTypes.MARGIN) {
+                    const article = clean(valueFrom(row, ['Артикул', 'Артикул продавца']));
+                    if (!article) throw new Error('Не найден артикул');
+                    add({
+                        article,
+                        purchasePrice: number(valueFrom(row, ['Закупочная цена'])),
+                        marketPrice: number(valueFrom(row, ['Рыночная цена - сейчас'])),
+                        clientPrice: number(valueFrom(row, ['Цена для клиента'])),
+                        wbCommission: percent(valueFrom(row, ['Комиссия WB'])),
+                        tax: percent(valueFrom(row, ['Налог, %'])),
+                        storageCost: number(valueFrom(row, ['Стоимость хранения'])),
+                        storageDays: number(valueFrom(row, ['Срок хранения'])),
+                        packaging: number(valueFrom(row, ['Упаковка'])),
+                        logistics: number(valueFrom(row, ['Логистика'])),
+                        totalCost: number(valueFrom(row, ['Итого себестоимость'])),
+                        profitPerUnit: number(valueFrom(row, ['Прибыль с 1 шт'])),
+                        profitTotal: number(valueFrom(row, ['Прибыль итого'])),
+                        revenue: number(valueFrom(row, ['Выручка'])),
+                        investment: number(valueFrom(row, ['Вложения'])),
+                        margin: percent(valueFrom(row, ['Маржинальность'])),
+                        volume: number(valueFrom(row, ['Объем'])),
+                        buyoutPercent: percent(valueFrom(row, ['% выкупа (месяц)']))
+                    }, article.toLowerCase());
+                    return;
+                }
+
+                if (type === ImportTypes.ADS) {
+                    const campaign = clean(valueFrom(row, ['Кампания', 'campaign']));
+                    if (!campaign) throw new Error('Не найдено название кампании');
+                    const start = date(valueFrom(row, ['Старт', 'start']));
+                    const id = `${campaign.toLowerCase()}|${start || 'nodate'}`;
+                    add({
+                        id,
+                        campaign,
+                        startDate: valueFrom(row, ['Старт', 'start']) || '',
+                        finishDate: valueFrom(row, ['Финиш', 'finish']) || '',
+                        impressions: number(valueFrom(row, ['Показы'])),
+                        frequency: number(valueFrom(row, ['Частота'])),
+                        clicks: number(valueFrom(row, ['Клики'])),
+                        cpc: number(valueFrom(row, ['CPC'])),
+                        cpm: number(valueFrom(row, ['CPM'])),
+                        ctr: number(valueFrom(row, ['CTR(%)', 'CTR'])),
+                        cr: number(valueFrom(row, ['CR(%)', 'CR'])),
+                        spent: number(valueFrom(row, ['Затраты'])),
+                        orders: number(valueFrom(row, ['Заказанные товары, шт'])),
+                        cartAdds: number(valueFrom(row, ['Добавления в корзину'])),
+                        createdAt: new Date().toISOString()
+                    }, id);
+                }
+            } catch (error) {
+                errors.push({ row: rowNumber, errors: [error.message] });
             }
         });
 
-        console.log(`📊 Итоги: всего ${data.length} строк, ✅ ${records.length} валидных, ❌ ${errors.length} ошибок`);
-
-        if (errors.length > 0) {
-            console.log('🔴 ПЕРВЫЕ 10 ОШИБОК:');
-            errors.slice(0, 10).forEach(err => {
-                console.log(`  Строка ${err.row}: ${err.errors.join(', ')}`);
-            });
-        }
-
-        return {
-            success: errors.length === 0,
-            records,
-            errors,
-            total: data.length,
-            valid: records.length,
-            invalid: errors.length
-        };
+        return { records, errors, total: rows.length, valid: records.length, invalid: errors.length };
     }
 
     static async _saveData(records, type) {
-        const storeMap = {
-            [ImportTypes.NOMENCLATURE]: 'products',
-            [ImportTypes.SALES]: 'sales',
-            [ImportTypes.STOCK_DAILY]: 'stock',
-            [ImportTypes.STOCK_CURRENT]: 'stock',
-            [ImportTypes.PRICES]: 'products',
-            [ImportTypes.MARGIN]: 'products',
-            [ImportTypes.ADS]: 'advertising'
-        };
-
-        const storeName = storeMap[type];
-        if (!storeName) throw new Error(`Неизвестное хранилище для типа: ${type}`);
-
-        // Для PRICES — обновляем цены
-        if (type === ImportTypes.PRICES) {
-            let updated = 0;
-            let skipped = 0;
-            
-            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            
-            for (const record of records) {
-                if (record._type === 'price_record') {
-                    const matchingProducts = allProducts.filter(p => 
-                        p.article === record.article || 
-                        p.articleKey.startsWith(record.article + '|')
-                    );
-                    
-                    if (matchingProducts.length === 0) {
-                        skipped++;
-                        continue;
-                    }
-                    
-                    for (const product of matchingProducts) {
-                        product.price = record.price;
-                        product.discount = record.discount;
-                        product.priceWithDiscount = record.priceWithDiscount;
-                        product.updatedAt = new Date().toISOString();
-                        await Database.save(Database.STORES.PRODUCTS, product);
-                        updated++;
-                    }
-                }
-            }
-            
-            console.log(`[ImportService] Цены: обновлено ${updated}, пропущено ${skipped}`);
-            return records;
-        }
-
-        // ============================================================
-        // ✅ ИСПРАВЛЕНО: Для MARGIN — ищем по articleKey
-        // ============================================================
-        if (type === ImportTypes.MARGIN) {
-            let updated = 0;
-            let skipped = 0;
-            
-            const allProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            
-            for (const record of records) {
-                // Ищем товары, у которых articleKey начинается с артикула из маржинальности
-                // Например: record.article = "21_К_Вельвет"
-                // Ищем: articleKey = "21_К_Вельвет|42|бирюзовый" и т.д.
-                const matchingProducts = allProducts.filter(p => {
-                    if (!p.articleKey) return false;
-                    // Сравниваем начало articleKey с артикулом из маржинальности
-                    return p.articleKey.startsWith(record.article + '|') || 
-                           p.article === record.article;
-                });
-                
-                if (matchingProducts.length === 0) {
-                    skipped++;
-                    continue;
-                }
-                
-                for (const product of matchingProducts) {
-                    product.purchasePrice = record.purchasePrice;
-                    product.marketPrice = record.marketPrice;
-                    product.clientPrice = record.clientPrice;
-                    product.wbCommission = record.wbCommission;
-                    product.tax = record.tax;
-                    product.storageCost = record.storageCost;
-                    product.storageDays = record.storageDays;
-                    product.packaging = record.packaging;
-                    product.logistics = record.logistics;
-                    product.totalCost = record.totalCost;
-                    product.profitPerUnit = record.profitPerUnit;
-                    product.profitTotal = record.profitTotal;
-                    product.revenue = record.revenue;
-                    product.investment = record.investment;
-                    product.margin = record.margin;
-                    product.volume = record.volume;
-                    product.buyoutPercent = record.buyoutPercent;
-                    product.updatedAt = new Date().toISOString();
-                    await Database.save(Database.STORES.PRODUCTS, product);
-                    updated++;
-                }
-            }
-            
-            console.log(`[ImportService] Маржинальность: обновлено ${updated} товаров, пропущено ${skipped}`);
-            return records;
-        }
+        const now = new Date().toISOString();
 
         if (type === ImportTypes.NOMENCLATURE) {
-            const existingProducts = await Database.getAll(Database.STORES.PRODUCTS);
-            const existingKeys = new Set(existingProducts.map(p => p.articleKey));
+            await Database.replaceAll(Database.STORES.PRODUCTS, records.map(record => ({ ...record, updatedAt: now })));
+            return;
+        }
 
-            let added = 0, skipped = 0;
+        if (type === ImportTypes.SALES) {
+            await Database.replaceAll(Database.STORES.SALES, records);
+            return;
+        }
+
+        if (type === ImportTypes.STOCK_CURRENT) {
+            await Database.replaceAll(Database.STORES.STOCK, records);
+            return;
+        }
+
+        if (type === ImportTypes.STOCK_DAILY) {
+            await Database.replaceAll(Database.STORES.STOCK_HISTORY, records);
+
+            // Для карточек товара используем только последнюю дату из истории.
+            const latest = {};
             for (const record of records) {
-                if (existingKeys.has(record.articleKey)) {
-                    skipped++;
-                    continue;
-                }
-                await Database.save(Database.STORES.PRODUCTS, {
-                    id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-                    ...record,
-                    importDate: new Date().toISOString()
-                });
-                added++;
+                const key = `${record.productId}|${record.warehouseName}`;
+                if (!latest[key] || record.date > latest[key].date) latest[key] = record;
             }
-
-            console.log(`[ImportService] Номенклатура: +${added}, пропущено ${skipped}`);
-            return records.filter(r => !existingKeys.has(r.articleKey));
+            await Database.replaceAll(Database.STORES.STOCK, Object.values(latest));
+            return;
         }
 
-        // Для остальных типов — очищаем и загружаем заново
-        await Database.clear(storeName);
-        for (const record of records) {
-            await Database.save(storeName, {
-                id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-                ...record,
-                importDate: new Date().toISOString()
-            });
+        if (type === ImportTypes.PRICES) {
+            const products = await Database.getAll(Database.STORES.PRODUCTS);
+            for (const product of products) {
+                const article = normalizeKey(product.article);
+                const match = records.find(record => normalizeKey(record.article) === article || article.startsWith(normalizeKey(record.article) + '_'));
+                if (!match) continue;
+                product.price = match.price;
+                product.discount = match.discount;
+                product.priceWithDiscount = match.priceWithDiscount;
+                product.updatedAt = now;
+                await Database.save(Database.STORES.PRODUCTS, product);
+            }
+            await Database.replaceAll(Database.STORES.PRICES, records.map((record, index) => ({ ...record, id: `${normalizeKey(record.article)}|${index}` })));
+            return;
         }
 
-        console.log(`[ImportService] ${type}: сохранено ${records.length} записей`);
-        return records;
+        if (type === ImportTypes.MARGIN) {
+            const products = await Database.getAll(Database.STORES.PRODUCTS);
+            for (const product of products) {
+                const article = normalizeKey(product.article);
+                const match = records.find(record => article === normalizeKey(record.article) || article.startsWith(normalizeKey(record.article) + '_'));
+                if (!match) continue;
+                Object.assign(product, match);
+                product.updatedAt = now;
+                await Database.save(Database.STORES.PRODUCTS, product);
+            }
+            return;
+        }
+
+        if (type === ImportTypes.ADS) {
+            await Database.replaceAll(Database.STORES.ADVERTISING, records);
+        }
     }
 
     static downloadTemplate(type) {
         const template = TEMPLATES[type];
-        if (!template) {
-            console.error(`Неизвестный тип: ${type}`);
-            return;
-        }
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet([template.columns]);
-        if (EXAMPLES[type]) {
-            XLSX.utils.sheet_add_aoa(ws, [EXAMPLES[type]], { origin: 'A2' });
-        }
-        ws['!cols'] = template.columns.map(() => ({ wch: 22 }));
-        XLSX.utils.book_append_sheet(wb, ws, 'Шаблон');
-        XLSX.writeFile(wb, template.filename);
+        if (!template || typeof XLSX === 'undefined') return;
+        const workbook = XLSX.utils.book_new();
+        const sheet = XLSX.utils.aoa_to_sheet([template.columns]);
+        XLSX.utils.book_append_sheet(workbook, sheet, 'Шаблон');
+        XLSX.writeFile(workbook, template.filename);
     }
 }
 
