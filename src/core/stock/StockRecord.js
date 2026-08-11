@@ -5,12 +5,12 @@
 class StockRecord {
     constructor(data) {
         this.id = data.id || this._generateId();
-        this.productId = data.productId || '';
-        this.warehouseName = data.warehouseName || ''; // 'Коледино', 'Казань', 'Новосибирск'
-        this.warehouseType = data.warehouseType || 'wb'; // 'wb' | 'own' | 'transit'
-        this.quantity = data.quantity || 0;
-        this.reserved = data.reserved || 0; // зарезервировано под заказы
-        this.available = (data.quantity || 0) - (data.reserved || 0);
+        this.productId = data.productId || data.articleKey || '';
+        this.warehouseName = data.warehouseName || data.warehouse || '';
+        this.warehouseType = data.warehouseType || 'wb';
+        this.quantity = Number(data.quantity) || 0;
+        this.reserved = Number(data.reserved) || 0;
+        this.available = Math.max(0, this.quantity - this.reserved);
         this.date = data.date || new Date().toISOString().split('T')[0];
         this.importBatchId = data.importBatchId || null;
         this.createdAt = data.createdAt || new Date().toISOString();
@@ -22,11 +22,11 @@ class StockRecord {
 
     static createFromImport(data) {
         return new StockRecord({
-            productId: data.productId,
-            warehouseName: data.warehouseName || 'Коледино',
+            productId: data.productId || data.articleKey,
+            warehouseName: data.warehouseName || data.warehouse || 'Не указан',
             warehouseType: data.warehouseType || 'wb',
-            quantity: data.quantity || 0,
-            reserved: data.reserved || 0,
+            quantity: data.quantity,
+            reserved: data.reserved,
             date: data.date,
             importBatchId: data.importBatchId
         });
@@ -43,17 +43,14 @@ class StockRecord {
         });
     }
 
-    // Получить доступное количество
     getAvailable() {
         return Math.max(0, this.quantity - this.reserved);
     }
 
-    // Проверить, есть ли остаток
     hasStock() {
         return this.getAvailable() > 0;
     }
 
-    // Суммировать остатки по товару
     static aggregate(records) {
         if (!records || records.length === 0) {
             return { total: 0, byWarehouse: {}, available: 0, reserved: 0 };
@@ -63,22 +60,23 @@ class StockRecord {
         let total = 0;
         let totalReserved = 0;
 
-        records.forEach(r => {
-            const key = r.warehouseName || 'unknown';
+        records.forEach(record => {
+            const key = record.warehouseName || 'Не указан';
             if (!byWarehouse[key]) {
                 byWarehouse[key] = { quantity: 0, reserved: 0, available: 0 };
             }
-            byWarehouse[key].quantity += r.quantity;
-            byWarehouse[key].reserved += r.reserved;
-            byWarehouse[key].available += r.getAvailable();
-            total += r.quantity;
-            totalReserved += r.reserved;
+
+            byWarehouse[key].quantity += record.quantity;
+            byWarehouse[key].reserved += record.reserved;
+            byWarehouse[key].available += record.getAvailable();
+            total += record.quantity;
+            totalReserved += record.reserved;
         });
 
         return {
             total,
             reserved: totalReserved,
-            available: total - totalReserved,
+            available: Math.max(0, total - totalReserved),
             byWarehouse
         };
     }
