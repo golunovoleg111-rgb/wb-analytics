@@ -1,6 +1,7 @@
 // ============================================================
 // IMPORT SERVICE — BELTANEE
-// Единая нормализация импортов. Исходные значения сохраняются.
+// Существующие шаблоны WB не меняются. Система подстраивается под них.
+// Импорт: файл -> проверка -> нормализация -> дедупликация -> база.
 // ============================================================
 
 import { Database } from '../infrastructure/db.js';
@@ -63,33 +64,61 @@ function upsert(records, map, record) {
     if (map.has(record.id)) { records[map.get(record.id)] = record; return; }
     map.set(record.id, records.length); records.push(record);
 }
+function stableValue(value) {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value && typeof value === 'object') return Object.keys(value).sort().reduce((out, key) => { out[key] = stableValue(value[key]); return out; }, {});
+    return value instanceof Date ? value.toISOString() : value;
+}
+async function fingerprint(type, file, rows) {
+    const payload = JSON.stringify(stableValue({ type, name: clean(file?.name), size: file?.size || 0, rows }));
+    if (globalThis.crypto?.subtle) {
+        const bytes = new TextEncoder().encode(payload); const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return `${type}|sha256:${Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
+    }
+    let hash = 2166136261; for (let i = 0; i < payload.length; i += 1) { hash ^= payload.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+    return `${type}|fnv:${(hash >>> 0).toString(16)}`;
+}
 
 class ImportService {
     static getTemplate(type) { return TEMPLATES[type] || null; }
     static getTemplates() { return { ...TEMPLATES }; }
 
-    static async processFile(file, type) {
+    // Полный импорт существующего шаблона WB. Структура шаблона не изменяется.
+    static async processFile(file, type, options = {}) {
         if (!TEMPLATES[type]) return { success: false, error: `Неизвестный тип импорта: ${type}` };
         if (!file) return { success: false, error: 'Файл не выбран' };
         try {
             const rows = await this._readFile(file);
             const validation = this._validateColumns(rows, TEMPLATES[type]);
             if (!validation.valid) return { success: false, error: validation.error, records: [], errors: [] };
+            const fileFingerprint = await fingerprint(type, file, rows);
+            const previous = await Database.getById(Database.STORES.IMPORTS, fileFingerprint);
+            if (previous && !options.force) return { success: false, duplicateImport: true, error: 'Этот файл с таким содержимым уже импортирован.', importBatchId: previous.id, fileName: previous.fileName, records: [], errors: [], preview: previous.preview || null };
             const parsed = this._parseAndValidate(rows, type);
             if (!parsed.records.length) return { ...parsed, success: false, error: 'В файле нет валидных записей для импорта' };
-            await this._saveData(parsed.records, type);
             const batchId = `${type}|${Date.now()}|${normalizeKey(file.name)}`;
-            await Database.save(Database.STORES.IMPORTS, { id: batchId, type, fileName: file.name, rows: parsed.records.length, errors: parsed.errors.length, createdAt: new Date().toISOString() });
-            return { ...parsed, success: parsed.errors.length === 0, fileName: file.name, importBatchId: batchId };
+            const records = parsed.records.map(record => ({ ...record, importBatchId: batchId }));
+            const preview = this._makePreview(records, parsed, type);
+            if (options.previewOnly) return { ...parsed, records, success: parsed.errors.length === 0, fileName: file.name, importBatchId: batchId, fingerprint: fileFingerprint, preview };
+            await this._saveData(records, type);
+            await Database.save(Database.STORES.IMPORTS, { id: fileFingerprint, type, fileName: file.name, rows: records.length, sourceRows: rows.length, errors: parsed.errors.length, createdAt: new Date().toISOString(), importBatchId: batchId, fingerprint: fileFingerprint, preview });
+            return { ...parsed, records, success: parsed.errors.length === 0, fileName: file.name, importBatchId: batchId, fingerprint: fileFingerprint, preview };
         } catch (error) { console.error('[ImportService]', error); return { success: false, error: error.message, records: [], errors: [] }; }
     }
-    static async importFile(file, type) { return this.processFile(file, type); }
+    static async previewFile(file, type) { return this.processFile(file, type, { previewOnly: true }); }
+    static async importFile(file, type, options = {}) { return this.processFile(file, type, options); }
+    static async getImportHistory() { return (await Database.getAll(Database.STORES.IMPORTS)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))); }
+
+    static _makePreview(records, parsed, type) {
+        const dates = records.map(r => r.date).filter(Boolean).sort();
+        return { type, description: TEMPLATES[type]?.description || type, sourceRows: parsed.total, validRows: parsed.valid, invalidRows: parsed.invalid, recordCount: records.length, duplicateRows: Math.max(0, parsed.total - parsed.valid - parsed.invalid), dateFrom: dates[0] || null, dateTo: dates.at(-1) || null, errors: parsed.errors.slice(0, 20), sample: records.slice(0, 8).map(r => ({ article: r.article || r.articleKey || r.id, productGroupKey: r.productGroupKey, color: r.color, size: r.size, warehouse: r.warehouseName, date: r.date })) };
+    }
 
     static _readFile(file) {
         return new Promise((resolve, reject) => {
             if (typeof XLSX === 'undefined') return reject(new Error('Библиотека XLSX не загружена'));
             const reader = new FileReader();
-            reader.onload = event => { try { const workbook = XLSX.read(event.target.result, { type: 'array', cellDates: true }); const sheet = workbook.Sheets[workbook.SheetNames[0]]; resolve(XLSX.utils.sheet_to_json(sheet, { defval: '' })); } catch (error) { reject(new Error(`Не удалось распознать Excel/CSV: ${error.message}`)); } };
+            reader.onload = event => { try { const workbook = XLSX.read(event.target.result, { type: 'array', cellDates: true }); const sheet = workbook.Sheets[workbook.SheetNames[0]]; if (!sheet) throw new Error('В файле не найден лист'); resolve(XLSX.utils.sheet_to_json(sheet, { defval: '' })); } catch (error) { reject(new Error(`Не удалось распознать Excel/CSV: ${error.message}`)); } };
             reader.onerror = () => reject(new Error('Ошибка чтения файла')); reader.readAsArrayBuffer(file);
         });
     }
@@ -109,14 +138,15 @@ class ImportService {
                     const article = clean(valueFrom(row, ['Артикул продавца','Артикул','article'])); const size = clean(valueFrom(row, ['Размер','Размер вещи','size']));
                     if (!article) throw new Error('Не найден артикул');
                     const data = productData(article, size, { name: clean(valueFrom(row, ['Название карточки','Название','name'])) || article, barcode: clean(valueFrom(row, ['Баркод','barcode','Штрихкод'])), tnved: clean(valueFrom(row, ['ТН ВЭД','tnved'])), fabric: clean(valueFrom(row, ['Состав ткани','fabric'])), gtin: clean(valueFrom(row, ['GTIN','gtin'])), category: clean(valueFrom(row, ['Предмет','Категория','category'])) || 'Товар', status: 'active' });
-                    if (!data.size && size) data.size = size;
                     upsert(records, seen, { ...data, id: data.articleKey }); return;
                 }
                 if (type === ImportTypes.SALES) {
                     const article = clean(valueFrom(row, ['Артикул продавца','Артикул','article'])); const day = date(valueFrom(row, ['День','Дата','Дата заказа','Date'])); if (!article || !day) throw new Error('Не найден артикул или дата');
-                    const parsed = productData(article, valueFrom(row, ['Размер','Размер вещи','size']), {});
-                    const id = `${normalizeKey(parsed.article)}|${day}`;
-                    upsert(records, seen, { id, productId: parsed.article, article: parsed.article, articleKey: parsed.articleKey, productGroupKey: parsed.productGroupKey, color: parsed.color, size: parsed.size, date: day, orders: number(valueFrom(row, ['Заказано, шт.','Заказано шт.','Заказано','Количество заказов'])), delivered: number(valueFrom(row, ['Выкупили, шт.','Выкупили шт.','Выкупили','Выкуплено'])), returns: number(valueFrom(row, ['Возвраты, шт.','Возвраты','Возвратов'])), amount: number(valueFrom(row, ['К перечислению за товар, руб.','К перечислению за товар','Сумма выкупа'])), totalAmount: number(valueFrom(row, ['Сумма заказов минус комиссия WB, руб.','Сумма заказов минус комиссия WB','Сумма заказов, руб.'])), createdAt: new Date().toISOString() }); return;
+                    const parsed = productData(article, valueFrom(row, ['Размер','Размер вещи','size']), { barcode: valueFrom(row, ['Баркод','Штрихкод','barcode']) });
+                    const id = `${parsed.articleKey}|${day}`;
+                    const current = records[seen.get(id)];
+                    const incoming = { id, productId: parsed.articleKey, article: parsed.article, articleKey: parsed.articleKey, productGroupKey: parsed.productGroupKey, color: parsed.color, size: parsed.size, barcode: clean(parsed.barcode), date: day, orders: number(valueFrom(row, ['Заказано, шт.','Заказано шт.','Заказано','Количество заказов'])), delivered: number(valueFrom(row, ['Выкупили, шт.','Выкупили шт.','Выкуплено','Выкупили'])), returns: number(valueFrom(row, ['Возвраты, шт.','Возвраты','Возвратов'])), amount: number(valueFrom(row, ['К перечислению за товар, руб.','К перечислению за товар','Сумма выкупа'])), totalAmount: number(valueFrom(row, ['Сумма заказов минус комиссия WB, руб.','Сумма заказов минус комиссия WB','Сумма заказов, руб.'])), createdAt: new Date().toISOString() };
+                    if (current) { current.orders += incoming.orders; current.delivered += incoming.delivered; current.returns += incoming.returns; current.amount += incoming.amount; current.totalAmount += incoming.totalAmount; } else upsert(records, seen, incoming); return;
                 }
                 if (type === ImportTypes.STOCK_DAILY) {
                     const article = clean(valueFrom(row, ['Артикул продавца','Артикул','article'])); const size = clean(valueFrom(row, ['Размер','Размер вещи','size'])); const warehouse = normalizeWarehouse(valueFrom(row, ['Склад','warehouse'])); if (!article || !warehouse) throw new Error('Не найден артикул или склад');
