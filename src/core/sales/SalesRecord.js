@@ -1,81 +1,77 @@
 // ============================================================
-// SALES RECORD — ЗАПИСЬ О ПРОДАЖАХ
-// Сущность — только данные, без логики
+// SALES RECORD — ДНЕВНАЯ ЗАПИСЬ ПРОДАЖ
 // ============================================================
 
+function clean(value) {
+    return String(value ?? '').trim();
+}
+
+function number(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+}
+
 class SalesRecord {
-    constructor(data) {
-        this.id = data.id || this._generateId();
-        this.productId = data.productId || '';
-        this.date = data.date || new Date().toISOString().split('T')[0];
-        this.orders = data.orders || 0;
-        this.delivered = data.delivered || 0;
-        this.returns = data.returns || 0;
-        this.amount = data.amount || 0;
+    constructor(data = {}) {
+        this.productId = clean(data.productId || data.article);
+        this.article = clean(data.article || this.productId);
+        this.date = clean(data.date) || new Date().toISOString().slice(0, 10);
+        this.id = clean(data.id) || SalesRecord.makeId(this.productId, this.date);
+        this.orders = number(data.orders);
+        this.delivered = number(data.delivered);
+        this.returns = number(data.returns);
+        this.amount = number(data.amount);
+        this.totalAmount = number(data.totalAmount || data.amount);
         this.importBatchId = data.importBatchId || null;
         this.createdAt = data.createdAt || new Date().toISOString();
     }
 
-    _generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    static makeId(productId, date) {
+        return `${clean(productId)}|${clean(date)}`;
     }
-
-    // ============================================================
-    // СТАТИЧЕСКИЕ МЕТОДЫ
-    // ============================================================
 
     static createFromImport(data) {
+        const productId = clean(data.productId || data.article);
+        const date = clean(data.date);
         return new SalesRecord({
-            productId: data.productId,
-            date: data.date,
-            orders: data.orders || 0,
-            delivered: data.delivered || 0,
-            returns: data.returns || 0,
-            amount: data.amount || 0,
-            importBatchId: data.importBatchId || null
-        });
-    }
-
-    // Создать тестовую запись
-    static createTest(productId, date, orders, delivered, returns, amount) {
-        return new SalesRecord({
+            ...data,
+            id: data.id || SalesRecord.makeId(productId, date),
             productId,
+            article: clean(data.article || productId),
             date,
-            orders,
-            delivered,
-            returns,
-            amount
+            orders: data.orders,
+            delivered: data.delivered,
+            returns: data.returns,
+            amount: data.amount,
+            totalAmount: data.totalAmount || data.amount
         });
     }
 
-    // Агрегация: сумма продаж за период
-    static aggregate(salesRecords) {
-        if (!salesRecords || salesRecords.length === 0) {
-            return { totalOrders: 0, totalDelivered: 0, totalReturns: 0, totalAmount: 0 };
-        }
+    static createTest(productId, date, orders, delivered, returns, amount) {
+        return this.createFromImport({ productId, date, orders, delivered, returns, amount });
+    }
 
-        return salesRecords.reduce((acc, record) => ({
-            totalOrders: acc.totalOrders + record.orders,
-            totalDelivered: acc.totalDelivered + record.delivered,
-            totalReturns: acc.totalReturns + record.returns,
-            totalAmount: acc.totalAmount + record.amount
+    static aggregate(records) {
+        return (records || []).reduce((acc, record) => ({
+            totalOrders: acc.totalOrders + number(record.orders),
+            totalDelivered: acc.totalDelivered + number(record.delivered),
+            totalReturns: acc.totalReturns + number(record.returns),
+            totalAmount: acc.totalAmount + number(record.amount)
         }), { totalOrders: 0, totalDelivered: 0, totalReturns: 0, totalAmount: 0 });
     }
 
-    // Фильтрация по дате
     static filterByPeriod(records, startDate, endDate) {
-        if (!records || records.length === 0) return [];
-        return records.filter(r => r.date >= startDate && r.date <= endDate);
+        return (records || []).filter(record => record.date >= startDate && record.date <= endDate);
     }
 
-    // Получить продажи за последние N дней
-    static filterLastDays(records, days) {
-        if (!records || records.length === 0) return [];
-        const today = new Date();
-        const cutoff = new Date(today);
-        cutoff.setDate(cutoff.getDate() - days);
-        const cutoffStr = cutoff.toISOString().split('T')[0];
-        return records.filter(r => r.date >= cutoffStr);
+    static filterLastDays(records, days = 30) {
+        const end = new Date();
+        const start = new Date(end);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - Math.max(0, Number(days) - 1));
+        const startStr = start.toISOString().slice(0, 10);
+        const endStr = end.toISOString().slice(0, 10);
+        return this.filterByPeriod(records, startStr, endStr);
     }
 }
 
