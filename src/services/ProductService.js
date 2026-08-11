@@ -1,39 +1,46 @@
 // ============================================================
-// PRODUCT SERVICE
-// Сервис для работы с товарами (для UI)
+// PRODUCT SERVICE — BELTANEE
+// Логическая модель товара: одно изделие = одна карточка,
+// внутри которой находятся цвета, размеры и артикулы вариантов.
 // ============================================================
 
 import ProductAggregate from '../core/product/ProductAggregate.js';
 import Database from '../infrastructure/db.js';
 
-/**
- * ProductService — предоставляет API для UI
- * 
- * Отвечает за:
- *   - получение списков товаров для отображения
- *   - создание, обновление, архивацию
- *   - поиск
- *   - генерацию событий
- */
-class ProductService {
-    
-    // ============================================================
-    // СОЗДАНИЕ
-    // ============================================================
+function clean(value) {
+    return String(value ?? '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+}
 
-    /**
-     * Создать товар из импорта
-     */
+function normalize(value) {
+    return clean(value).toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Ключ изделия.
+ * WB-артикулы в нашем бизнесе могут выглядеть, например:
+ *   21_К_Вельвет_голубой
+ *   21_К_Вельвет_темно-синий
+ *   21_К_Вельвет_голубой_M
+ *
+ * Все такие варианты относятся к одному изделию с кодом 21.
+ * Если код состоит из нескольких цифр, сохраняем его целиком:
+ * 211 ≠ 21.
+ */
+export function getProductGroupKey(article) {
+    const value = clean(article);
+    const match = value.match(/^(\d+)/);
+    return match ? match[1] : normalize(value.split('_')[0] || value);
+}
+
+export function getVariantKey(product) {
+    return normalize(product?.articleKey || product?.article || product?.id);
+}
+
+class ProductService {
     static async createFromImport(data) {
         try {
             const product = await ProductAggregate.create(data);
-            
-            this._emitEvent('ProductCreated', {
-                productId: product.id,
-                article: product.article,
-                source: 'import'
-            });
-            
+            this._emitEvent('ProductCreated', { productId: product.id, article: product.article, source: 'import' });
             return product;
         } catch (error) {
             console.error('[ProductService] createFromImport error:', error.message);
@@ -41,19 +48,10 @@ class ProductService {
         }
     }
 
-    /**
-     * Создать товар вручную
-     */
     static async createManual(data) {
         try {
             const product = await ProductAggregate.createManual(data);
-            
-            this._emitEvent('ProductCreated', {
-                productId: product.id,
-                article: product.article,
-                source: 'manual'
-            });
-            
+            this._emitEvent('ProductCreated', { productId: product.id, article: product.article, source: 'manual' });
             return product;
         } catch (error) {
             console.error('[ProductService] createManual error:', error.message);
@@ -61,115 +59,97 @@ class ProductService {
         }
     }
 
-    /**
-     * Создать несколько товаров из импорта
-     */
     static async createManyFromImport(items) {
         const results = [];
         const errors = [];
-        
         for (const item of items) {
-            try {
-                const product = await this.createFromImport(item);
-                results.push(product);
-            } catch (error) {
-                errors.push({
-                    article: item.article,
-                    error: error.message
-                });
-            }
+            try { results.push(await this.createFromImport(item)); }
+            catch (error) { errors.push({ article: item.article, error: error.message }); }
         }
-        
         return { results, errors };
     }
 
-    // ============================================================
-    // ЧТЕНИЕ
-    // ============================================================
+    static async getById(id) { return ProductAggregate.getById(id); }
+    static async findByArticle(article) { return ProductAggregate.findByArticle(article); }
+    static async getActive() { return ProductAggregate.getActive(); }
+    static async getAll() { return ProductAggregate.getAll(); }
+    static async getArchived() { return ProductAggregate.getArchived(); }
 
     /**
-     * Получить товар по ID
-     */
-    static async getById(id) {
-        return await ProductAggregate.getById(id);
-    }
-
-    /**
-     * Получить товар по артикулу (возвращает массив, т.к. артикул не уникален)
-     */
-    static async findByArticle(article) {
-        return await ProductAggregate.findByArticle(article);
-    }
-
-    /**
-     * Получить все активные товары
-     */
-    static async getActive() {
-        return await ProductAggregate.getActive();
-    }
-
-    /**
-     * Получить все товары
-     */
-    static async getAll() {
-        return await ProductAggregate.getAll();
-    }
-
-    /**
-     * Получить архивированные товары
-     */
-    static async getArchived() {
-        return await ProductAggregate.getArchived();
-    }
-
-    // ============================================================
-    // ПОЛУЧИТЬ ТОВАРЫ ПО БАЗЕ АРТИКУЛА (НОВЫЙ МЕТОД)
-    // ============================================================
-
-    /**
-     * Получить все товары, относящиеся к одной базе (модели)
-     * Например: baseModel = "21_К_Вельвет" → все размеры и цвета
+     * Получить все варианты одного физического изделия.
+     * Основной идентификатор изделия — цифровой код в начале артикула.
+     * Это намеренно не зависит от цвета/размера/остатка.
      */
     static async getByBaseModel(baseModel) {
         if (!baseModel) return [];
+        const target = normalize(baseModel);
         const all = await this.getAll();
-        return all.filter(p => 
-            p.baseModel === baseModel || 
-            p.article === baseModel ||
-            (p.articleKey && p.articleKey.startsWith(baseModel + '|'))
-        );
-    }
-
-    /**
-     * Получить список всех уникальных базовых моделей
-     */
-    static async getBaseModels() {
-        const all = await this.getAll();
-        const bases = new Set();
-        all.forEach(p => {
-            const base = p.baseModel || p.article;
-            if (base) bases.add(base);
+        return all.filter(product => {
+            const groupKey = normalize(product.productGroupKey || product.baseModel || getProductGroupKey(product.article));
+            return groupKey === target || normalize(product.article) === target;
         });
-        return Array.from(bases);
     }
 
-    // ============================================================
-    // ОБНОВЛЕНИЕ
-    // ============================================================
-
     /**
-     * Обновить товар
+     * Возвращает уникальные изделия, а не строки вариантов.
+     * Один код 21 = одна карточка, независимо от количества цветов/размеров.
      */
+    static async getProductGroups({ activeOnly = true } = {}) {
+        const all = activeOnly ? await this.getActive() : await this.getAll();
+        const groups = new Map();
+
+        for (const product of all) {
+            const key = normalize(product.productGroupKey || product.baseModel || getProductGroupKey(product.article));
+            if (!key) continue;
+
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    id: key,
+                    productGroupKey: key,
+                    baseModel: key,
+                    name: clean(product.name) || clean(product.title) || key,
+                    variants: [],
+                    colors: new Set(),
+                    sizes: new Set(),
+                    articles: new Set(),
+                    barcodes: new Set()
+                });
+            }
+
+            const group = groups.get(key);
+            group.variants.push(product);
+            if (product.color) group.colors.add(product.color);
+            if (product.size) group.sizes.add(product.size);
+            if (product.article) group.articles.add(product.article);
+            if (product.barcode) group.barcodes.add(product.barcode);
+
+            // Рабочее название берём из номенклатуры, а не из артикула.
+            // Если у одной группы название заполнено только у части вариантов,
+            // используем первое непустое значение.
+            if ((!group.name || group.name === key) && product.name) group.name = product.name;
+        }
+
+        return Array.from(groups.values()).map(group => ({
+            ...group,
+            colors: Array.from(group.colors),
+            sizes: Array.from(group.sizes),
+            articles: Array.from(group.articles),
+            barcodes: Array.from(group.barcodes),
+            variantCount: group.variants.length,
+            colorCount: group.colors.size,
+            sizeCount: group.sizes.size
+        }));
+    }
+
+    static async getBaseModels() {
+        const groups = await this.getProductGroups({ activeOnly: false });
+        return groups.map(group => group.productGroupKey);
+    }
+
     static async update(id, data) {
         try {
             const product = await ProductAggregate.update(id, data);
-            
-            this._emitEvent('ProductUpdated', {
-                productId: product.id,
-                article: product.article,
-                changes: data
-            });
-            
+            this._emitEvent('ProductUpdated', { productId: product.id, article: product.article, changes: data });
             return product;
         } catch (error) {
             console.error('[ProductService] update error:', error.message);
@@ -177,23 +157,10 @@ class ProductService {
         }
     }
 
-    // ============================================================
-    // АРХИВАЦИЯ
-    // ============================================================
-
-    /**
-     * Архивировать товар
-     */
     static async archive(id, options = {}) {
         try {
             const product = await ProductAggregate.archive(id, options);
-            
-            this._emitEvent('ProductArchived', {
-                productId: product.id,
-                article: product.article,
-                archivedAt: product.archivedAt
-            });
-            
+            this._emitEvent('ProductArchived', { productId: product.id, article: product.article, archivedAt: product.archivedAt });
             return product;
         } catch (error) {
             console.error('[ProductService] archive error:', error.message);
@@ -201,18 +168,10 @@ class ProductService {
         }
     }
 
-    /**
-     * Восстановить товар из архива
-     */
     static async restore(id) {
         try {
             const product = await ProductAggregate.restore(id);
-            
-            this._emitEvent('ProductRestored', {
-                productId: product.id,
-                article: product.article
-            });
-            
+            this._emitEvent('ProductRestored', { productId: product.id, article: product.article });
             return product;
         } catch (error) {
             console.error('[ProductService] restore error:', error.message);
@@ -220,63 +179,21 @@ class ProductService {
         }
     }
 
-    // ============================================================
-    // ПОИСК
-    // ============================================================
-
-    /**
-     * Поиск товаров
-     */
-    static async search(query) {
-        return await ProductAggregate.search(query);
-    }
-
-    // ============================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (для UI)
-    // ============================================================
-
-    /**
-     * Получить товары с дополнительными метриками (для списка)
-     */
-    static async getWithMetrics() {
-        const products = await this.getActive();
-        return products;
-    }
-
-    // ============================================================
-    // СОБЫТИЯ
-    // ============================================================
+    static async search(query) { return ProductAggregate.search(query); }
+    static async getWithMetrics() { return this.getActive(); }
 
     static _eventListeners = {};
-
     static on(eventName, callback) {
-        if (!this._eventListeners[eventName]) {
-            this._eventListeners[eventName] = [];
-        }
+        if (!this._eventListeners[eventName]) this._eventListeners[eventName] = [];
         this._eventListeners[eventName].push(callback);
     }
-
     static _emitEvent(eventName, data) {
-        const listeners = this._eventListeners[eventName] || [];
-        listeners.forEach(callback => {
-            try {
-                callback(data);
-            } catch (error) {
-                console.error(`[ProductService] Event listener error for ${eventName}:`, error);
-            }
+        (this._eventListeners[eventName] || []).forEach(callback => {
+            try { callback(data); } catch (error) { console.error(`[ProductService] Event listener error for ${eventName}:`, error); }
         });
     }
 
-    // ============================================================
-    // ОЧИСТКА
-    // ============================================================
-
-    /**
-     * Очистить все товары (использовать с осторожностью!)
-     */
-    static async clearAll() {
-        await Database.clear(Database.STORES.PRODUCTS);
-    }
+    static async clearAll() { await Database.clear(Database.STORES.PRODUCTS); }
 }
 
 export default ProductService;
