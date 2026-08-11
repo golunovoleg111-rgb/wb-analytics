@@ -8,8 +8,8 @@ import { Database } from '../../infrastructure/db.js';
 const NON_WAREHOUSE_COLUMNS = new Set([
     'всего на складах', 'всего находится на складах', 'итого на складах', 'остаток всего', 'всего',
     'артикул продавца', 'артикул', 'название', 'название карточки', 'размер', 'размер вещи',
-    'в пути до получателей', 'в пути возвраты на склад wb', 'в пути возвраты', 'баркод', 'штрихкод',
-    'nm id', 'nmid', 'vendorcode', 'артикул wb', 'предмет', 'категория'
+    'цвет', 'размер и цвет', 'в пути до получателей', 'в пути возвраты на склад wb', 'в пути возвраты',
+    'баркод', 'штрихкод', 'nm id', 'nmid', 'vendorcode', 'артикул wb', 'предмет', 'категория'
 ]);
 
 function warehouseKey(name) {
@@ -21,11 +21,16 @@ function isRealWarehouse(name) {
     return Boolean(value) && !NON_WAREHOUSE_COLUMNS.has(value);
 }
 
-function latestByWarehouse(records) {
+function variantKey(record) {
+    return [record.warehouseName, record.size, record.color, record.barcode].map(value => String(value || '').trim().toLowerCase()).join('|');
+}
+
+function latestByWarehouseAndVariant(records) {
     const latest = {};
-    for (const record of records || []) {
+    for (const raw of records || []) {
+        const record = raw instanceof StockRecord ? raw : new StockRecord(raw);
         if (!isRealWarehouse(record.warehouseName)) continue;
-        const key = warehouseKey(record.warehouseName);
+        const key = variantKey(record);
         const current = latest[key];
         if (!current || String(record.date) > String(current.date) ||
             (String(record.date) === String(current.date) && String(record.createdAt) > String(current.createdAt))) {
@@ -57,7 +62,7 @@ class StockAggregate {
         return all.filter(r => r.productId === productId && isRealWarehouse(r.warehouseName)).map(r => new StockRecord(r));
     }
 
-    static async getCurrent(productId) { return latestByWarehouse(await this.getByProduct(productId)); }
+    static async getCurrent(productId) { return latestByWarehouseAndVariant(await this.getByProduct(productId)); }
     static async getAggregated(productId) { return StockRecord.aggregate(await this.getCurrent(productId)); }
 
     static async getAllAggregated() {
@@ -68,7 +73,9 @@ class StockAggregate {
             groups[record.productId].push(record);
         }
         const result = {};
-        for (const [productId, records] of Object.entries(groups)) result[productId] = StockRecord.aggregate(latestByWarehouse(records));
+        for (const [productId, records] of Object.entries(groups)) {
+            result[productId] = StockRecord.aggregate(latestByWarehouseAndVariant(records));
+        }
         return result;
     }
 
