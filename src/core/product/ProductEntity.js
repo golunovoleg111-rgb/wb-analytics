@@ -2,43 +2,21 @@
 // PRODUCT ENTITY — ИЗДЕЛИЕ / ВАРИАНТ
 // ============================================================
 
-function clean(value) {
-    return String(value ?? '').trim();
-}
+import { parseProductArticle, makeVariantKey } from './ProductParser.js';
 
-function normalize(value) {
-    return clean(value).toLowerCase().replace(/\\s+/g, ' ');
-}
-
-function extractProductGroupKey(article) {
-    const value = clean(article);
-    const match = value.match(/^(\\d{2,3})(?:_|$)/);
-    return match ? match[1] : normalize(value);
-}
-
-function extractSize(article, suppliedSize = '') {
-    if (clean(suppliedSize)) return clean(suppliedSize);
-    const parts = clean(article).split('_').filter(Boolean);
-    const last = parts.at(-1) || '';
-    return /^(XXS|XS|S|M|L|XL|XXL|XXXL|[0-9]{2,3})$/i.test(last) ? last : '';
-}
-
-function extractColor(article, suppliedColor = '', size = '') {
-    if (clean(suppliedColor)) return clean(suppliedColor);
-    const parts = clean(article).split('_').filter(Boolean);
-    if (size && parts.at(-1)?.toLowerCase() === size.toLowerCase()) parts.pop();
-    // Цвет обычно является последним текстовым сегментом после модели.
-    return parts.length >= 2 ? parts.at(-1) : '';
-}
+function clean(value) { return String(value ?? '').trim(); }
+function normalize(value) { return clean(value).toLowerCase().replace(/\s+/g, ' '); }
 
 class ProductEntity {
     constructor(data = {}) {
         this.article = clean(data.article);
-        this.size = extractSize(this.article, data.size);
-        this.color = extractColor(this.article, data.color, this.size);
-        this.productGroupKey = clean(data.productGroupKey) || extractProductGroupKey(this.article);
+        const parsed = parseProductArticle(this.article, { size: data.size, color: data.color });
+        this.originalArticle = parsed.originalArticle;
+        this.size = parsed.size;
+        this.color = parsed.color;
+        this.productGroupKey = clean(data.productGroupKey) || parsed.productGroupKey;
         this.baseModel = clean(data.baseArticle || data.baseModel) || this.productGroupKey;
-        this.articleKey = clean(data.articleKey) || this._generateArticleKey(this.article, this.size, this.color, data.barcode);
+        this.articleKey = clean(data.articleKey) || makeVariantKey(parsed, data.barcode);
         this.id = clean(data.id) || this.articleKey;
         this.category = clean(data.category) || 'Товар';
         this.barcode = clean(data.barcode);
@@ -54,43 +32,25 @@ class ProductEntity {
         this.archivedAt = data.archivedAt || null;
     }
 
-    _generateArticleKey(article, size, color, barcode) {
-        const a = normalize(article);
-        const b = clean(barcode);
-        if (b) return `${a}|${b}`;
-        return `${a}|${normalize(size) || 'nosize'}|${normalize(color) || 'nocolor'}`;
-    }
-
     update(data = {}) {
         Object.assign(this, data);
         if (data.article || data.size || data.color || data.barcode) {
-            this.size = extractSize(this.article, this.size);
-            this.color = extractColor(this.article, this.color, this.size);
-            this.productGroupKey = clean(this.productGroupKey) || extractProductGroupKey(this.article);
-            this.articleKey = this._generateArticleKey(this.article, this.size, this.color, this.barcode);
+            const parsed = parseProductArticle(this.article, { size: data.size || this.size, color: data.color || this.color });
+            this.originalArticle = parsed.originalArticle;
+            this.size = parsed.size;
+            this.color = parsed.color;
+            this.productGroupKey = clean(data.productGroupKey) || parsed.productGroupKey;
+            this.articleKey = makeVariantKey(parsed, this.barcode);
             this.id = this.articleKey;
         }
         this.updatedAt = new Date().toISOString();
         return this;
     }
 
-    archive() {
-        this.status = 'archived';
-        this.archivedAt = new Date().toISOString();
-        this.updatedAt = new Date().toISOString();
-        return this;
-    }
-
-    restore() {
-        this.status = 'active';
-        this.archivedAt = null;
-        this.updatedAt = new Date().toISOString();
-        return this;
-    }
-
+    archive() { this.status = 'archived'; this.archivedAt = new Date().toISOString(); this.updatedAt = new Date().toISOString(); return this; }
+    restore() { this.status = 'active'; this.archivedAt = null; this.updatedAt = new Date().toISOString(); return this; }
     isActive() { return this.status === 'active'; }
     isArchived() { return this.status === 'archived'; }
-
     static createFromImport(data) { return new ProductEntity({ ...data, status: 'active' }); }
     static createManual(data) { return new ProductEntity({ ...data, status: 'active' }); }
 }
