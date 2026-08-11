@@ -4,6 +4,7 @@
 
 const DB_NAME = 'BeltaneeDB_v6_1';
 const DB_VERSION = 5;
+const BULK_CHUNK_SIZE = 1000;
 
 const STORES = {
     PRODUCTS: 'products', SALES: 'sales', STOCK: 'stock', STOCK_HISTORY: 'stockHistory',
@@ -52,21 +53,18 @@ function openDB() {
             const transaction = event.target.transaction;
             Object.values(STORES).forEach(name => createStore(db, name));
             configureIndexes(db, transaction);
-            // v4 содержала старую схему производных данных. После v5 база
-            // начинается с чистых фактов продаж/остатков; товары и настройки сохраняются.
             if (event.oldVersion < 5) {
                 [STORES.SALES, STORES.STOCK, STORES.STOCK_HISTORY, STORES.FINANCE].forEach(name => {
                     if (db.objectStoreNames.contains(name)) transaction.objectStore(name).clear();
                 });
             }
         };
-        request.onsuccess = event => {
-            const db = event.target.result; db.onversionchange = () => db.close(); resolve(db);
-        };
+        request.onsuccess = event => { const db = event.target.result; db.onversionchange = () => db.close(); resolve(db); };
         request.onerror = event => reject(event.target.error || new Error('Не удалось открыть базу данных'));
         request.onblocked = () => reject(new Error('База данных занята другой вкладкой. Закройте другие вкладки BELTANEE.'));
     });
 }
+
 function withTransaction(storeName, mode, callback) {
     return openDB().then(db => new Promise((resolve, reject) => {
         let result; let settled = false;
@@ -79,9 +77,48 @@ function withTransaction(storeName, mode, callback) {
         tx.onabort = () => finish(reject, tx.error || new Error('Транзакция IndexedDB отменена'));
     }));
 }
+
+function yieldToBrowser() {
+    return new Promise(resolve => {
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 50 });
+        else setTimeout(resolve, 0);
+    });
+}
+
 function save(storeName, data) { return withTransaction(storeName, 'readwrite', store => store.put(data)); }
-function saveMany(storeName, records) { const items = Array.isArray(records) ? records : []; return withTransaction(storeName, 'readwrite', store => { items.forEach(record => store.put(record)); return items.length; }); }
-function replaceAll(storeName, records) { const items = Array.isArray(records) ? records : []; return withTransaction(storeName, 'readwrite', store => { store.clear(); items.forEach(record => store.put(record)); return items.length; }); }
+
+async function saveMany(storeName, records, options = {}) {
+    const items = Array.isArray(records) ? records : [];
+    const chunkSize = Math.max(100, Number(options.chunkSize) || BULK_CHUNK_SIZE);
+    let saved = 0;
+    for (let offset = 0; offset < items.length; offset += chunkSize) {
+        const chunk = items.slice(offset, offset + chunkSize);
+        await withTransaction(storeName, 'readwrite', store => {
+            chunk.forEach(record => store.put(record));
+            return chunk.length;
+        });
+        saved += chunk.length;
+        if (offset + chunk.length < items.length) await yieldToBrowser();
+        if (typeof options.onProgress === 'function') options.onProgress(saved, items.length);
+    }
+    return saved;
+}
+
+async function replaceAll(storeName, records, options = {}) {
+    const items = Array.isArray(records) ? records : [];
+    const chunkSize = Math.max(100, Number(options.chunkSize) || BULK_CHUNK_SIZE);
+    await clear(storeName);
+    let saved = 0;
+    for (let offset = 0; offset < items.length; offset += chunkSize) {
+        const chunk = items.slice(offset, offset + chunkSize);
+        await withTransaction(storeName, 'readwrite', store => { chunk.forEach(record => store.put(record)); return chunk.length; });
+        saved += chunk.length;
+        if (offset + chunk.length < items.length) await yieldToBrowser();
+        if (typeof options.onProgress === 'function') options.onProgress(saved, items.length);
+    }
+    return saved;
+}
+
 function getAll(storeName) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.getAll(); request.onsuccess = () => resolve(request.result || []); request.onerror = () => reject(request.error); })); }
 function getById(storeName, id) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.get(id); request.onsuccess = () => resolve(request.result || null); request.onerror = () => reject(request.error); })); }
 function getByIndex(storeName, indexName, value) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { let index; try { index = store.index(indexName); } catch { reject(new Error(`Индекс ${indexName} отсутствует в ${storeName}`)); return; } const request = index.getAll(value); request.onsuccess = () => resolve(request.result || []); request.onerror = () => reject(request.error); })); }
@@ -89,5 +126,5 @@ function deleteById(storeName, id) { return withTransaction(storeName, 'readwrit
 function clear(storeName) { return withTransaction(storeName, 'readwrite', store => store.clear()); }
 function count(storeName) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.count(); request.onsuccess = () => resolve(request.result || 0); request.onerror = () => reject(request.error); })); }
 
-export const Database = { DB_NAME, DB_VERSION, STORES, openDB, save, saveMany, replaceAll, getAll, getById, getByIndex, delete: deleteById, clear, count };
+export const Database = { DB_NAME, DB_VERSION, BULK_CHUNK_SIZE, STORES, openDB, save, saveMany, replaceAll, getAll, getById, getByIndex, delete: deleteById, clear, count };
 export default Database;
