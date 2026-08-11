@@ -6,6 +6,10 @@ function clean(value) {
     return String(value ?? '').trim();
 }
 
+function warehouseKey(value) {
+    return clean(value).toLowerCase().replace(/\s+/g, ' ');
+}
+
 function number(value) {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
@@ -31,7 +35,7 @@ class StockRecord {
     }
 
     static makeId(productId, warehouseName, date) {
-        return `${clean(productId)}|${clean(warehouseName)}|${clean(date)}`;
+        return `${clean(productId)}|${warehouseKey(warehouseName)}|${clean(date)}`;
     }
 
     static createFromImport(data) {
@@ -65,9 +69,10 @@ class StockRecord {
         let inTransitFrom = 0;
 
         for (const record of records || []) {
-            const key = clean(record.warehouseName) || 'Не указан';
+            const displayName = clean(record.warehouseName) || 'Не указан';
+            const key = warehouseKey(displayName) || 'не указан';
             if (!byWarehouse[key]) {
-                byWarehouse[key] = { quantity: 0, reserved: 0, available: 0 };
+                byWarehouse[key] = { name: displayName, quantity: 0, reserved: 0, available: 0 };
             }
 
             const quantity = number(record.quantity);
@@ -89,7 +94,7 @@ class StockRecord {
             available: Math.max(0, total - totalReserved),
             inTransitTo,
             inTransitFrom,
-            byWarehouse
+            byWarehouse: Object.fromEntries(Object.values(byWarehouse).map(item => [item.name, item]))
         };
     }
 }
