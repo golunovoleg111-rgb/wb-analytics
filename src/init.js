@@ -9,7 +9,15 @@ import { getDemoExperience, getDemoOnboardingState, completeDemoOnboarding } fro
 import { installV61Pages } from './ui/v61AnalyticsPages.js';
 import { initImportController } from './ui/importController.js';
 import { showLoading, setLoadingMessage, hideLoading } from './ui/loadingScreen.js';
-import './demo/demoStyles.css';
+
+function loadDemoStyles() {
+    if (document.querySelector('link[data-beltanee-demo-styles]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = './src/demo/demoStyles.css';
+    link.dataset.beltaneeDemoStyles = '1';
+    document.head.appendChild(link);
+}
 
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
 function withTimeout(promise, ms, message) { return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))]); }
@@ -33,32 +41,18 @@ function ensureDemoExperience() {
     if (!experience?.products?.length || document.getElementById('demoExperienceBar')) return;
     const main = document.querySelector('main.content');
     if (!main) return;
-    const bar = document.createElement('section');
-    bar.id = 'demoExperienceBar';
-    bar.className = 'demo-pulse';
+    const bar = document.createElement('section'); bar.id = 'demoExperienceBar'; bar.className = 'demo-pulse';
     bar.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;"><div><div class="demo-badge">DEMO 1 · ${escapeHtml(experience.config?.brand || 'BELTANEE')}</div><h2 style="margin:10px 0 4px;font-size:20px;">${escapeHtml(experience.pulse.headline)}</h2><div style="font-size:12px;color:var(--text-secondary);">${experience.actions.length} действия уже сформированы системой</div></div><button class="btn btn-secondary btn-sm" id="demoTourBtn">Как это работает</button></div><div class="grid-3" style="margin-top:16px;">${experience.pulse.metrics.map(metric => `<div class="demo-kpi"><div style="font-size:11px;color:var(--text-secondary);">${escapeHtml(metric.label)}</div><div style="font-size:20px;font-weight:750;margin-top:5px;">${escapeHtml(metric.value)}</div><div style="font-size:11px;margin-top:4px;">${escapeHtml(metric.trend)}</div></div>`).join('')}</div><div style="display:grid;gap:8px;margin-top:14px;">${experience.actions.slice(0,3).map(action => `<div class="demo-action-card" style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 12px;border:1px solid rgba(0,0,0,.06);border-radius:12px;background:rgba(255,255,255,.65);"><div><strong>${escapeHtml(action.article)}</strong><div style="font-size:11px;color:var(--text-secondary);margin-top:3px;">${escapeHtml(action.title || action.description || 'Рекомендуем проверить товар')}</div></div><span class="demo-badge">${escapeHtml(action.priority || 'Важно')}</span></div>`).join('')}</div>`;
-    main.prepend(bar);
-    document.getElementById('demoTourBtn')?.addEventListener('click', () => showDemoTour(true));
-    if (!getDemoOnboardingState().completed) setTimeout(() => showDemoTour(false), 700);
+    main.prepend(bar); document.getElementById('demoTourBtn')?.addEventListener('click', () => showDemoTour(true)); if (!getDemoOnboardingState().completed) setTimeout(() => showDemoTour(false), 700);
 }
 function showDemoTour(force) {
-    if (!force && getDemoOnboardingState().completed) return;
-    if (document.getElementById('demoTourOverlay')) return;
-    const overlay = document.createElement('div'); overlay.id = 'demoTourOverlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,12,18,.48);backdrop-filter:blur(5px);display:grid;place-items:center;padding:20px;';
+    if (!force && getDemoOnboardingState().completed) return; if (document.getElementById('demoTourOverlay')) return;
+    const overlay = document.createElement('div'); overlay.id = 'demoTourOverlay'; overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,12,18,.48);backdrop-filter:blur(5px);display:grid;place-items:center;padding:20px;';
     overlay.innerHTML = `<div class="card" style="max-width:520px;width:100%;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.24);"><div class="demo-badge">ПЕРВЫЙ ЗАПУСК</div><h2 style="margin:14px 0 8px;">Система уже нашла точки внимания</h2><p style="color:var(--text-secondary);line-height:1.55;margin-bottom:20px;">Сначала смотрим на Пульс бизнеса, затем открываем проблемный артикул и получаем конкретное действие. Демо-данные можно заменить реальным импортом в любой момент.</p><div style="display:grid;gap:9px;margin-bottom:22px;"><div>① <strong>Пульс</strong> — что происходит с бизнесом</div><div>② <strong>Товары</strong> — где именно проблема</div><div>③ <strong>Рекомендации</strong> — что сделать дальше</div></div><button class="btn btn-primary" id="demoTourClose" style="width:100%;">Понятно, показать систему</button></div>`;
-    document.body.appendChild(overlay);
-    document.getElementById('demoTourClose')?.addEventListener('click', () => { completeDemoOnboarding(); overlay.remove(); window.dispatchEvent(new CustomEvent('beltanee:demo-onboarding-complete')); });
+    document.body.appendChild(overlay); document.getElementById('demoTourClose')?.addEventListener('click', () => { completeDemoOnboarding(); overlay.remove(); window.dispatchEvent(new CustomEvent('beltanee:demo-onboarding-complete')); });
 }
 async function checkArchitecture() { setLoadingMessage('Проверяем подключение локального хранилища…'); const names = [Database.STORES.PRODUCTS, Database.STORES.SALES, Database.STORES.STOCK, Database.STORES.ADVERTISING]; const counts = await withTimeout(Promise.all(names.map(store => Database.count(store))), 12000, 'Локальное хранилище не отвечает за 12 секунд. Закройте другие вкладки BELTANEE и повторите запуск.'); const report = { products: counts[0], sales: counts[1], stock: counts[2], advertising: counts[3], database: Database.DB_NAME, schema: Database.DB_VERSION, integrityDeferred: true }; console.info('[BELTANEE] Startup report', report); window.__BELTANEE_STARTUP_REPORT__ = report; return report; }
-async function seedDemoIfEmpty() {
-    const demoResult = await DemoDataService.seedDemoData();
-    if (!demoResult.seeded) return demoResult;
-    console.info('[BELTANEE] Demo 1 seeded', demoResult);
-    window.__BELTANEE_DEMO__ = demoResult;
-    window.showToast?.('Демо-данные загружены: можно показать аналитику', 'success');
-    return demoResult;
-}
-async function init() { showLoading('Запускаем BELTANEE…'); document.title = 'BELTANEE — Аналитическая платформа'; document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE')); const badge = document.querySelector('.logo-badge'); if (badge) badge.textContent = '1.6'; ensureProfilePage(); patchProfileButton(); setLoadingMessage('Подготавливаем демонстрационные данные…'); try { await seedDemoIfEmpty(); } catch (error) { console.warn('[BELTANEE] Demo seed skipped:', error); } setLoadingMessage('Подключаем импорт шаблонов WB…'); installV61Pages(); initImportController(); try { const report = await checkArchitecture(); ensureDemoExperience(); setLoadingMessage('Рабочее пространство готово'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.6 ready', report); } catch (error) { console.error('[BELTANEE] Startup failed', error); setLoadingMessage(`Ошибка запуска: ${error.message}`); window.showToast?.(`Ошибка запуска: ${error.message}`, 'error'); await new Promise(resolve => setTimeout(resolve, 1400)); hideLoading(); } }
+async function seedDemoIfEmpty() { const demoResult = await DemoDataService.seedDemoData(); if (!demoResult.seeded) return demoResult; console.info('[BELTANEE] Demo 1 seeded', demoResult); window.__BELTANEE_DEMO__ = demoResult; window.showToast?.('Демо-данные загружены: можно показать аналитику', 'success'); return demoResult; }
+async function init() { loadDemoStyles(); showLoading('Запускаем BELTANEE…'); document.title = 'BELTANEE — Аналитическая платформа'; document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE')); const badge = document.querySelector('.logo-badge'); if (badge) badge.textContent = '1.6'; ensureProfilePage(); patchProfileButton(); setLoadingMessage('Подготавливаем демонстрационные данные…'); try { await seedDemoIfEmpty(); } catch (error) { console.warn('[BELTANEE] Demo seed skipped:', error); } setLoadingMessage('Подключаем импорт шаблонов WB…'); installV61Pages(); initImportController(); try { const report = await checkArchitecture(); ensureDemoExperience(); setLoadingMessage('Рабочее пространство готово'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.6 ready', report); } catch (error) { console.error('[BELTANEE] Startup failed', error); setLoadingMessage(`Ошибка запуска: ${error.message}`); window.showToast?.(`Ошибка запуска: ${error.message}`, 'error'); await new Promise(resolve => setTimeout(resolve, 1400)); hideLoading(); } }
 init();
 export { checkArchitecture, ensureProfilePage, seedDemoIfEmpty, ensureDemoExperience };
