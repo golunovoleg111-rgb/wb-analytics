@@ -25,23 +25,86 @@ function latestByWarehouseAndVariant(records) {
     }
     return [...latest.values()];
 }
+
 class StockAggregate {
-    static async create(data) { const record = StockRecord.createFromImport(data); if (!isRealWarehouse(record.warehouseName)) throw new Error(`Недопустимое имя склада: ${record.warehouseName}`); await Database.save(Database.STORES.STOCK, record); return record; }
-    static async createMany(items) {
+    static async create(data) {
+        const record = StockRecord.createFromImport(data);
+        if (!isRealWarehouse(record.warehouseName)) throw new Error(`Недопустимое имя склада: ${record.warehouseName}`);
+        await Database.save(Database.STORES.STOCK, record);
+        return record;
+    }
+
+    static async createMany(items, options = {}) {
         const records = [], errors = [], seen = new Set();
-        for (const item of items || []) { try { const record = StockRecord.createFromImport(item); if (!isRealWarehouse(record.warehouseName)) throw new Error(`Недопустимое имя склада: ${record.warehouseName}`); const key = record.id || variantKey(record); if (seen.has(key)) continue; seen.add(key); await Database.save(Database.STORES.STOCK, record); records.push(record); } catch (error) { errors.push({ data: item, error: error.message }); } }
+        for (const item of items || []) {
+            try {
+                const record = StockRecord.createFromImport(item);
+                if (!isRealWarehouse(record.warehouseName)) throw new Error(`Недопустимое имя склада: ${record.warehouseName}`);
+                const key = record.id || variantKey(record);
+                if (seen.has(key)) continue;
+                seen.add(key);
+                records.push(record);
+            } catch (error) {
+                errors.push({ data: item, error: error.message });
+            }
+        }
+        if (records.length) await Database.saveMany(Database.STORES.STOCK, records, { chunkSize: options.chunkSize || 1000, onProgress: options.onProgress });
         return { results: records, errors, skippedDuplicates: Math.max(0, (items || []).length - records.length - errors.length) };
     }
-    static async getByProduct(productId) { const key = String(productId || '').trim(); return (await Database.getAll(Database.STORES.STOCK)).filter(r => (r.productId === key || r.articleKey === key || r.productGroupKey === key || groupKey(r) === key.toLowerCase()) && isRealWarehouse(r.warehouseName)).map(r => new StockRecord(r)); }
-    static async getCurrent(productId) { return latestByWarehouseAndVariant(await this.getByProduct(productId)); }
-    static async getAggregated(productId) { return StockRecord.aggregate(await this.getCurrent(productId)); }
+
+    static async getByProduct(productId) {
+        const key = String(productId || '').trim();
+        const candidates = [];
+        const seen = new Set();
+        const add = rows => {
+            for (const row of rows || []) {
+                if (seen.has(row.id)) continue;
+                if (row.productId === key || row.articleKey === key || row.productGroupKey === key || groupKey(row) === key.toLowerCase()) {
+                    seen.add(row.id);
+                    if (isRealWarehouse(row.warehouseName)) candidates.push(row);
+                }
+            }
+        };
+        try { add(await Database.getByIndex(Database.STORES.STOCK, 'articleKey', key)); } catch {}
+        try { add(await Database.getByIndex(Database.STORES.STOCK, 'productId', key)); } catch {}
+        try { add(await Database.getByIndex(Database.STORES.STOCK, 'productGroupKey', key)); } catch {}
+        if (!candidates.length) {
+            const all = await Database.getAll(Database.STORES.STOCK);
+            add(all);
+        }
+        return candidates.map(r => new StockRecord(r));
+    }
+
+    static async getCurrent(productId) {
+        return latestByWarehouseAndVariant(await this.getByProduct(productId));
+    }
+
+    static async getAggregated(productId) {
+        return StockRecord.aggregate(await this.getCurrent(productId));
+    }
+
     static async getAllAggregated() {
         const all = (await Database.getAll(Database.STORES.STOCK)).map(r => new StockRecord(r)).filter(r => isRealWarehouse(r.warehouseName));
         const groups = new Map();
-        for (const record of all) { const key = groupKey(record); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(record); }
+        for (const record of all) {
+            const key = groupKey(record);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(record);
+        }
         return Object.fromEntries([...groups.entries()].map(([key, records]) => [key, StockRecord.aggregate(latestByWarehouseAndVariant(records))]));
     }
-    static async getWarehouses() { const names = new Map(); for (const record of await Database.getAll(Database.STORES.STOCK)) { if (!isRealWarehouse(record.warehouseName)) continue; const key = warehouseKey(record.warehouseName); if (!names.has(key)) names.set(key, String(record.warehouseName).trim()); } return [...names.values()].sort((a,b) => a.localeCompare(b,'ru')); }
+
+    static async getWarehouses() {
+        const names = new Map();
+        for (const record of await Database.getAll(Database.STORES.STOCK)) {
+            if (!isRealWarehouse(record.warehouseName)) continue;
+            const key = warehouseKey(record.warehouseName);
+            if (!names.has(key)) names.set(key, String(record.warehouseName).trim());
+        }
+        return [...names.values()].sort((a,b) => a.localeCompare(b,'ru'));
+    }
+
     static async clearAll() { await Database.clear(Database.STORES.STOCK); }
 }
+
 export default StockAggregate;
