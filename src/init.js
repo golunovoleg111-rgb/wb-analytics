@@ -2,63 +2,46 @@
 // BELTANEE — APPLICATION INITIALIZATION
 // ============================================================
 
-import ProductService from './services/ProductService.js';
-import SalesService from './services/SalesService.js';
-import StockService from './services/StockService.js';
-import DataIntegrityService from './services/DataIntegrityService.js';
 import Database from './infrastructure/db.js';
 import { installV61Pages } from './ui/v61AnalyticsPages.js';
 import { initImportController } from './ui/importController.js';
 import { showLoading, setLoadingMessage, hideLoading } from './ui/loadingScreen.js';
 
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
+function withTimeout(promise, ms, message) { return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))]); }
 
 async function collectBackup() {
     const backup = { version: '1.0', createdAt: new Date().toISOString(), database: Database.DB_NAME, dbVersion: Database.DB_VERSION, stores: {} };
-    for (const storeName of Object.values(Database.STORES)) {
-        try { backup.stores[storeName] = await Database.getAll(storeName); } catch { backup.stores[storeName] = []; }
-    }
+    for (const storeName of Object.values(Database.STORES)) { try { backup.stores[storeName] = await Database.getAll(storeName); } catch { backup.stores[storeName] = []; } }
     return backup;
 }
-function downloadJson(filename, data) {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+function downloadJson(filename, data) { const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 function ensureProfilePage() {
     if (document.getElementById('page-profile')) return;
     const section = document.createElement('section'); section.id = 'page-profile'; section.className = 'page';
-    section.innerHTML = `<div class="page-header"><h1>👤 Личный кабинет</h1><span style="font-size:12px;color:var(--text-secondary);">Локальный профиль BELTANEE</span></div><div class="grid-3"><div class="card"><div class="card-title">Профиль</div><div class="form-group"><label>Имя</label><input id="profileName" type="text" placeholder="Ваше имя"></div><div class="form-group"><label>Название бизнеса</label><input id="profileBusiness" type="text" placeholder="Название магазина"></div><button class="btn btn-primary" id="saveProfileBtn">💾 Сохранить</button></div><div class="card"><div class="card-title">Хранилище</div><div id="profileStorageInfo">Загрузка…</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;"><button class="btn btn-secondary btn-sm" id="backupDataBtn">⬇️ Резервная копия</button><button class="btn btn-danger btn-sm" id="resetDataBtn">🗑️ Пересобрать данные</button></div></div><div class="card"><div class="card-title">Контроль данных</div><div id="dataIntegrityInfo">Проверяем…</div><div style="margin-top:12px;font-size:12px;color:var(--text-secondary);">${escapeHtml(Database.DB_NAME)} · schema ${Database.DB_VERSION}</div></div></div>`;
+    section.innerHTML = `<div class="page-header"><h1>👤 Личный кабинет</h1><span style="font-size:12px;color:var(--text-secondary);">Локальный профиль BELTANEE</span></div><div class="grid-3"><div class="card"><div class="card-title">Профиль</div><div class="form-group"><label>Имя</label><input id="profileName" type="text" placeholder="Ваше имя"></div><div class="form-group"><label>Название бизнеса</label><input id="profileBusiness" type="text" placeholder="Название магазина"></div><button class="btn btn-primary" id="saveProfileBtn">💾 Сохранить</button></div><div class="card"><div class="card-title">Хранилище</div><div id="profileStorageInfo">Загрузка…</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;"><button class="btn btn-secondary btn-sm" id="backupDataBtn">⬇️ Резервная копия</button><button class="btn btn-danger btn-sm" id="resetDataBtn">🗑️ Пересобрать данные</button></div></div><div class="card"><div class="card-title">Контроль данных</div><div id="dataIntegrityInfo">Проверяем после запуска…</div><div style="margin-top:12px;font-size:12px;color:var(--text-secondary);">${escapeHtml(Database.DB_NAME)} · schema ${Database.DB_VERSION}</div></div></div>`;
     document.querySelector('main.content')?.appendChild(section);
-    const profile = JSON.parse(localStorage.getItem('beltanee-profile') || '{}'); const name = document.getElementById('profileName'); const business = document.getElementById('profileBusiness');
-    if (name) name.value = profile.name || ''; if (business) business.value = profile.business || '';
+    const profile = JSON.parse(localStorage.getItem('beltanee-profile') || '{}'), name = document.getElementById('profileName'), business = document.getElementById('profileBusiness'); if (name) name.value = profile.name || ''; if (business) business.value = profile.business || '';
     document.getElementById('saveProfileBtn')?.addEventListener('click', () => { localStorage.setItem('beltanee-profile', JSON.stringify({ name: name?.value || '', business: business?.value || '' })); window.showToast?.('Профиль сохранён', 'success'); });
     document.getElementById('backupDataBtn')?.addEventListener('click', async () => { try { downloadJson(`beltanee-backup-${new Date().toISOString().slice(0,10)}.json`, await collectBackup()); window.showToast?.('Резервная копия создана', 'success'); } catch (error) { window.showToast?.(`Ошибка резервной копии: ${error.message}`, 'error'); } });
-    document.getElementById('resetDataBtn')?.addEventListener('click', async () => {
-        if (!confirm('Пересобрать фактические данные? Товары и профиль сохранятся, продажи/остатки/финансы будут очищены.')) return;
-        for (const storeName of [Database.STORES.SALES, Database.STORES.STOCK, Database.STORES.STOCK_HISTORY, Database.STORES.FINANCE]) { try { await Database.clear(storeName); } catch {} }
-        window.showToast?.('Фактические данные очищены. Импортируйте отчёты заново.', 'success'); setTimeout(() => window.location.reload(), 600);
-    });
-    DataIntegrityService.inspect().then(report => {
-        const el = document.getElementById('dataIntegrityInfo'); if (!el) return;
-        if (!report.warnings.length) { el.innerHTML = '✅ Дубликаты и критические аномалии не обнаружены.'; return; }
-        el.innerHTML = `${report.ok ? '⚠️' : '🔴'} Найдено проблем: <strong>${report.warnings.length}</strong><br>` + report.warnings.map(w => `• ${escapeHtml(w.message)}`).join('<br>');
-    }).catch(error => { const el = document.getElementById('dataIntegrityInfo'); if (el) el.textContent = `Ошибка проверки: ${error.message}`; });
+    document.getElementById('resetDataBtn')?.addEventListener('click', async () => { if (!confirm('Пересобрать фактические данные? Товары и профиль сохранятся, продажи/остатки/финансы будут очищены.')) return; for (const storeName of [Database.STORES.SALES, Database.STORES.STOCK, Database.STORES.STOCK_HISTORY, Database.STORES.FINANCE]) { try { await Database.clear(storeName); } catch {} } window.showToast?.('Фактические данные очищены. Импортируйте отчёты заново.', 'success'); setTimeout(() => window.location.reload(), 600); });
+    // Heavy diagnostics are intentionally deferred until after the application is visible.
+    setTimeout(() => DataIntegrityService.inspect().then(report => { const el = document.getElementById('dataIntegrityInfo'); if (!el) return; if (!report.warnings.length) { el.innerHTML = '✅ Дубликаты и критические аномалии не обнаружены.'; return; } el.innerHTML = `${report.ok ? '⚠️' : '🔴'} Найдено проблем: <strong>${report.warnings.length}</strong><br>` + report.warnings.map(w => `• ${escapeHtml(w.message)}`).join('<br>'); }).catch(error => { const el = document.getElementById('dataIntegrityInfo'); if (el) el.textContent = `Ошибка проверки: ${error.message}`; }), 250);
     Promise.all([Database.count(Database.STORES.PRODUCTS), Database.count(Database.STORES.SALES), Database.count(Database.STORES.STOCK), Database.count(Database.STORES.ADVERTISING)]).then(([products, sales, stock, ads]) => { const el = document.getElementById('profileStorageInfo'); if (el) el.innerHTML = `Товары: <strong>${products}</strong><br>Продажи: <strong>${sales}</strong><br>Остатки: <strong>${stock}</strong><br>Реклама: <strong>${ads}</strong>`; }).catch(() => {});
 }
 function patchProfileButton() { const button = document.getElementById('profileBtn'); if (!button || button.dataset.beltaneePatched) return; const replacement = button.cloneNode(true); replacement.dataset.beltaneePatched = '1'; replacement.addEventListener('click', () => { ensureProfilePage(); window.navigateTo?.('profile'); }); button.replaceWith(replacement); }
 async function checkArchitecture() {
-    setLoadingMessage('Проверяем локальное хранилище…');
-    const [products, sales, stock, integrity] = await Promise.all([ProductService.getAll(), SalesService.getAll(), StockService.getAllAggregated(), DataIntegrityService.inspect()]);
-    const report = { products: products.length, sales: sales.length, stockProducts: Object.keys(stock).length, integrity, database: Database.DB_NAME, schema: Database.DB_VERSION };
-    console.info('[BELTANEE] Startup report', report); window.__BELTANEE_STARTUP_REPORT__ = report;
-    if (!integrity.ok) console.warn('[BELTANEE] Data integrity warnings', integrity.warnings);
-    return report;
+    setLoadingMessage('Проверяем подключение локального хранилища…');
+    const names = [Database.STORES.PRODUCTS, Database.STORES.SALES, Database.STORES.STOCK, Database.STORES.ADVERTISING];
+    const counts = await withTimeout(Promise.all(names.map(store => Database.count(store))), 12000, 'Локальное хранилище не отвечает за 12 секунд. Закройте другие вкладки BELTANEE и повторите запуск.');
+    const report = { products: counts[0], sales: counts[1], stock: counts[2], advertising: counts[3], database: Database.DB_NAME, schema: Database.DB_VERSION, integrityDeferred: true };
+    console.info('[BELTANEE] Startup report', report); window.__BELTANEE_STARTUP_REPORT__ = report; return report;
 }
 async function init() {
     showLoading('Запускаем BELTANEE…'); document.title = 'BELTANEE — Аналитическая платформа';
     document.querySelector('.logo-text')?.replaceChildren(document.createTextNode('BELTANEE')); const badge = document.querySelector('.logo-badge'); if (badge) badge.textContent = '1.6';
     ensureProfilePage(); patchProfileButton(); setLoadingMessage('Подключаем импорт шаблонов WB…'); installV61Pages(); initImportController();
-    try { const report = await checkArchitecture(); setLoadingMessage(report.integrity.ok ? 'Рабочее пространство готово' : 'Найдены предупреждения — открываем рабочее пространство'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.6 ready'); }
+    try { const report = await checkArchitecture(); setLoadingMessage('Рабочее пространство готово'); await new Promise(resolve => setTimeout(resolve, 300)); hideLoading(); console.log('✅ BELTANEE 1.6 ready', report); }
     catch (error) { console.error('[BELTANEE] Startup failed', error); setLoadingMessage(`Ошибка запуска: ${error.message}`); window.showToast?.(`Ошибка запуска: ${error.message}`, 'error'); await new Promise(resolve => setTimeout(resolve, 1400)); hideLoading(); }
 }
 init();
