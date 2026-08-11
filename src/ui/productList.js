@@ -104,7 +104,8 @@ export async function renderProductList(force = false) {
         if (empty) empty.style.display = groups.length ? 'none' : 'block';
         if (content) content.style.display = groups.length ? 'block' : 'none';
         if (count) count.textContent = `Товаров: ${groups.length}`;
-        groups.sort((a, b) => ({ deficit: 0, warning: 1, no_stock: 2, excess: 3, no_sales: 4, normal: 5 }[a.status] ?? 9) - ({ deficit: 0, warning: 1, no_stock: 2, excess: 3, no_sales: 4, normal: 5 }[b.status] ?? 9));
+        const order = { deficit: 0, warning: 1, no_stock: 2, excess: 3, no_sales: 4, normal: 5 };
+        groups.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
         container.innerHTML = groups.length ? `<div class="${viewMode === 'grid' ? 'products-grid-wrapper' : 'products-list-wrapper'}">${groups.map(renderGroup).join('')}</div>` : '';
         document.querySelectorAll('.view-toggle-btn').forEach(button => button.classList.toggle('active', button.dataset.view === viewMode));
     } catch (error) {
@@ -113,9 +114,14 @@ export async function renderProductList(force = false) {
     }
 }
 
+export function toggleViewMode(mode) {
+    viewMode = mode === 'list' ? 'list' : 'grid';
+    renderProductList();
+}
+
 window.openProductCard = baseModel => { window._selectedBaseModel = baseModel; window.navigateTo('product-card'); };
 window.refreshProductTable = () => { currentFilters.search = document.getElementById('productSearch')?.value || ''; currentFilters.status = document.getElementById('productFilter')?.value || 'all'; cache = null; renderProductList(true); };
 window.clearProductFilters = () => { const search = document.getElementById('productSearch'); const filter = document.getElementById('productFilter'); if (search) search.value = ''; if (filter) filter.value = 'all'; currentFilters = { search: '', status: 'all' }; cache = null; renderProductList(true); };
-window.setProductView = mode => { viewMode = mode === 'list' ? 'list' : 'grid'; renderProductList(); };
+window.setProductView = toggleViewMode;
 
 export default renderProductList;
