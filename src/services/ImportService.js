@@ -64,18 +64,15 @@ function upsert(records, map, record) {
     if (map.has(record.id)) { records[map.get(record.id)] = record; return; }
     map.set(record.id, records.length); records.push(record);
 }
-function stableValue(value) {
-    if (Array.isArray(value)) return value.map(stableValue);
-    if (value && typeof value === 'object') return Object.keys(value).sort().reduce((out, key) => { out[key] = stableValue(value[key]); return out; }, {});
-    return value instanceof Date ? value.toISOString() : value;
-}
-async function fingerprint(type, file, rows) {
-    const payload = JSON.stringify(stableValue({ type, name: clean(file?.name), size: file?.size || 0, rows }));
-    if (globalThis.crypto?.subtle) {
-        const bytes = new TextEncoder().encode(payload); const digest = await crypto.subtle.digest('SHA-256', bytes);
+async function fingerprint(type, file) {
+    const prefix = `${type}|${clean(file?.name)}|${file?.size || 0}|${file?.lastModified || 0}`;
+    if (globalThis.crypto?.subtle && file?.arrayBuffer) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
         return `${type}|sha256:${Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
     }
-    let hash = 2166136261; for (let i = 0; i < payload.length; i += 1) { hash ^= payload.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+    let hash = 2166136261;
+    for (let i = 0; i < prefix.length; i += 1) { hash ^= prefix.charCodeAt(i); hash = Math.imul(hash, 16777619); }
     return `${type}|fnv:${(hash >>> 0).toString(16)}`;
 }
 
@@ -91,7 +88,7 @@ class ImportService {
             const rows = await this._readFile(file);
             const validation = this._validateColumns(rows, TEMPLATES[type]);
             if (!validation.valid) return { success: false, error: validation.error, records: [], errors: [] };
-            const fileFingerprint = await fingerprint(type, file, rows);
+            const fileFingerprint = await fingerprint(type, file);
             const previous = await Database.getById(Database.STORES.IMPORTS, fileFingerprint);
             if (previous && !options.force) return { success: false, duplicateImport: true, error: 'Этот файл с таким содержимым уже импортирован.', importBatchId: previous.id, fileName: previous.fileName, records: [], errors: [], preview: previous.preview || null };
             const parsed = this._parseAndValidate(rows, type);
@@ -100,7 +97,7 @@ class ImportService {
             const records = parsed.records.map(record => ({ ...record, importBatchId: batchId }));
             const preview = this._makePreview(records, parsed, type);
             if (options.previewOnly) return { ...parsed, records, success: parsed.errors.length === 0, fileName: file.name, importBatchId: batchId, fingerprint: fileFingerprint, preview };
-            await this._saveData(records, type);
+            await this._saveData(records, type, { importBatchId: batchId, onProgress: options.onProgress });
             await Database.save(Database.STORES.IMPORTS, { id: fileFingerprint, type, fileName: file.name, rows: records.length, sourceRows: rows.length, errors: parsed.errors.length, createdAt: new Date().toISOString(), importBatchId: batchId, fingerprint: fileFingerprint, preview });
             return { ...parsed, records, success: parsed.errors.length === 0, fileName: file.name, importBatchId: batchId, fingerprint: fileFingerprint, preview };
         } catch (error) { console.error('[ImportService]', error); return { success: false, error: error.message, records: [], errors: [] }; }
@@ -181,15 +178,30 @@ class ImportService {
         await Database.replaceAll(storeName, Array.from(map.values()));
     }
 
-    static async _saveData(records, type) {
-        if (type === ImportTypes.NOMENCLATURE) { await Database.replaceAll(Database.STORES.PRODUCTS, records); return; }
+    static async _saveData(records, type, options = {}) {
+        const progress = typeof options.onProgress === 'function' ? options.onProgress : null;
+        if (type === ImportTypes.NOMENCLATURE) { await Database.replaceAll(Database.STORES.PRODUCTS, records, { onProgress: progress }); return; }
         if (type === ImportTypes.SALES) { await this._mergeById(Database.STORES.SALES, records); return; }
-        if (type === ImportTypes.STOCK_CURRENT) { await Database.replaceAll(Database.STORES.STOCK, records); return; }
+        if (type === ImportTypes.STOCK_CURRENT) { await Database.replaceAll(Database.STORES.STOCK, records, { onProgress: progress }); return; }
         if (type === ImportTypes.STOCK_DAILY) {
-            await this._mergeById(Database.STORES.STOCK_HISTORY, records);
-            const history = await Database.getAll(Database.STORES.STOCK_HISTORY); const latest = new Map();
-            for (const record of history) { const key = `${record.articleKey || record.productId}|${normalizeKey(record.warehouseName)}`; if (!latest.has(key) || record.date > latest.get(key).date) latest.set(key, record); }
-            await Database.replaceAll(Database.STORES.STOCK, Array.from(latest.values())); return;
+            // История — append/upsert по детерминированному id. Не читаем и не пересобираем всю историю.
+            await Database.saveMany(Database.STORES.STOCK_HISTORY, records, { chunkSize: 1000, onProgress: progress });
+
+            // Текущий STOCK маленький относительно истории. Обновляем только те ключи,
+            // для которых импортированная дата новее уже сохранённой.
+            const current = await Database.getAll(Database.STORES.STOCK);
+            const latest = new Map(current.map(record => [`${record.articleKey || record.productId}|${normalizeKey(record.warehouseName)}`, record]));
+            const changed = [];
+            for (const record of records) {
+                const key = `${record.articleKey || record.productId}|${normalizeKey(record.warehouseName)}`;
+                const previous = latest.get(key);
+                if (!previous || record.date >= previous.date) {
+                    latest.set(key, record);
+                    changed.push(record);
+                }
+            }
+            if (changed.length) await Database.saveMany(Database.STORES.STOCK, changed, { chunkSize: 1000 });
+            return;
         }
         if (type === ImportTypes.PRICES) {
             await this._mergeById(Database.STORES.PRICES, records);
