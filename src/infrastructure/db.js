@@ -1,11 +1,11 @@
 // ============================================================
-// BELTANEE v6.1 — IndexedDB
-// Единый слой хранения. Данные хранятся по детерминированным ключам,
-// поэтому повторный импорт не раздувает показатели.
+// BELTANEE — IndexedDB
+// Каноническое локальное хранилище. Версия 4 намеренно очищает
+// старые продажи/остатки, созданные до исправления ключей.
 // ============================================================
 
 const DB_NAME = 'BeltaneeDB_v6_1';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const STORES = {
     PRODUCTS: 'products', SALES: 'sales', STOCK: 'stock', STOCK_HISTORY: 'stockHistory',
@@ -26,8 +26,6 @@ function configureIndexes(db, transaction) {
     const configure = (name, fn) => { if (db.objectStoreNames.contains(name)) fn(transaction.objectStore(name)); };
     configure(STORES.PRODUCTS, store => {
         ensureIndex(store, 'article', 'article');
-        // Не делаем индекс articleKey unique: старые локальные базы могут содержать
-        // исторические записи, а миграция не должна падать из-за них.
         ensureIndex(store, 'articleKey', 'articleKey');
         ensureIndex(store, 'baseModel', 'baseModel');
         ensureIndex(store, 'status', 'status');
@@ -62,8 +60,18 @@ function openDB() {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = event => {
             const db = event.target.result;
+            const transaction = event.target.transaction;
             Object.values(STORES).forEach(name => createStore(db, name));
-            configureIndexes(db, event.target.transaction);
+            configureIndexes(db, transaction);
+
+            // v3 содержала несовместимые ключи остатков и продаж.
+            // Очищаем только производные данные: номенклатура, настройки,
+            // профиль и прочие справочники пользователя не затрагиваются.
+            if (event.oldVersion < 4) {
+                [STORES.SALES, STORES.STOCK, STORES.STOCK_HISTORY].forEach(name => {
+                    if (db.objectStoreNames.contains(name)) transaction.objectStore(name).clear();
+                });
+            }
         };
         request.onsuccess = event => {
             const db = event.target.result;
