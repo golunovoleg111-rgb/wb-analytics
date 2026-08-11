@@ -12,8 +12,12 @@ const NON_WAREHOUSE_COLUMNS = new Set([
     'nm id', 'nmid', 'vendorcode', 'артикул wb', 'предмет', 'категория'
 ]);
 
+function warehouseKey(name) {
+    return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 function isRealWarehouse(name) {
-    const value = String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const value = warehouseKey(name);
     return Boolean(value) && !NON_WAREHOUSE_COLUMNS.has(value);
 }
 
@@ -21,7 +25,7 @@ function latestByWarehouse(records) {
     const latest = {};
     for (const record of records || []) {
         if (!isRealWarehouse(record.warehouseName)) continue;
-        const key = String(record.warehouseName).trim();
+        const key = warehouseKey(record.warehouseName);
         const current = latest[key];
         if (!current || String(record.date) > String(current.date) ||
             (String(record.date) === String(current.date) && String(record.createdAt) > String(current.createdAt))) {
@@ -70,7 +74,13 @@ class StockAggregate {
 
     static async getWarehouses() {
         const all = await Database.getAll(Database.STORES.STOCK);
-        return [...new Set(all.map(r => r.warehouseName).filter(isRealWarehouse))].sort();
+        const names = new Map();
+        for (const record of all) {
+            if (!isRealWarehouse(record.warehouseName)) continue;
+            const key = warehouseKey(record.warehouseName);
+            if (!names.has(key)) names.set(key, String(record.warehouseName).trim());
+        }
+        return [...names.values()].sort((a, b) => a.localeCompare(b, 'ru'));
     }
 
     static async clearAll() { await Database.clear(Database.STORES.STOCK); }
