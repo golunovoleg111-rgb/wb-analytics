@@ -1,93 +1,102 @@
 // ============================================================
-// UI: DASHBOARD — ГЛАВНАЯ СТРАНИЦА
+// DASHBOARD — BELTANEE v6.1
 // ============================================================
 
 import ProductService from '../services/ProductService.js';
 import SalesService from '../services/SalesService.js';
 import StockService from '../services/StockService.js';
 
-// ============================================================
-// ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ ДАШБОРДА
-// ============================================================
+function dateString(date) {
+    return date.toISOString().slice(0, 10);
+}
+
+function getYesterday() {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+    return dateString(date);
+}
+
+function getLastDays(days) {
+    const result = [];
+    for (let offset = days - 1; offset >= 0; offset--) {
+        const date = new Date();
+        date.setDate(date.getDate() - offset);
+        result.push(dateString(date));
+    }
+    return result;
+}
+
+function metricFor(map, product) {
+    if (!map || !product) return null;
+    const keys = [product.articleKey, product.id, product.article].map(v => String(v || '').toLowerCase());
+    for (const key of keys) if (map[key]) return map[key];
+    const article = String(product.article || '').toLowerCase();
+    for (const [key, value] of Object.entries(map)) {
+        if (String(key).toLowerCase().startsWith(`${article}|`)) return value;
+    }
+    return null;
+}
 
 async function getDashboardData() {
-    console.log('🔍 Загрузка данных для дашборда...');
-    
-    const [products, allSales] = await Promise.all([
-        ProductService.getAll(),
-        SalesService.getAll()
+    const [products, sales, stock, sales30] = await Promise.all([
+        ProductService.getActive(),
+        SalesService.getAll(),
+        StockService.getAllAggregated(),
+        SalesService.getAllAggregated(30)
     ]);
 
-    const totalProducts = products.length;
+    const yesterday = getYesterday();
+    const yesterdayRows = sales.filter(row => row.date === yesterday);
+    const yesterdayOrders = yesterdayRows.reduce((sum, row) => sum + (Number(row.orders) || 0), 0);
+    const yesterdayDelivered = yesterdayRows.reduce((sum, row) => sum + (Number(row.delivered) || 0), 0);
+    const yesterdayRevenue = yesterdayRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 
-    // Получаем вчерашнюю дату
-    const yesterday = getYesterdayStr();
-    console.log('📅 Вчера:', yesterday);
+    const margins = products
+        .map(product => {
+            const price = Number(product.price) || 0;
+            const purchase = Number(product.purchasePrice) || 0;
+            return price > 0 && purchase >= 0 ? ((price - purchase) / price) * 100 : null;
+        })
+        .filter(value => value !== null && Number.isFinite(value));
 
-    // Продажи за вчера
-    const yesterdaySales = allSales.filter(s => s.date === yesterday);
-    const yesterdayRevenue = yesterdaySales.reduce((sum, s) => sum + (s.amount || 0), 0);
-    const yesterdayOrders = yesterdaySales.reduce((sum, s) => sum + (s.orders || 0), 0);
-    const yesterdayDelivered = yesterdaySales.reduce((sum, s) => sum + (s.delivered || 0), 0);
-
-    // Продажи за 7 дней (для графика)
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        
-        const daySales = allSales.filter(s => s.date === dateStr);
-        const revenue = daySales.reduce((sum, s) => sum + (s.amount || 0), 0);
-        const orders = daySales.reduce((sum, s) => sum + (s.orders || 0), 0);
-        
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const displayDate = `${day}.${month}`;
-        
-        last7Days.push({
-            date: displayDate,
-            dateFull: dateStr,
-            revenue,
-            orders
-        });
+    const criticalProducts = [];
+    for (const product of products) {
+        const stockData = metricFor(stock, product);
+        const salesData = metricFor(sales30, product);
+        const available = Number(stockData?.available) || 0;
+        const orders30 = Number(salesData?.orders) || 0;
+        if (orders30 <= 0 || available <= 0) continue;
+        const io = available / orders30;
+        if (io < 0.2) criticalProducts.push({ product, stock: available, orders30, io });
     }
 
-    // Проблемные товары (пока заглушка)
-    const criticalProducts = [];
-
-    console.log('📊 Данные для дашборда:', {
-        totalProducts,
-        yesterdayRevenue,
-        yesterdayOrders,
-        yesterdayDelivered,
-        last7Days
+    const last7Days = getLastDays(7).map(fullDate => {
+        const rows = sales.filter(row => row.date === fullDate);
+        return {
+            dateFull: fullDate,
+            date: `${fullDate.slice(8, 10)}.${fullDate.slice(5, 7)}`,
+            revenue: rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
+            orders: rows.reduce((sum, row) => sum + (Number(row.orders) || 0), 0)
+        };
     });
 
     return {
-        totalProducts,
-        yesterdayRevenue,
+        totalProducts: products.length,
         yesterdayOrders,
         yesterdayDelivered,
-        avgMargin: 0,
-        criticalProducts,
+        yesterdayRevenue,
+        avgMargin: margins.length ? margins.reduce((a, b) => a + b, 0) / margins.length : 0,
+        criticalProducts: criticalProducts.sort((a, b) => a.io - b.io).slice(0, 10),
         last7Days
     };
 }
 
-// ============================================================
-// ОТРИСОВКА ДАШБОРДА
-// ============================================================
-
 export async function renderDashboard() {
-    console.log('🏠 Рендеринг главной страницы...');
-
     const emptyContainer = document.getElementById('dashboardEmpty');
     const contentContainer = document.getElementById('dashboardContent');
 
     try {
         const data = await getDashboardData();
-
         if (data.totalProducts === 0) {
             if (emptyContainer) emptyContainer.style.display = 'block';
             if (contentContainer) contentContainer.style.display = 'none';
@@ -100,202 +109,63 @@ export async function renderDashboard() {
         renderKPIs(data);
         renderAttentionBlock(data.criticalProducts);
         renderMiniChart(data.last7Days);
-
     } catch (error) {
-        console.error('❌ Ошибка при загрузке дашборда:', error.message);
+        console.error('[Dashboard]', error);
         if (emptyContainer) {
             emptyContainer.style.display = 'block';
-            emptyContainer.innerHTML = `
-                <div style="font-size:48px;margin-bottom:12px;">❌</div>
-                <div style="font-size:18px;font-weight:600;margin-bottom:6px;">Ошибка загрузки</div>
-                <div style="font-size:14px;color:var(--text-secondary);">${error.message}</div>
-            `;
+            emptyContainer.innerHTML = `<div style="font-size:48px;margin-bottom:12px;">❌</div><div style="font-size:18px;font-weight:600;margin-bottom:6px;">Ошибка загрузки</div><div style="font-size:14px;color:var(--text-secondary);">${error.message}</div>`;
         }
     }
 }
 
-// ============================================================
-// KPI
-// ============================================================
-
 function renderKPIs(data) {
-    const el = document.getElementById('kpiProducts');
-    if (el) el.textContent = data.totalProducts;
-    
-    const elOrders = document.getElementById('kpiOrders');
-    if (elOrders) elOrders.textContent = data.yesterdayOrders;
-    
-    const elDelivered = document.getElementById('kpiDelivered');
-    if (elDelivered) elDelivered.textContent = data.yesterdayDelivered;
-    
-    const elMargin = document.getElementById('kpiAvgMargin');
-    if (elMargin) elMargin.textContent = data.avgMargin + '%';
+    const products = document.getElementById('kpiProducts');
+    const orders = document.getElementById('kpiOrders');
+    const delivered = document.getElementById('kpiDelivered');
+    const margin = document.getElementById('kpiAvgMargin');
+    if (products) products.textContent = data.totalProducts.toLocaleString('ru-RU');
+    if (orders) orders.textContent = data.yesterdayOrders.toLocaleString('ru-RU');
+    if (delivered) delivered.textContent = data.yesterdayDelivered.toLocaleString('ru-RU');
+    if (margin) margin.textContent = `${data.avgMargin.toFixed(1)}%`;
 }
 
-// ============================================================
-// ПРОБЛЕМЫ
-// ============================================================
-
-function renderAttentionBlock(criticalProducts) {
+function renderAttentionBlock(items) {
     const container = document.getElementById('attentionBlock');
     if (!container) return;
-
-    if (criticalProducts.length === 0) {
-        container.innerHTML = `
-            <div style="color:#10B981;font-size:13px;padding:4px 0;">
-                ✅ Все товары в норме
-            </div>
-        `;
+    if (!items.length) {
+        container.innerHTML = '<div style="color:#10B981;font-size:13px;padding:4px 0;">✅ Критического дефицита не обнаружено</div>';
         return;
     }
-
-    let html = '';
-    criticalProducts.forEach(p => {
-        html += `
-            <div style="padding:8px 12px;background:#FEF2F2;border-left:3px solid #EF4444;margin-bottom:6px;border-radius:6px;font-size:13px;display:flex;justify-content:space-between;align-items:center;">
-                <span>
-                    <span style="margin-right:6px;">🔴</span>
-                    <strong>${p.product?.article || p.article}</strong>
-                    — остаток ${p.stock} шт, ИО ${p.io.toFixed(2)}
-                </span>
-                <button class="btn btn-xs btn-danger" onclick="navigateTo('products')" style="font-size:10px;">Перейти</button>
-            </div>
-        `;
-    });
-
-    container.innerHTML = html;
+    container.innerHTML = items.map(item => `
+        <div style="padding:8px 12px;background:#FEF2F2;border-left:3px solid #EF4444;margin-bottom:6px;border-radius:6px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <span>🔴 <strong>${item.product.article}</strong> — остаток ${Math.round(item.stock)} шт, ИО ${item.io.toFixed(2)}</span>
+            <button class="btn btn-xs btn-danger" onclick="window.openProductCard('${String(item.product.baseModel || item.product.article).replaceAll("'", "\\'")}')">Открыть</button>
+        </div>`).join('');
 }
-
-// ============================================================
-// МИНИ-ГРАФИК (7 дней)
-// ============================================================
 
 function renderMiniChart(last7Days) {
     const canvas = document.getElementById('dashboardChart');
-    if (!canvas) {
-        console.warn('⚠️ Canvas dashboardChart не найден');
-        return;
-    }
+    if (!canvas || typeof Chart === 'undefined') return;
+    if (window.dashboardChart) window.dashboardChart.destroy();
 
-    // Безопасное уничтожение старого графика
-    if (window.dashboardChart) {
-        try {
-            if (typeof window.dashboardChart.destroy === 'function') {
-                window.dashboardChart.destroy();
+    window.dashboardChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: last7Days.map(item => item.date),
+            datasets: [
+                { label: 'Выручка', data: last7Days.map(item => item.revenue), borderWidth: 2, fill: false, tension: 0.3 },
+                { label: 'Заказы', data: last7Days.map(item => item.orders), borderWidth: 2, borderDash: [4, 3], fill: false, tension: 0.3, yAxisID: 'orders' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true },
+                orders: { position: 'right', beginAtZero: true, grid: { display: false } }
             }
-        } catch (e) {
-            console.warn('⚠️ Не удалось уничтожить старый график:', e.message);
         }
-        window.dashboardChart = null;
-    }
-
-    if (!last7Days || last7Days.length === 0) {
-        console.warn('⚠️ Нет данных для графика');
-        return;
-    }
-
-    const ctx = canvas.getContext('2d');
-    const labels = last7Days.map(d => d.date);
-    const revenueData = last7Days.map(d => d.revenue);
-    const orderData = last7Days.map(d => d.orders);
-
-    try {
-        window.dashboardChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Выручка',
-                        data: revenueData,
-                        borderColor: '#7C3AED',
-                        backgroundColor: 'rgba(124,58,237,0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'Заказы',
-                        data: orderData,
-                        borderColor: '#EC4899',
-                        borderDash: [4, 3],
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 2,
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: '#6B7280',
-                            usePointStyle: true,
-                            font: { size: 10 }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        ticks: {
-                            color: '#6B7280',
-                            font: { size: 9 },
-                            callback: function(value) {
-                                if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
-                                return value;
-                            }
-                        }
-                    },
-                    y1: {
-                        position: 'right',
-                        beginAtZero: true,
-                        grid: { display: false },
-                        ticks: {
-                            color: '#6B7280',
-                            font: { size: 9 }
-                        }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#6B7280', font: { size: 9 }, maxTicksLimit: 10 }
-                    }
-                }
-            }
-        });
-        console.log('✅ График создан');
-    } catch (error) {
-        console.error('❌ Ошибка создания графика:', error.message);
-    }
+    });
 }
-
-// ============================================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// ============================================================
-
-function getYesterdayStr() {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// ============================================================
-// ЭКСПОРТ
-// ============================================================
 
 export default renderDashboard;
