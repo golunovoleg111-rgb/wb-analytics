@@ -1,15 +1,9 @@
 // ============================================================
-// SALES RECORD — ДНЕВНАЯ ЗАПИСЬ ПРОДАЖ
+// SALES RECORD — BELTANEE v6.1
 // ============================================================
 
-function clean(value) {
-    return String(value ?? '').trim();
-}
-
-function number(value) {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : 0;
-}
+function clean(value) { return String(value ?? '').trim(); }
+function number(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
 
 class SalesRecord {
     constructor(data = {}) {
@@ -26,29 +20,12 @@ class SalesRecord {
         this.createdAt = data.createdAt || new Date().toISOString();
     }
 
-    static makeId(productId, date) {
-        return `${clean(productId)}|${clean(date)}`;
-    }
+    static makeId(productId, date) { return `${clean(productId)}|${clean(date)}`; }
 
     static createFromImport(data) {
         const productId = clean(data.productId || data.article);
         const date = clean(data.date);
-        return new SalesRecord({
-            ...data,
-            id: data.id || SalesRecord.makeId(productId, date),
-            productId,
-            article: clean(data.article || productId),
-            date,
-            orders: data.orders,
-            delivered: data.delivered,
-            returns: data.returns,
-            amount: data.amount,
-            totalAmount: data.totalAmount || data.amount
-        });
-    }
-
-    static createTest(productId, date, orders, delivered, returns, amount) {
-        return this.createFromImport({ productId, date, orders, delivered, returns, amount });
+        return new SalesRecord({ ...data, id: data.id || SalesRecord.makeId(productId, date), productId, article: clean(data.article || productId), date, orders: data.orders, delivered: data.delivered, returns: data.returns, amount: data.amount, totalAmount: data.totalAmount || data.amount });
     }
 
     static aggregate(records) {
@@ -68,10 +45,8 @@ class SalesRecord {
         const end = new Date();
         const start = new Date(end);
         start.setHours(0, 0, 0, 0);
-        start.setDate(start.getDate() - Math.max(0, Number(days) - 1));
-        const startStr = start.toISOString().slice(0, 10);
-        const endStr = end.toISOString().slice(0, 10);
-        return this.filterByPeriod(records, startStr, endStr);
+        start.setDate(start.getDate() - (Math.max(1, Number(days)) - 1));
+        return this.filterByPeriod(records, start.toISOString().slice(0, 10), end.toISOString().slice(0, 10));
     }
 }
 
