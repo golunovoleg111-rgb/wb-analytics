@@ -1,11 +1,9 @@
 // ============================================================
-// BELTANEE — IndexedDB
-// Каноническое локальное хранилище. Версия 4 намеренно очищает
-// старые продажи/остатки, созданные до исправления ключей.
+// BELTANEE — IndexedDB / canonical local storage
 // ============================================================
 
 const DB_NAME = 'BeltaneeDB_v6_1';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const STORES = {
     PRODUCTS: 'products', SALES: 'sales', STOCK: 'stock', STOCK_HISTORY: 'stockHistory',
@@ -17,37 +15,28 @@ function createStore(db, name) {
     if (db.objectStoreNames.contains(name)) return null;
     return db.createObjectStore(name, { keyPath: 'id' });
 }
-
 function ensureIndex(store, name, keyPath, options = {}) {
     if (!store.indexNames.contains(name)) store.createIndex(name, keyPath, options);
 }
-
 function configureIndexes(db, transaction) {
     const configure = (name, fn) => { if (db.objectStoreNames.contains(name)) fn(transaction.objectStore(name)); };
     configure(STORES.PRODUCTS, store => {
-        ensureIndex(store, 'article', 'article');
-        ensureIndex(store, 'articleKey', 'articleKey');
-        ensureIndex(store, 'baseModel', 'baseModel');
-        ensureIndex(store, 'status', 'status');
+        ensureIndex(store, 'article', 'article'); ensureIndex(store, 'articleKey', 'articleKey');
+        ensureIndex(store, 'baseModel', 'baseModel'); ensureIndex(store, 'productGroupKey', 'productGroupKey'); ensureIndex(store, 'status', 'status');
     });
     configure(STORES.SALES, store => {
-        ensureIndex(store, 'productId', 'productId');
-        ensureIndex(store, 'article', 'article');
-        ensureIndex(store, 'date', 'date');
-        ensureIndex(store, 'importBatchId', 'importBatchId');
+        ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'articleKey', 'articleKey');
+        ensureIndex(store, 'productGroupKey', 'productGroupKey'); ensureIndex(store, 'article', 'article');
+        ensureIndex(store, 'date', 'date'); ensureIndex(store, 'importBatchId', 'importBatchId');
     });
     configure(STORES.STOCK, store => {
-        ensureIndex(store, 'productId', 'productId');
-        ensureIndex(store, 'articleKey', 'articleKey');
-        ensureIndex(store, 'warehouseName', 'warehouseName');
-        ensureIndex(store, 'date', 'date');
-        ensureIndex(store, 'source', 'source');
+        ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'articleKey', 'articleKey');
+        ensureIndex(store, 'productGroupKey', 'productGroupKey'); ensureIndex(store, 'warehouseName', 'warehouseName');
+        ensureIndex(store, 'date', 'date'); ensureIndex(store, 'source', 'source');
     });
     configure(STORES.STOCK_HISTORY, store => {
-        ensureIndex(store, 'productId', 'productId');
-        ensureIndex(store, 'articleKey', 'articleKey');
-        ensureIndex(store, 'warehouseName', 'warehouseName');
-        ensureIndex(store, 'date', 'date');
+        ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'articleKey', 'articleKey');
+        ensureIndex(store, 'productGroupKey', 'productGroupKey'); ensureIndex(store, 'warehouseName', 'warehouseName'); ensureIndex(store, 'date', 'date');
     });
     configure(STORES.SUPPLY, store => { ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'status', 'status'); });
     configure(STORES.ADVERTISING, store => { ensureIndex(store, 'campaignId', 'campaignId'); ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'date', 'date'); });
@@ -63,26 +52,21 @@ function openDB() {
             const transaction = event.target.transaction;
             Object.values(STORES).forEach(name => createStore(db, name));
             configureIndexes(db, transaction);
-
-            // v3 содержала несовместимые ключи остатков и продаж.
-            // Очищаем только производные данные: номенклатура, настройки,
-            // профиль и прочие справочники пользователя не затрагиваются.
-            if (event.oldVersion < 4) {
-                [STORES.SALES, STORES.STOCK, STORES.STOCK_HISTORY].forEach(name => {
+            // v4 содержала старую схему производных данных. После v5 база
+            // начинается с чистых фактов продаж/остатков; товары и настройки сохраняются.
+            if (event.oldVersion < 5) {
+                [STORES.SALES, STORES.STOCK, STORES.STOCK_HISTORY, STORES.FINANCE].forEach(name => {
                     if (db.objectStoreNames.contains(name)) transaction.objectStore(name).clear();
                 });
             }
         };
         request.onsuccess = event => {
-            const db = event.target.result;
-            db.onversionchange = () => db.close();
-            resolve(db);
+            const db = event.target.result; db.onversionchange = () => db.close(); resolve(db);
         };
         request.onerror = event => reject(event.target.error || new Error('Не удалось открыть базу данных'));
         request.onblocked = () => reject(new Error('База данных занята другой вкладкой. Закройте другие вкладки BELTANEE.'));
     });
 }
-
 function withTransaction(storeName, mode, callback) {
     return openDB().then(db => new Promise((resolve, reject) => {
         let result; let settled = false;
