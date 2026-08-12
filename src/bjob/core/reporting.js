@@ -1,0 +1,3 @@
+export function summarize(rows=[]){const total=rows.length;const orders=rows.reduce((s,x)=>s+(Number(x.orders)||0),0);const revenue=rows.reduce((s,x)=>s+(Number(x.revenue??x.amount)||0),0);return {rows:total,orders,revenue};}
+export function reportDocument({title='B-JOB report',sections=[]}={}){return {title,createdAt:new Date().toISOString(),sections:sections.map(x=>({title:String(x.title||''),content:String(x.content||'')}))};}
+export function csv(rows=[],columns=[]){const cols=columns.length?columns:Object.keys(rows[0]||{});const quote=v=>`"${String(v??'').replaceAll('"','""')}"`;return [cols.map(quote).join(';'),...rows.map(r=>cols.map(c=>quote(r[c])).join(';'))].join('\n');}
