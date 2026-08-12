@@ -1,0 +1,4 @@
+import {productionPlan} from '../core/calculations.js';
+export function createProductionRequest({id,article,quantity,priority='normal',dueDate=null}={}){if(!id||!article)throw new Error('Заявка требует идентификатор и артикул.');const q=Math.max(0,Math.ceil(Number(quantity)||0));if(!q)throw new Error('Количество производства должно быть больше нуля.');return {id,article,quantity:q,priority,dueDate,status:'planned',createdAt:new Date().toISOString()};}
+export function planRequest(input){const p=productionPlan(input);return {...p,requestedAt:new Date().toISOString()};}
+export function changeProductionStatus(request,status){const allowed=['planned','approved','in_production','ready','cancelled'];if(!allowed.includes(status))throw new Error('Неизвестный статус производства.');return {...request,status,statusChangedAt:new Date().toISOString()};}
