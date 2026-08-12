@@ -1,0 +1,3 @@
+export const ROLES={owner:['*'],admin:['catalog','sales','stocks','ads','finance','warehouse','fbs','production','reports','settings','api'],manager:['catalog','sales','stocks','ads','finance','reports'],warehouse:['stocks','warehouse','fbs'],production:['catalog','stocks','production'],analyst:['catalog','sales','stocks','ads','finance','reports','analytics']};
+export function can(role,resource){const p=ROLES[role]||[];return p.includes('*')||p.includes(resource);}
+export function invite({storeId,email,role='manager'}={}){if(!storeId||!email)throw new Error('Для приглашения нужны магазин и email.');if(!ROLES[role])throw new Error('Неизвестная роль пользователя.');return {id:crypto.randomUUID(),storeId,email,role,status:'pending',createdAt:new Date().toISOString()};}
