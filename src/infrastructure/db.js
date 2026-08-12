@@ -1,10 +1,12 @@
 // ============================================================
 // BELTANEE — IndexedDB / production data layer
-// Один connection на сессию, короткие транзакции, bulk I/O.
+// Clean production schema. Demo data is intentionally isolated
+// from the active database and is never loaded by the app.
 // ============================================================
 
-const DB_NAME = 'BeltaneeDB_v6_1';
-const DB_VERSION = 6;
+const DB_NAME = 'BeltaneeDB_v7_0';
+const DB_VERSION = 7;
+const LEGACY_DB_NAMES = ['BeltaneeDB_v6_1', 'BeltaneeDB_v6'];
 const BULK_CHUNK_SIZE = 1000;
 
 const STORES = {
@@ -15,6 +17,7 @@ const STORES = {
 
 let connection = null;
 let opening = null;
+let legacyCleanupStarted = false;
 
 function createStore(db, name) {
     if (db.objectStoreNames.contains(name)) return null;
@@ -66,9 +69,18 @@ function configureIndexes(db, transaction) {
     configure(STORES.PRICES, store => { ensureIndex(store, 'articleKey', 'articleKey'); ensureIndex(store, 'date', 'date'); });
 }
 
+function cleanupLegacyDatabasesOnce() {
+    if (legacyCleanupStarted || !window.indexedDB) return;
+    legacyCleanupStarted = true;
+    for (const name of LEGACY_DB_NAMES) {
+        try { indexedDB.deleteDatabase(name); } catch (error) { console.warn(`[BELTANEE] Не удалось удалить старую БД ${name}`, error); }
+    }
+}
+
 function createConnection() {
     return new Promise((resolve, reject) => {
         if (!window.indexedDB) return reject(new Error('Браузер не поддерживает IndexedDB'));
+        cleanupLegacyDatabasesOnce();
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = event => {
             const db = event.target.result;
@@ -90,9 +102,7 @@ function createConnection() {
 
 async function openDB() {
     if (connection) return connection;
-    if (!opening) {
-        opening = createConnection().finally(() => { opening = null; });
-    }
+    if (!opening) opening = createConnection().finally(() => { opening = null; });
     return opening;
 }
 
@@ -106,10 +116,7 @@ function withTransaction(storeNames, mode, callback) {
                 ? Object.fromEntries(storeNames.map(name => [name, tx.objectStore(name)]))
                 : tx.objectStore(storeNames);
             result = callback(stores, tx);
-        } catch (error) {
-            reject(error);
-            return;
-        }
+        } catch (error) { reject(error); return; }
         tx.oncomplete = () => resolve(result);
         tx.onerror = () => reject(tx.error || new Error('Ошибка транзакции IndexedDB'));
         tx.onabort = () => reject(tx.error || new Error('Транзакция IndexedDB отменена'));
@@ -123,25 +130,16 @@ function yieldToBrowser() {
     });
 }
 
-function save(storeName, data) {
-    return withTransaction(storeName, 'readwrite', store => store.put(data));
-}
+function save(storeName, data) { return withTransaction(storeName, 'readwrite', store => store.put(data)); }
 
 async function bulkWrite(storeName, records, options = {}, clearFirst = false) {
     const items = Array.isArray(records) ? records : [];
     const chunkSize = Math.max(100, Number(options.chunkSize) || BULK_CHUNK_SIZE);
-    const db = await openDB();
     let saved = 0;
-
-    if (clearFirst) {
-        await withTransaction(storeName, 'readwrite', store => store.clear());
-    }
-
+    if (clearFirst) await withTransaction(storeName, 'readwrite', store => store.clear());
     for (let offset = 0; offset < items.length; offset += chunkSize) {
         const chunk = items.slice(offset, offset + chunkSize);
-        await withTransaction(storeName, 'readwrite', store => {
-            for (const record of chunk) store.put(record);
-        });
+        await withTransaction(storeName, 'readwrite', store => { for (const record of chunk) store.put(record); });
         saved += chunk.length;
         if (typeof options.onProgress === 'function') options.onProgress(saved, items.length);
         if (offset + chunk.length < items.length) await yieldToBrowser();
@@ -151,41 +149,13 @@ async function bulkWrite(storeName, records, options = {}, clearFirst = false) {
 
 function saveMany(storeName, records, options = {}) { return bulkWrite(storeName, records, options, false); }
 function replaceAll(storeName, records, options = {}) { return bulkWrite(storeName, records, options, true); }
-
-function getAll(storeName) {
-    return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => {
-        const request = store.getAll();
-        request.onsuccess = () => resolve(request.result || []);
-        request.onerror = () => reject(request.error);
-    }));
-}
-
-function getById(storeName, id) {
-    return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => {
-        const request = store.get(id);
-        request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () => reject(request.error);
-    }));
-}
-
-function getByIndex(storeName, indexName, value) {
-    return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => {
-        let index;
-        try { index = store.index(indexName); }
-        catch { reject(new Error(`Индекс ${indexName} отсутствует в ${storeName}`)); return; }
-        const request = index.getAll(value);
-        request.onsuccess = () => resolve(request.result || []);
-        request.onerror = () => reject(request.error);
-    }));
-}
-
+function getAll(storeName) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.getAll(); request.onsuccess = () => resolve(request.result || []); request.onerror = () => reject(request.error); })); }
+function getById(storeName, id) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.get(id); request.onsuccess = () => resolve(request.result || null); request.onerror = () => reject(request.error); })); }
+function getByIndex(storeName, indexName, value) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { let index; try { index = store.index(indexName); } catch { reject(new Error(`Индекс ${indexName} отсутствует в ${storeName}`)); return; } const request = index.getAll(value); request.onsuccess = () => resolve(request.result || []); request.onerror = () => reject(request.error); })); }
 function deleteById(storeName, id) { return withTransaction(storeName, 'readwrite', store => store.delete(id)); }
 function clear(storeName) { return withTransaction(storeName, 'readwrite', store => store.clear()); }
 function count(storeName) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.count(); request.onsuccess = () => resolve(request.result || 0); request.onerror = () => reject(request.error); })); }
-
-async function countMany(storeNames) {
-    return withTransaction(storeNames, 'readonly', stores => Promise.all(storeNames.map(name => new Promise((resolve, reject) => { const request = stores[name].count(); request.onsuccess = () => resolve([name, request.result || 0]); request.onerror = () => reject(request.error); })))).then(entries => Object.fromEntries(entries));
-}
+async function countMany(storeNames) { return withTransaction(storeNames, 'readonly', stores => Promise.all(storeNames.map(name => new Promise((resolve, reject) => { const request = stores[name].count(); request.onsuccess = () => resolve([name, request.result || 0]); request.onerror = () => reject(request.error); })))).then(entries => Object.fromEntries(entries)); }
 
 export const Database = { DB_NAME, DB_VERSION, BULK_CHUNK_SIZE, STORES, openDB, save, saveMany, replaceAll, getAll, getById, getByIndex, delete: deleteById, clear, count, countMany };
 export default Database;
