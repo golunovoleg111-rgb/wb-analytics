@@ -3,7 +3,7 @@
 // ============================================================
 
 const DB_NAME = 'BeltaneeDB_v6_1';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const BULK_CHUNK_SIZE = 1000;
 
 const STORES = {
@@ -38,6 +38,7 @@ function configureIndexes(db, transaction) {
     configure(STORES.STOCK_HISTORY, store => {
         ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'articleKey', 'articleKey');
         ensureIndex(store, 'productGroupKey', 'productGroupKey'); ensureIndex(store, 'warehouseName', 'warehouseName'); ensureIndex(store, 'date', 'date');
+        ensureIndex(store, 'importBatchId', 'importBatchId');
     });
     configure(STORES.SUPPLY, store => { ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'status', 'status'); });
     configure(STORES.ADVERTISING, store => { ensureIndex(store, 'campaignId', 'campaignId'); ensureIndex(store, 'productId', 'productId'); ensureIndex(store, 'date', 'date'); });
@@ -53,13 +54,13 @@ function openDB() {
             const transaction = event.target.transaction;
             Object.values(STORES).forEach(name => createStore(db, name));
             configureIndexes(db, transaction);
-            if (event.oldVersion < 5) {
-                [STORES.SALES, STORES.STOCK, STORES.STOCK_HISTORY, STORES.FINANCE].forEach(name => {
-                    if (db.objectStoreNames.contains(name)) transaction.objectStore(name).clear();
-                });
-            }
+            // Миграции должны быть additive: обновление схемы никогда не удаляет пользовательские данные.
         };
-        request.onsuccess = event => { const db = event.target.result; db.onversionchange = () => db.close(); resolve(db); };
+        request.onsuccess = event => {
+            const db = event.target.result;
+            db.onversionchange = () => db.close();
+            resolve(db);
+        };
         request.onerror = event => reject(event.target.error || new Error('Не удалось открыть базу данных'));
         request.onblocked = () => reject(new Error('База данных занята другой вкладкой. Закройте другие вкладки BELTANEE.'));
     });
