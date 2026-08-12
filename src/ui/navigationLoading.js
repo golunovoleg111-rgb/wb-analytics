@@ -1,6 +1,6 @@
 // ============================================================
 // BELTANEE — UNIFIED NAVIGATION / LOADING LAYER
-// v1.7.1
+// Production navigation only. No demo state.
 // ============================================================
 
 const STYLE_ID = 'beltanee-navigation-loading-styles';
@@ -53,18 +53,11 @@ function activePageId() {
     return document.querySelector('.page.active')?.id?.replace('page-', '') || '';
 }
 
-function syncDemoBar(page) {
-    const bar = document.getElementById('demoExperienceBar');
-    if (!bar) return;
-    bar.style.display = page === 'dashboard' ? '' : 'none';
-}
-
 async function waitForPage(page, previousHtml, timeout = 2500) {
     const started = performance.now();
     while (performance.now() - started < timeout) {
         const element = document.getElementById(`page-${page}`);
-        const active = activePageId();
-        if (element && active === page) {
+        if (element && activePageId() === page) {
             const html = element.innerHTML.trim();
             if (html && html !== previousHtml && !/Загрузка|Загружаем/i.test(html.slice(0, 180))) {
                 element.classList.remove('beltanee-page-transition');
@@ -94,30 +87,27 @@ export function installNavigationLoading() {
         const previousHtml = target?.innerHTML?.trim() || '';
         navigating = true;
         show('Открываем раздел…');
-        syncDemoBar(page);
 
         let result;
-        try { result = originalNavigate(page); } catch (error) { navigating = false; hide(); throw error; }
+        try { result = originalNavigate(page); }
+        catch (error) { navigating = false; hide(); throw error; }
 
         Promise.resolve(result).then(async () => {
             await waitForPage(page, previousHtml);
-            syncDemoBar(page);
             hide();
             navigating = false;
-        }).catch(() => { hide(); navigating = false; });
-
+        }).catch(error => {
+            console.error('[BELTANEE] navigation error', error);
+            hide();
+            navigating = false;
+        });
         return result;
     };
 
     navigate.__beltaneeNavigationLoading = true;
     navigate.__beltaneeOriginal = originalNavigate;
     window.navigateTo = navigate;
-    window.beltaneeNavigationLoading = { show, hide, syncDemoBar };
-
-    window.addEventListener('beltanee:data-updated', () => {
-        const page = activePageId();
-        if (page) syncDemoBar(page);
-    });
+    window.beltaneeNavigationLoading = { show, hide };
 }
 
 export { show as showNavigationLoading, hide as hideNavigationLoading };
