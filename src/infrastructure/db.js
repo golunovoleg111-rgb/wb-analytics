@@ -87,37 +87,43 @@ function yieldToBrowser() {
 
 function save(storeName, data) { return withTransaction(storeName, 'readwrite', store => store.put(data)); }
 
-async function saveMany(storeName, records, options = {}) {
+async function bulkWrite(storeName, records, options = {}, clearFirst = false) {
     const items = Array.isArray(records) ? records : [];
     const chunkSize = Math.max(100, Number(options.chunkSize) || BULK_CHUNK_SIZE);
+    const db = await openDB();
     let saved = 0;
-    for (let offset = 0; offset < items.length; offset += chunkSize) {
-        const chunk = items.slice(offset, offset + chunkSize);
-        await withTransaction(storeName, 'readwrite', store => {
-            chunk.forEach(record => store.put(record));
-            return chunk.length;
-        });
-        saved += chunk.length;
-        if (offset + chunk.length < items.length) await yieldToBrowser();
-        if (typeof options.onProgress === 'function') options.onProgress(saved, items.length);
+    try {
+        if (clearFirst) {
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                tx.objectStore(storeName).clear();
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error || new Error('Не удалось очистить IndexedDB'));
+                tx.onabort = () => reject(tx.error || new Error('Очистка IndexedDB отменена'));
+            });
+        }
+        for (let offset = 0; offset < items.length; offset += chunkSize) {
+            const chunk = items.slice(offset, offset + chunkSize);
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                chunk.forEach(record => store.put(record));
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error || new Error('Ошибка массовой записи IndexedDB'));
+                tx.onabort = () => reject(tx.error || new Error('Массовая запись IndexedDB отменена'));
+            });
+            saved += chunk.length;
+            if (offset + chunk.length < items.length) await yieldToBrowser();
+            if (typeof options.onProgress === 'function') options.onProgress(saved, items.length);
+        }
+        return saved;
+    } finally {
+        db.close();
     }
-    return saved;
 }
 
-async function replaceAll(storeName, records, options = {}) {
-    const items = Array.isArray(records) ? records : [];
-    const chunkSize = Math.max(100, Number(options.chunkSize) || BULK_CHUNK_SIZE);
-    await clear(storeName);
-    let saved = 0;
-    for (let offset = 0; offset < items.length; offset += chunkSize) {
-        const chunk = items.slice(offset, offset + chunkSize);
-        await withTransaction(storeName, 'readwrite', store => { chunk.forEach(record => store.put(record)); return chunk.length; });
-        saved += chunk.length;
-        if (offset + chunk.length < items.length) await yieldToBrowser();
-        if (typeof options.onProgress === 'function') options.onProgress(saved, items.length);
-    }
-    return saved;
-}
+function saveMany(storeName, records, options = {}) { return bulkWrite(storeName, records, options, false); }
+function replaceAll(storeName, records, options = {}) { return bulkWrite(storeName, records, options, true); }
 
 function getAll(storeName) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.getAll(); request.onsuccess = () => resolve(request.result || []); request.onerror = () => reject(request.error); })); }
 function getById(storeName, id) { return withTransaction(storeName, 'readonly', store => new Promise((resolve, reject) => { const request = store.get(id); request.onsuccess = () => resolve(request.result || null); request.onerror = () => reject(request.error); })); }
