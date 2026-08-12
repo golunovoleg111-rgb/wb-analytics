@@ -1,0 +1,4 @@
+export function priceAfterDiscount(price,discount=0){const p=Number(price)||0,d=Math.min(100,Math.max(0,Number(discount)||0));return Math.round(p*(1-d/100)*100)/100;}
+export function requiredPrice(targetNet,{cost=0,commissionRate=0,logistics=0,storage=0,advertising=0,other=0}={}){const fixed=Number(cost)||0+ (Number(logistics)||0)+(Number(storage)||0)+(Number(advertising)||0)+(Number(other)||0);const rate=Math.min(.999,Math.max(0,(Number(commissionRate)||0)/100));return Math.round(((Number(targetNet)||0)+fixed)/(1-rate)*100)/100;}
+export function discountChain(price,discounts=[]){return discounts.reduce((v,d)=>priceAfterDiscount(v,d),Number(price)||0);}
+export function sppAmount(price,spp){const p=Number(price)||0,s=Math.min(100,Math.max(0,Number(spp)||0));return Math.round(p*s/100*100)/100;}
