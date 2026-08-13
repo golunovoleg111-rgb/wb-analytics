@@ -1,5 +1,12 @@
-// B-JOB import contracts. The UI can render these definitions into downloadable templates and validators.
-export const IMPORT_TEMPLATES={products:{title:'Товары',description:'Номенклатура и характеристики карточек',columns:['Артикул','Название','Цена','Размер','Цвет','Ткань','ТН ВЭД','Баркод','Себестоимость']},sales:{title:'Продажи',description:'История заказов и выкупов',columns:['Дата','Артикул','Баркод','Размер','Цвет','Заказы','Выкупы','Сумма']},stocks:{title:'Остатки',description:'Остатки по складам',columns:['Дата','Склад','Артикул','Баркод','Размер','Цвет','Доступно','В пути']},advertising:{title:'Реклама',description:'Фактические рекламные показатели',columns:['Дата','Кампания','Артикул','Показы','Клики','Расход','Заказы','Выручка']},warehouses:{title:'Склады',description:'Собственные склады и места хранения',columns:['Склад','Зона','Ячейка','Тип места','Номер','Вместимость']},fbs:{title:'FBS',description:'Заказы для сборки и отгрузки',columns:['Заказ','Дата','Артикул','Баркод','Количество','Склад','Статус']}};
+// B-JOB import contracts. Minimal, user-friendly Excel templates with only required business columns.
+export const IMPORT_TEMPLATES={
+ products:{title:'Товары',description:'Карточки товаров: артикул, название и базовые цены',columns:['Артикул','Название','Цена','Себестоимость','Баркод']},
+ sales:{title:'Продажи',description:'Заказы и выручка по датам и артикулам',columns:['Дата','Артикул','Заказы','Сумма']},
+ stocks:{title:'Остатки',description:'Фактические остатки по складам',columns:['Дата','Склад','Артикул','Доступно']},
+ advertising:{title:'Реклама',description:'Расходы и эффективность рекламных кампаний',columns:['Дата','Кампания','Показы','Клики','Расход','Заказы']},
+ warehouses:{title:'Склады',description:'Список собственных складов',columns:['Склад','Адрес','Тип']},
+ fbs:{title:'FBS',description:'Заказы для сборки и отгрузки',columns:['Заказ','Дата','Артикул','Баркод','Количество','Склад','Статус']}
+};
 export function template(name){return IMPORT_TEMPLATES[name]||null;}
 export function headers(name){return template(name)?.columns||[];}
 export function validateHeader(name,received=[]){const expected=headers(name);const actual=new Set(received.map(String));return {valid:expected.every(x=>actual.has(x)),missing:expected.filter(x=>!actual.has(x)),expected};}
