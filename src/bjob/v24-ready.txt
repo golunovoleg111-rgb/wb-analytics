@@ -1,0 +1,1 @@
+B-JOB v2.4 integrated controller prepared. Entry point: src/bjob/app-v24-final.js. Core workflow: import -> products -> unit economics -> warehouse/FBS -> production -> advertising -> analytics -> reports.
