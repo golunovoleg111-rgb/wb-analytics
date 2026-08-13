@@ -1,0 +1,1 @@
+The integrated controller is app-v24-final.js. index.html will be switched to this entrypoint in the next repository tree update.
