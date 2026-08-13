@@ -1,5 +1,5 @@
 const DB_NAME='beltanee-production';
-const DB_VERSION=2;
+const DB_VERSION=3;
 const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit'];
 let dbPromise;
 function open(){if(dbPromise)return dbPromise;dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;for(const s of STORES){if(!db.objectStoreNames.contains(s)){const st=db.createObjectStore(s,{keyPath:'id',autoIncrement:true});if(['products','sales','stocks','ads','fbs'].includes(s))st.createIndex('article','article',{unique:false});if(['sales','stocks','ads','fbs','imports','warehouseMoves','shipments','productionOrders','audit'].includes(s))st.createIndex('date','date',{unique:false});if(s==='warehouses')st.createIndex('name','name',{unique:false});if(s==='apiConnections')st.createIndex('marketplace','marketplace',{unique:false});}}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});return dbPromise}
