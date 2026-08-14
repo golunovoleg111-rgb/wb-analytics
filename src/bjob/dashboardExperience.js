@@ -1,0 +1,4 @@
+const id='bjob-dashboard-experience';
+function install(){if(document.getElementById(id))return;const style=document.createElement('style');style.id=id;style.textContent=`.bjob .quick-actions{gap:8px}.bjob .workspace{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bjob .bjob-group>span{letter-spacing:.08em;text-transform:uppercase}.bjob .status-grid{gap:12px}.bjob .status-grid>div{cursor:default}.bjob .page-head h1{letter-spacing:-.025em}.bjob .section h2{letter-spacing:-.015em}.bjob .fbs-board{overflow-x:auto;padding-bottom:8px}.bjob .fbs-board>section{min-width:250px}.bjob .metric strong{font-variant-numeric:tabular-nums}.bjob .btn{min-height:38px}.bjob .modal-backdrop{backdrop-filter:blur(6px)}@media(max-width:900px){.bjob .workspace{display:none}.bjob header{gap:8px}.bjob .quick-actions .secondary{display:none}}`;document.head.appendChild(style)}
+install();
+window.addEventListener('resize',install,{passive:true});
