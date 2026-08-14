@@ -1,0 +1,9 @@
+const BOX_KEY='bjob:fbs-open-box';
+const isFbs=()=>document.querySelector('#mainNav button.active')?.dataset.page==='fbs';
+function boxFromUrl(){try{return new URL(location.href).searchParams.get('fbsBox')}catch{return null}}
+function consumeBoxLink(){const id=boxFromUrl();if(!id)return;sessionStorage.setItem(BOX_KEY,id);if(!isFbs()){const btn=document.querySelector('#mainNav button[data-page="fbs"]');btn?.click()}setTimeout(()=>window.dispatchEvent(new CustomEvent('bjob:fbs-open-request',{detail:{boxId:id}})),80)}
+function dedupeFullscreen(){const all=[...document.querySelectorAll('button')].filter(b=>/полный экран|fullscreen/i.test(b.textContent||''));if(all.length<2)return;all.slice(1).forEach(b=>b.remove())}
+function bindFullscreen(){dedupeFullscreen();const b=[...document.querySelectorAll('button')].find(x=>/полный экран|fullscreen/i.test(x.textContent||''));if(!b||b.dataset.fsBound)return;if(!document.fullscreenEnabled)return;b.dataset.fsBound='1';b.onclick=async e=>{e.preventDefault();try{if(document.fullscreenElement){await document.exitFullscreen()}else{await (document.querySelector('.fbs-workspace')||document.documentElement).requestFullscreen()}}catch(err){console.warn('Fullscreen unavailable',err)}};const sync=()=>{b.textContent=document.fullscreenElement?'⛶ Выйти из полного экрана':'⛶ Полный экран'};document.addEventListener('fullscreenchange',sync);sync()}
+function install(){consumeBoxLink();bindFullscreen();const obs=new MutationObserver(()=>{bindFullscreen()});obs.observe(document.body,{childList:true,subtree:true});window.addEventListener('bjob:fbs-open-request',e=>{if(e.detail?.boxId)sessionStorage.setItem(BOX_KEY,e.detail.boxId)});window.addEventListener('popstate',consumeBoxLink)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+export function fbsBoxUrl(id){const u=new URL(location.href);u.searchParams.set('fbsBox',id);return u.href}
