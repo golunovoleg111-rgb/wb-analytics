@@ -2,12 +2,11 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-
 const serverDir=path.dirname(fileURLToPath(import.meta.url));
 const publicRoot=path.resolve(serverDir,'..');
 const dataDir=path.join(serverDir,'data');
 const dbFile=path.join(dataDir,'shared.json');
-const stores=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements'];
+const stores=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','users','audit','fbsSpaces','fbsBoxes','stockMovements'];
 const empty=()=>Object.fromEntries(stores.map(k=>[k,{}]));
 async function readDb(){try{return JSON.parse(await fs.readFile(dbFile,'utf8'))}catch{return empty()}}
 let queue=Promise.resolve();
