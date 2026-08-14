@@ -1,0 +1,4 @@
+const bindings=new Map();
+export function registerShortcut(combo,handler,{when=()=>true}={}){const key=String(combo).toLowerCase();bindings.set(key,{handler,when});return()=>bindings.delete(key)}
+export function installKeyboardShortcuts(){if(window.__bjobShortcutsInstalled)return;window.__bjobShortcutsInstalled=true;window.addEventListener('keydown',e=>{const parts=[];if(e.ctrlKey)parts.push('ctrl');if(e.metaKey)parts.push('meta');if(e.shiftKey)parts.push('shift');if(e.altKey)parts.push('alt');parts.push(String(e.key).toLowerCase());const b=bindings.get(parts.join('+'));if(!b||!b.when())return;if(['INPUT','TEXTAREA','SELECT'].includes(e.target?.tagName)&&!e.ctrlKey&&!e.metaKey)return;e.preventDefault();b.handler(e)})}
+installKeyboardShortcuts();
