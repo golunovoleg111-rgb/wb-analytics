@@ -1,0 +1,3 @@
+export function setBusy(el,busy=true,label='Загрузка…'){if(!el)return;el.setAttribute('aria-busy',String(busy));if(busy){el.dataset.previousText=el.textContent||'';el.textContent=label}else if(el.dataset.previousText!==undefined){el.textContent=el.dataset.previousText;delete el.dataset.previousText}}
+export function renderState(container,type,message){if(!container)return;container.dataset.state=type;container.innerHTML=`<div class="${type}-state" role="status">${message}</div>`}
+export function clearState(container){if(!container)return;container.removeAttribute('data-state');const node=container.querySelector('.loading-state,.error-state,.empty-state');node?.remove()}
