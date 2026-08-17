@@ -22,4 +22,20 @@ async function restore(file){const raw=await file.text();const parsed=JSON.parse
 function modal(title,body){const w=document.createElement('div');w.className='v1-modal';w.innerHTML=`<div class="v1-modal-card"><h2>${title}</h2>${body}</div>`;document.body.appendChild(w);w.addEventListener('click',e=>{if(e.target===w)w.remove()});return w}
 function tools(){if(document.querySelector('.v1-tools')||!role())return;const t=document.createElement('div');t.className='v1-tools';t.innerHTML=`<button data-v1="backup">Экспорт JSON</button><button data-v1="import">Импорт JSON</button><button data-v1="source">Источник данных</button><button data-v1="logout">Выйти</button>`;document.body.appendChild(t);t.onclick=async e=>{const b=e.target.closest('[data-v1]');if(!b)return;try{if(b.dataset.v1==='backup')await backup();if(b.dataset.v1==='import'){const i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=async()=>{if(i.files[0])try{await restore(i.files[0])}catch(err){alert(err.message)}};i.click()}if(b.dataset.v1==='logout'){sessionStorage.removeItem(AUTH_KEY);location.reload()}if(b.dataset.v1==='source'){const current=localStorage.getItem(API_KEY)||'';const w=modal('Источник данных',`<div class="v1-form"><p>Можно работать автономно через IndexedDB или указать адрес B-JOB API в локальной сети.</p><label>API URL<input id="v1-api" value="${esc(current)}" placeholder="http://192.168.1.20:8787"></label><span class="v1-badge">Пусто = автономный режим</span></div><div class="v1-actions"><button data-close>Отмена</button><button class="primary" data-save>Сохранить и перезагрузить</button></div>`);w.querySelector('[data-close]').onclick=()=>w.remove();w.querySelector('[data-save]').onclick=()=>{localStorage.setItem(API_KEY,w.querySelector('#v1-api').value.trim());location.reload()}}}catch(err){alert(err.message)}}}
 
-injectStyle();gate();restrictNav();tools();
+async function boot(){
+  injectStyle();
+  gate();
+  if(!role())return;
+  const app=await import('./bjob/app.js');
+  await Promise.all([
+    import('./ui/projectHardening.js'),import('./ui/keyboardShortcuts.js'),import('./ui/formGuards.js'),import('./ui/loadingState.js'),
+    import('./ui/actionFeedback.js'),import('./ui/performanceHelpers.js'),import('./ui/tableUtils.js'),import('./ui/virtualList.js'),
+    import('./data/sharedDataBridge.js'),import('./bjob/appExperience.js'),import('./bjob/uiEnhancements.js'),import('./bjob/dashboardExperience.js'),
+    import('./bjob/fbsWorkspaceUI.js'),import('./bjob/fbsPickingUI.js'),import('./bjob/fbsExperience.js'),import('./bjob/fbsFixes.js'),
+    import('./bjob/fbsOperationsUI.js'),import('./bjob/fbsQrExperience.js'),import('./bjob/fbsQrFullscreenFix.js'),import('./bjob/fbsV1.js'),import('./bjob/fbsStorageUI.js')
+  ]);
+  restrictNav();
+  tools();
+}
+
+boot().catch(err=>{console.error('B-JOB boot failed',err);const main=document.querySelector('#app main');if(main)main.innerHTML='<section class="bjob-empty"><h2>Не удалось загрузить B-JOB</h2><p>Проверьте обновление страницы. Данные локальной базы не изменены.</p><button class="btn primary" onclick="location.reload()">Повторить</button></section>'});
