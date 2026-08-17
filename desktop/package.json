@@ -1,5 +1,6 @@
 {
   "name": "b-job-desktop",
+  "productName": "B-JOB",
   "version": "0.1.0",
   "private": true,
   "description": "B-JOB offline-first desktop application",
@@ -8,6 +9,21 @@
     "start": "electron .",
     "dev": "electron .",
     "build": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.bjob.desktop",
+    "productName": "B-JOB",
+    "artifactName": "B-JOB-Setup-${version}.${ext}",
+    "asar": true,
+    "files": ["**/*"],
+    "extraResources": [
+      {"from": "../index.html", "to": "bjob-app/index.html"},
+      {"from": "../src", "to": "bjob-app/src"},
+      {"from": "../favicon.svg", "to": "bjob-app/favicon.svg"},
+      {"from": "../sw.js", "to": "bjob-app/sw.js"}
+    ],
+    "win": {"target": [{"target": "nsis", "arch": ["x64"]}]},
+    "nsis": {"oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true}
   },
   "devDependencies": {
     "electron": "^37.0.0",

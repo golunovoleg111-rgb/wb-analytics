@@ -1,0 +1,1 @@
+This milestone connects the real B-JOB frontend to the local Electron runtime and prepares a Windows installer build. No fake WB API, LAN sync, or sample business data is included.
