@@ -1,0 +1,1 @@
+Review focus: ensure Electron starts the real B-JOB UI, LAN auth works, and Pull replacement is explicit. Automatic conflict resolution is intentionally out of scope for this PR.
