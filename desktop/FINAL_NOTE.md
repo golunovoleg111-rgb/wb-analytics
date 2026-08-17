@@ -1,0 +1,1 @@
+This stage provides an explicit LAN data exchange UI and persistent sync-journal infrastructure. It does not claim transparent real-time synchronization or automatic conflict resolution. Those require mutation hooks in every data-write path and a reviewed conflict UI.
