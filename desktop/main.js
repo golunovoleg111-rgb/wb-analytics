@@ -3,14 +3,24 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { URL } = require('url');
+const crypto = require('crypto');
+const { createLanServer, localIPv4 } = require('./lanServer');
+const { createProtocol } = require('./lanProtocol');
 
 let server;
 let serverPort;
+let lanServer;
+let lanConfig;
 
 function dataDir() { return path.join(app.getPath('userData'), 'data'); }
 function appRoot() { return app.isPackaged ? path.join(process.resourcesPath, 'bjob-app') : path.resolve(__dirname, '..'); }
 const MIME = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.ico':'image/x-icon','.webmanifest':'application/manifest+json' };
 function safePath(urlPath) { const root=path.resolve(appRoot()); const target=path.resolve(root, `.${decodeURIComponent(urlPath)}`); return target===root||target.startsWith(root+path.sep)?target:null; }
+function localJsonStore(name) { return path.join(dataDir(), `lan-${name}.json`); }
+async function readLanStore(name) { const file=localJsonStore(name); if(!fs.existsSync(file))return []; return JSON.parse(fs.readFileSync(file,'utf8')); }
+async function writeLanStore(name, rows) { fs.writeFileSync(localJsonStore(name), JSON.stringify(rows ?? [], null, 2), 'utf8'); }
+async function clearLanStore(name) { const file=localJsonStore(name); if(fs.existsSync(file))fs.unlinkSync(file); }
+const LAN_STORES=['products','stocks','warehouses','fbsSpaces','fbsBoxes','fbsInventory','stockMovements','shipments'];
 
 function startLocalServer() {
   fs.mkdirSync(dataDir(), {recursive:true});
@@ -34,7 +44,7 @@ function createWindow(){
   win.loadURL(`http://127.0.0.1:${serverPort}/`);
 }
 
-ipcMain.handle('desktop-info',()=>({version:app.getVersion(),dataDir:dataDir(),port:serverPort,root:appRoot()}));
+ipcMain.handle('desktop-info',()=>({version:app.getVersion(),dataDir:dataDir(),port:serverPort,root:appRoot(),lan:lanConfig}));
 ipcMain.handle('desktop-export-json',async(_event,payload)=>{
   const result=await dialog.showSaveDialog({title:'Экспорт базы B-JOB',defaultPath:`BJOB-backup-${new Date().toISOString().slice(0,10)}.json`,filters:[{name:'B-JOB backup',extensions:['json']}]});
   if(result.canceled||!result.filePath)return {cancelled:true};
@@ -48,6 +58,17 @@ ipcMain.handle('desktop-import-json',async()=>{
   if(!raw||raw.format!=='bjob-json'||!raw.data||typeof raw.data!=='object')throw new Error('Неверный файл базы B-JOB');
   return {cancelled:false,filePath:result.filePaths[0],data:raw.data};
 });
+ipcMain.handle('lan-start',async()=>{
+  if(lanServer)return lanConfig;
+  const token=crypto.randomBytes(24).toString('hex');
+  const protocol=createProtocol({stores:LAN_STORES,readStore:readLanStore,writeStore:writeLanStore,clearStore:clearLanStore});
+  const result=await createLanServer({port:8787,token,onRequest:protocol});
+  lanServer=result.server;
+  lanConfig={enabled:true,address:result.address,port:result.port,token:result.token,url:`http://${result.address}:${result.port}`};
+  return lanConfig;
+});
+ipcMain.handle('lan-stop',async()=>{if(lanServer){await new Promise(resolve=>lanServer.close(resolve));lanServer=null;}lanConfig=null;return {enabled:false};});
+ipcMain.handle('lan-status',()=>lanConfig||{enabled:false,address:localIPv4()});
 
 app.whenReady().then(()=>{startLocalServer();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
-app.on('window-all-closed',()=>{if(server)server.close();if(process.platform!=='darwin')app.quit();});
+app.on('window-all-closed',()=>{if(server)server.close();if(lanServer)lanServer.close();if(process.platform!=='darwin')app.quit();});
