@@ -1,15 +1,10 @@
-const CACHE='bjob-v1-runtime-2';
+const CACHE='bjob-v1-runtime-3';
 const SHELL=['./','./index.html','./favicon.svg','./src/bjob/bjob.css','./src/bjob/fbsWorkspace.css','./src/bjob/fbsPicking.css'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',event=>{
   const u=new URL(event.request.url);
   if(event.request.method!=='GET'||u.origin!==location.origin)return;
-  event.respondWith(caches.match(event.request).then(cached=>{
-    const network=fetch(event.request).then(response=>{
-      if(response.ok){const copy=response.clone();caches.open(CACHE).then(c=>c.put(event.request,copy)).catch(()=>{});}
-      return response;
-    }).catch(()=>cached);
-    return cached||network;
-  }));
+  const isDocument=u.pathname.endsWith('/')||u.pathname.endsWith('/index.html');
+  event.respondWith((isDocument?fetch(event.request).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(c=>c.put(event.request,copy)).catch(()=>{});}return response;}).catch(()=>caches.match(event.request)):caches.match(event.request).then(cached=>{const network=fetch(event.request).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(c=>c.put(event.request,copy)).catch(()=>{});}return response;}).catch(()=>cached);return cached||network;})));
 });
