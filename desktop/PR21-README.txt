@@ -1,0 +1,1 @@
+PR #21 is the desktop LAN/sync UI integration stage. Use TEST-21.md for manual acceptance checks.

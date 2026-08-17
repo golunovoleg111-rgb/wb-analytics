@@ -1,0 +1,1 @@
+Acceptance: Electron starts the real B-JOB UI; LAN panel is visible only in desktop mode; host can start and expose URL/key; client can save URL/key; push/pull calls are authenticated; sync journal can be exported; pulling requires an explicit user action and does not silently merge conflicts.

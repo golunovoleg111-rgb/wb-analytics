@@ -1,0 +1,1 @@
+Desktop UI talks to Electron through the existing context-isolated preload bridge. The LAN server is authenticated with a per-run random token. Local data remains in the existing IndexedDB; explicit Pull writes supported stores through DB.replaceMany. The sync journal is persisted separately in the desktop data directory.

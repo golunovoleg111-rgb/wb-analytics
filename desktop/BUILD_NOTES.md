@@ -1,0 +1,1 @@
+Build note: this branch changes the Electron runtime and preload bridge. Run the existing desktop package/build commands from desktop/package.json after checkout. No fake WB data or server endpoint is introduced.

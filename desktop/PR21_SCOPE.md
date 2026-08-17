@@ -1,0 +1,1 @@
+PR #21 scope: expose the LAN/sync controls inside the Electron desktop runtime, connect the desktop runtime to the persistent sync journal, expose device identity and journal export, and document the safe push/pull workflow. Automatic conflict resolution remains intentionally disabled.
