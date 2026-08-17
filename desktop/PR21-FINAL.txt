@@ -1,0 +1,1 @@
+Final implementation summary: LAN UI, device identity, sync journal integration, export, authenticated push/pull, operator and test docs.
