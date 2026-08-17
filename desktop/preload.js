@@ -9,4 +9,6 @@ contextBridge.exposeInMainWorld('BJobDesktop', {
   lanStatus: () => ipcRenderer.invoke('lan-status'),
   lanPush: (payload) => ipcRenderer.invoke('lan-push', payload),
   lanPull: (payload) => ipcRenderer.invoke('lan-pull', payload),
+  syncStatus: () => ipcRenderer.invoke('sync-status'),
+  exportSyncJournal: () => ipcRenderer.invoke('sync-export'),
 });
