@@ -1,0 +1,1 @@
+Static checks to run in CI/local environment: node --check desktop/main.js; node --check desktop/preload.js; node --check desktop/lanServer.js; node --check desktop/lanProtocol.js; node --check desktop/syncEngine.js; node --check desktop/syncStorage.js; node --check desktop/syncProtocol.js. Browser/Electron manual checks are in TEST-21.md.
