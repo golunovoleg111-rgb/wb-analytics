@@ -1,0 +1,1 @@
+Desktop milestone: real B-JOB frontend + local runtime + Windows build configuration + installation/migration/testing documentation.
