@@ -1,6 +1,6 @@
 import {sharedRepository} from './data/sharedDataBridge.js';
 const DB_NAME='beltanee-production';
-const DB_VERSION=5;
+const DB_VERSION=6;
 const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements'];
 let dbPromise;
 const LOCAL_ONLY_STORES=new Set(['apiConnections']);
@@ -9,6 +9,8 @@ async function localAll(name){const db=await open();return tx(db,name,'readonly'
 async function replaceLocal(name,rows){const db=await open();return new Promise((resolve,reject)=>{const t=db.transaction(name,'readwrite'),s=t.objectStore(name);s.clear();for(const row of rows)s.put(row);t.oncomplete=()=>resolve(rows.length);t.onerror=()=>reject(t.error)})}
 async function syncRead(name){const local=await localAll(name);if(LOCAL_ONLY_STORES.has(name))return local;try{const remote=await sharedRepository.list(name);if(Array.isArray(remote)&&remote.length){await replaceLocal(name,remote);return remote}if(local.length){for(const row of local)await sharedRepository.mutate(name,'upsert',row)}return local}catch{return local}}
 export async function clearStore(name){const db=await open();const result=await tx(db,name,'readwrite',s=>s.clear());if(!LOCAL_ONLY_STORES.has(name)){try{await sharedRepository.mutate(name,'clear',{})}catch{}}return result}
+export async function remove(name,id){const db=await open();const result=await tx(db,name,'readwrite',s=>s.delete(id));if(!LOCAL_ONLY_STORES.has(name)){try{await sharedRepository.mutate(name,'delete', {id})}catch{}}return result}
+export async function get(name,id){const db=await open();return tx(db,name,'readonly',s=>s.get(id))}
 export async function count(name){return (await all(name)).length}
 export async function all(name){return syncRead(name)}
 export async function putMany(name,rows){if(!rows?.length)return 0;const db=await open();const result=await new Promise((resolve,reject)=>{const t=db.transaction(name,'readwrite'),s=t.objectStore(name);for(const row of rows)s.put(row);t.oncomplete=()=>resolve(rows.length);t.onerror=()=>reject(t.error)});if(!LOCAL_ONLY_STORES.has(name))for(const row of rows){try{await sharedRepository.mutate(name,'upsert',row)}catch{}}return result}
