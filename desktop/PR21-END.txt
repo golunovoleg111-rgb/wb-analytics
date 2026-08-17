@@ -1,0 +1,1 @@
+Do not merge until GitHub reports the PR is mergeable and CI/manual checks are acceptable.
