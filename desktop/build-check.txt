@@ -1,0 +1,9 @@
+Desktop build verification:
+- npm install
+- npm run build
+- installer output: dist/B-JOB-Setup-0.1.0.exe
+- launch installer on Windows
+- start B-JOB without internet
+- verify real B-JOB frontend opens locally
+- import JSON backup
+- reload app and verify data persists
