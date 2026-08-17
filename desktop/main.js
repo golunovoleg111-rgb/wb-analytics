@@ -44,6 +44,24 @@ function createWindow(){
   win.loadURL(`http://127.0.0.1:${serverPort}/`);
 }
 
+async function lanRequest(baseUrl, token, pathName, options={}) {
+  const response=await fetch(`${baseUrl.replace(/\/$/,'')}${pathName}`,{...options,headers:{...(options.headers||{}),'X-BJOB-LAN-Token':token,'Content-Type':'application/json'}});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||`LAN request failed: ${response.status}`);
+  return data;
+}
+async function lanPushSnapshot(baseUrl,token,snapshot){
+  const names=Object.keys(snapshot||{}).filter(name=>LAN_STORES.includes(name));
+  for(const name of names)await lanRequest(baseUrl,token,'/lan/store',{method:'POST',body:JSON.stringify({name,rows:snapshot[name]||[]})});
+  return {ok:true,stores:names};
+}
+async function lanPullSnapshot(baseUrl,token){
+  const hello=await lanRequest(baseUrl,token,'/lan/hello');
+  const stores={};
+  for(const name of (hello.stores||[]))stores[name]=(await lanRequest(baseUrl,token,`/lan/store?name=${encodeURIComponent(name)}`)).rows||[];
+  return {ok:true,data:stores};
+}
+
 ipcMain.handle('desktop-info',()=>({version:app.getVersion(),dataDir:dataDir(),port:serverPort,root:appRoot(),lan:lanConfig}));
 ipcMain.handle('desktop-export-json',async(_event,payload)=>{
   const result=await dialog.showSaveDialog({title:'Экспорт базы B-JOB',defaultPath:`BJOB-backup-${new Date().toISOString().slice(0,10)}.json`,filters:[{name:'B-JOB backup',extensions:['json']}]});
@@ -69,6 +87,8 @@ ipcMain.handle('lan-start',async()=>{
 });
 ipcMain.handle('lan-stop',async()=>{if(lanServer){await new Promise(resolve=>lanServer.close(resolve));lanServer=null;}lanConfig=null;return {enabled:false};});
 ipcMain.handle('lan-status',()=>lanConfig||{enabled:false,address:localIPv4()});
+ipcMain.handle('lan-push',async(_event,{baseUrl,token,snapshot})=>lanPushSnapshot(baseUrl,token,snapshot));
+ipcMain.handle('lan-pull',async(_event,{baseUrl,token})=>lanPullSnapshot(baseUrl,token));
 
 app.whenReady().then(()=>{startLocalServer();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
 app.on('window-all-closed',()=>{if(server)server.close();if(lanServer)lanServer.close();if(process.platform!=='darwin')app.quit();});

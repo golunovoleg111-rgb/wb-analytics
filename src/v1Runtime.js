@@ -36,6 +36,7 @@ async function boot(){
   ]);
   restrictNav();
   tools();
+  if(globalThis.BJobDesktop){const {installDesktopLanUI}=await import('./bjob/desktopLanUI.js');installDesktopLanUI()}
 }
 
 boot().catch(err=>{console.error('B-JOB boot failed',err);const main=document.querySelector('#app main');if(main)main.innerHTML='<section class="bjob-empty"><h2>Не удалось загрузить B-JOB</h2><p>Проверьте обновление страницы. Данные локальной базы не изменены.</p><button class="btn primary" onclick="location.reload()">Повторить</button></section>'});
