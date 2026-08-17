@@ -1,0 +1,1 @@
+Primary implementation files: desktop/main.js, desktop/preload.js, desktop/syncEngine.js, desktop/syncStorage.js, desktop/syncProtocol.js, src/bjob/desktopLanUI.js.
