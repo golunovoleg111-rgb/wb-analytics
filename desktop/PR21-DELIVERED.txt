@@ -1,0 +1,1 @@
+Delivered: Electron LAN panel integration, device identity, sync journal persistence/export, explicit authenticated LAN push/pull, and safety/test documentation.
