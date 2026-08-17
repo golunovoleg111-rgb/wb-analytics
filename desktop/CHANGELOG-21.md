@@ -1,0 +1,1 @@
+PR #21: desktop LAN/sync UI, persistent device identity, sync journal integration, journal export, operator documentation.
