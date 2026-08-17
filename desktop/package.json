@@ -1,0 +1,16 @@
+{
+  "name": "b-job-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "B-JOB offline-first desktop application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.0"
+  }
+}
