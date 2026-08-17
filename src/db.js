@@ -1,6 +1,8 @@
 import {sharedRepository} from './data/sharedDataBridge.js';
 const DB_NAME='beltanee-production';
-const DB_VERSION=7;
+// Bump schema version whenever new IndexedDB stores/indexes are introduced.
+// v8 installs the shops/invitations/authEvents stores for existing v7 databases.
+const DB_VERSION=8;
 const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','shops','invitations','authEvents'];
 const SHOP_SCOPED_STORES=new Set(['products','sales','stocks','ads','expenses','fbs','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','apiConnections']);
 let dbPromise;
