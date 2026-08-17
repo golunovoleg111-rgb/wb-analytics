@@ -1,0 +1,1 @@
+Boundary: LAN snapshot exchange is functional; transparent real-time synchronization and automatic conflict resolution are not claimed until mutation hooks are wired through the database layer.
