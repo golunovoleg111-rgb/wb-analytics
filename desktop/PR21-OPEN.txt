@@ -1,0 +1,1 @@
+Review and merge only after GitHub confirms mergeability and manual desktop/LAN checks pass.
