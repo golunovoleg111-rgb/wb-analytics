@@ -1,252 +1,252 @@
 import { session, can, listShops, activeShop, setActiveShop } from './userAuth.js';
 
-const GROUPS = [
-  ['БИЗНЕС', ['overview', 'analytics', 'reports', 'products', 'unit', 'advertising']],
-  ['ЛОГИСТИКА', ['warehouses', 'shipments', 'fbs']],
-  ['ОПЕРАЦИИ', ['production', 'imports', 'tables', 'documents']],
-  ['ИНТЕГРАЦИИ', ['api', 'sync', 'lan', 'backup']],
-  ['СИСТЕМА', ['settings', 'users', 'organization']]
+const ROUTES = [
+  { group: 'ГЛАВНОЕ', id: 'dashboard', label: 'Главная', legacy: 'dashboard' },
+  { group: 'АНАЛИТИКА', id: 'reports', label: 'Отчёты', legacy: 'reports' },
+  { group: 'АНАЛИТИКА', id: 'analytics', label: 'Аналитика', legacy: 'analytics' },
+  { group: 'ТОВАРЫ', id: 'products', label: 'Товары', legacy: 'products' },
+  { group: 'ТОВАРЫ', id: 'prices', label: 'Цены и скидки' },
+  { group: 'ТОВАРЫ', id: 'tables', label: 'Таблицы' },
+  { group: 'МАГАЗИНЫ', id: 'shops', label: 'Магазины' },
+  { group: 'МАГАЗИНЫ', id: 'workspace', label: 'Рабочие пространства и личные кабинеты' },
+  { group: 'ЛОГИСТИКА', id: 'fbo', label: 'Склад FBO', legacy: 'stock' },
+  { group: 'ЛОГИСТИКА', id: 'fbs', label: 'Склад FBS', legacy: 'fbs' },
+  { group: 'ЛОГИСТИКА', id: 'supplies', label: 'Поставки', legacy: 'shipments' },
+  { group: 'ЛОГИСТИКА', id: 'supplies-fbs', label: 'Поставки FBS' },
+  { group: 'ПРОИЗВОДСТВО', id: 'production', label: 'Производство', legacy: 'production' },
+  { group: 'ПРОДАЖИ', id: 'sales-history', label: 'История продаж', legacy: 'sales' },
+  { group: 'ИНТЕГРАЦИИ', id: 'api', label: 'Интеграция по API', legacy: 'api' },
+  { group: 'ИНТЕГРАЦИИ', id: 'lan', label: 'Интеграция по LAN' },
+  { group: 'ИНТЕГРАЦИИ', id: 'sync', label: 'Синхронизация' },
+  { group: 'СИСТЕМА', id: 'personal', label: 'Личный кабинет', legacy: 'settings' },
+  { group: 'СИСТЕМА', id: 'access', label: 'Персональный доступ' },
+  { group: 'СИСТЕМА', id: 'history', label: 'История изменений' },
+  { group: 'СИСТЕМА', id: 'settings', label: 'Настройки' },
+  { group: 'СИСТЕМА', id: 'organization', label: 'Организация' },
+  { group: 'СИСТЕМА', id: 'users', label: 'Сотрудники' },
+  { group: 'СИСТЕМА', id: 'backup', label: 'Резервные копии' }
 ];
 
-const LABELS = {
-  overview: 'Обзор', analytics: 'Аналитика', reports: 'Отчёты', products: 'Товары', unit: 'Юнит-экономика', advertising: 'Реклама',
-  warehouses: 'Склады', shipments: 'Поставки', fbs: 'FBS', production: 'Производство', imports: 'Импорт данных', tables: 'Таблицы', documents: 'Документы',
-  api: 'WB API', sync: 'Синхронизация', lan: 'LAN', backup: 'Резервные копии', settings: 'Настройки', users: 'Пользователи', organization: 'Организация'
-};
-
+const GROUPS = [...new Set(ROUTES.map(route => route.group))];
+const STYLE_ID = 'bjob-phase2-shell-style';
+const NAV_ID = 'bjob-phase2-shell';
 const ROLE_LABEL = { admin: 'Администратор', leader: 'Руководитель', manager: 'Менеджер', warehouse: 'Склад', production: 'Производство' };
-const STYLE_ID = 'bjob-navigation-v2-style';
-const POPOVER_CLASS = 'bjob-nav-v2-popover';
+let mounted = false;
+let observer = null;
 
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }
 
-function allowed(id) {
+function allowed(route) {
   const current = session();
   if (!current) return false;
-  if (['users', 'organization', 'settings'].includes(id)) return current.role === 'admin' || can(id, 'view');
-  return can(id, 'view');
+  if (current.role === 'admin') return true;
+  if (['organization', 'users', 'settings', 'backup'].includes(route.id)) return can(route.id, 'view');
+  return can(route.id, 'view');
 }
 
-function legacyRoute(id) {
-  return ({ imports: 'import', tables: 'reports', documents: 'reports', api: 'api' }[id] || id);
-}
-
-function style() {
+function addStyles() {
   if (document.getElementById(STYLE_ID)) return;
-  const styleEl = document.createElement('style');
-  styleEl.id = STYLE_ID;
-  styleEl.textContent = `
-    .bjob-nav-v2{position:sticky;top:72px;z-index:1000;background:rgba(255,255,255,.98);border-bottom:1px solid #e2e4e8;box-shadow:0 2px 12px #1111}
-    .bjob-nav-v2-inner{max-width:1440px;margin:auto;padding:8px 34px;display:flex;gap:8px;align-items:center;overflow-x:auto;overflow-y:visible}
-    .bjob-nav-v2-group{position:relative;flex:0 0 auto}.bjob-nav-v2-group>button{border:1px solid transparent;background:#fff;border-radius:9px;padding:9px 12px;color:#555b64;cursor:pointer;white-space:nowrap;font-weight:600}
-    .bjob-nav-v2-group>button:hover,.bjob-nav-v2-group.open>button{background:#f4f5f7;color:#111}.bjob-nav-v2-tools{margin-left:auto;display:flex;gap:6px;align-items:center;flex:0 0 auto}
-    .bjob-nav-v2-tools button{border:1px solid #e2e4e8;background:#fff;border-radius:9px;padding:8px 10px;cursor:pointer;white-space:nowrap}
-    .bjob-nav-v2-popover{position:fixed;z-index:20000;min-width:220px;max-width:min(320px,calc(100vw - 20px));padding:6px;background:#fff;border:1px solid #e2e4e8;border-radius:12px;box-shadow:0 18px 45px #1113;display:grid;gap:2px}
-    .bjob-nav-v2-popover button{border:0;background:#fff;text-align:left;padding:10px 11px;border-radius:8px;cursor:pointer;color:#333}.bjob-nav-v2-popover button:hover{background:#f0f1f3;font-weight:600}
-    .bjob-user-status{font-size:11px;color:#747981;white-space:nowrap}.bjob-shop-chip{display:flex;align-items:center;gap:6px;border:1px solid #e2e4e8;background:#fff;border-radius:9px;padding:7px 9px;font-size:12px;white-space:nowrap}
-    .bjob-shop-chip select{border:0;background:transparent;font:inherit;outline:0}.bjob-admin-hub{position:fixed;right:18px;top:84px;z-index:21000;background:#fff;border:1px solid #e2e4e8;border-radius:14px;box-shadow:0 18px 45px #1113;padding:8px;display:none;min-width:210px}.bjob-admin-hub.open{display:grid;gap:5px}
-    .bjob-admin-hub button{border:0;background:#fff;text-align:left;padding:9px;border-radius:8px;cursor:pointer}.bjob-admin-hub button:hover{background:#f3f4f6}
-    .bjob-admin-fixed{display:none!important}.bjob-system-page{padding:28px}.bjob-system-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.bjob-system-card{border:1px solid #e3e6eb;border-radius:14px;padding:18px;background:#fff}.bjob-system-card h2{margin-top:0}.bjob-system-card button{margin-top:10px}
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `
+    .bjob-phase2-shell{position:sticky;top:0;z-index:30000;background:#fff;border-bottom:1px solid #e5e7eb;box-shadow:0 3px 16px #1112}
+    .bjob-phase2-inner{max-width:1600px;margin:auto;display:flex;align-items:center;gap:8px;padding:8px 18px;box-sizing:border-box}
+    .bjob-phase2-brand{font-weight:800;letter-spacing:.02em;padding:8px 10px;white-space:nowrap}
+    .bjob-phase2-groups{display:flex;align-items:center;gap:4px;min-width:0;overflow:auto}
+    .bjob-phase2-group{position:relative;flex:0 0 auto}
+    .bjob-phase2-trigger,.bjob-phase2-tool{border:1px solid transparent;background:#fff;border-radius:9px;padding:9px 11px;cursor:pointer;font:600 13px system-ui;white-space:nowrap}
+    .bjob-phase2-trigger:hover,.bjob-phase2-trigger.open,.bjob-phase2-tool:hover{background:#f3f4f6}
+    .bjob-phase2-popover{position:fixed;z-index:31000;min-width:230px;max-width:340px;padding:6px;background:#fff;border:1px solid #e2e5e9;border-radius:12px;box-shadow:0 20px 55px #1114;display:grid;gap:2px}
+    .bjob-phase2-popover button{border:0;background:#fff;text-align:left;padding:10px 12px;border-radius:8px;cursor:pointer;font:500 13px system-ui}
+    .bjob-phase2-popover button:hover{background:#f2f3f5}
+    .bjob-phase2-tools{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
+    .bjob-phase2-shop{border:1px solid #e2e5e9;border-radius:9px;padding:7px 9px;background:#fff;max-width:230px}
+    .bjob-phase2-shop select{border:0;background:transparent;max-width:190px;outline:0;font:500 12px system-ui}
+    .bjob-phase2-user{font:11px system-ui;color:#6b7280;white-space:nowrap}
+    .bjob-phase2-screen{padding:28px;box-sizing:border-box}
+    .bjob-phase2-screen h1{margin:0 0 8px}.bjob-phase2-screen p{color:#6b7280}
+    .bjob-phase2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:20px}
+    .bjob-phase2-card{border:1px solid #e3e6eb;border-radius:14px;background:#fff;padding:18px}
+    .bjob-phase2-card h2{margin-top:0}.bjob-phase2-card button{margin-top:10px}
+    .bjob-phase2-note{padding:12px;border-radius:10px;background:#f6f7f8;color:#555;margin-top:14px}
+    .bjob-phase2-legacy-hidden .sidebar,.bjob-phase2-legacy-hidden .topbar{display:none!important}
   `;
-  document.head.appendChild(styleEl);
+  document.head.appendChild(style);
 }
 
-function findLegacyButton(id) {
-  const target = legacyRoute(id);
-  return [...document.querySelectorAll('#mainNav [data-page], nav:not(.bjob-nav-v2) [data-page]')].find((button) => button.dataset.page === target);
+function hideLegacyShell() {
+  const shell = document.querySelector('.app-shell');
+  if (!shell) return false;
+  shell.classList.add('bjob-phase2-legacy-hidden');
+  const sidebar = shell.querySelector('.sidebar');
+  const topbar = shell.querySelector('.topbar');
+  if (sidebar) sidebar.setAttribute('aria-hidden', 'true');
+  if (topbar) topbar.setAttribute('aria-hidden', 'true');
+  return true;
+}
+
+function legacyButton(route) {
+  if (!route.legacy) return null;
+  return document.querySelector(`.sidebar [data-page="${CSS.escape(route.legacy)}"]`);
 }
 
 function closePopover() {
-  document.querySelectorAll(`.${POPOVER_CLASS}`).forEach((element) => element.remove());
-  document.querySelectorAll('.bjob-nav-v2-group.open').forEach((element) => element.classList.remove('open'));
+  document.querySelectorAll('.bjob-phase2-popover').forEach(node => node.remove());
+  document.querySelectorAll('.bjob-phase2-trigger.open').forEach(node => node.classList.remove('open'));
 }
 
-function openPopover(group, ids) {
+function openGroup(group, routes, trigger) {
   closePopover();
-  group.classList.add('open');
+  trigger.classList.add('open');
   const popover = document.createElement('div');
-  popover.className = POPOVER_CLASS;
-  ids.forEach((id) => {
+  popover.className = 'bjob-phase2-popover';
+  routes.forEach(route => {
     const button = document.createElement('button');
-    button.textContent = LABELS[id] || id;
-    button.dataset.page = id;
-    button.addEventListener('click', (event) => { event.stopPropagation(); closePopover(); navigate(id); });
+    button.type = 'button';
+    button.textContent = route.label;
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      closePopover();
+      navigate(route.id);
+    });
     popover.appendChild(button);
   });
   document.body.appendChild(popover);
-  const trigger = group.querySelector(':scope>button');
   const place = () => {
     const rect = trigger.getBoundingClientRect();
     const width = popover.offsetWidth;
-    const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
-    const top = Math.min(rect.bottom + 5, Math.max(8, window.innerHeight - popover.offsetHeight - 8));
+    const left = Math.min(Math.max(8, rect.left), Math.max(8, innerWidth - width - 8));
+    const top = Math.min(rect.bottom + 5, Math.max(8, innerHeight - popover.offsetHeight - 8));
     popover.style.left = `${left}px`;
     popover.style.top = `${top}px`;
   };
-  popover._place = place;
   place();
+  window.addEventListener('resize', place, { once: true });
+  window.addEventListener('scroll', place, { once: true, capture: true });
 }
 
-function adminClick(target) {
-  const selector = `.bjob-admin-fixed [data-${target}]`;
-  const button = document.querySelector(selector);
-  if (button) { button.click(); return true; }
-  return false;
-}
-
-async function renderSystemPage(id) {
-  const app = document.querySelector('#app .bjob');
-  const view = app?.querySelector('main#view');
-  if (!view) return false;
-  const content = {
-    settings: `<div class="bjob-system-page"><div class="page-head"><div><small>СИСТЕМА</small><h1>Настройки</h1><p>Системные настройки B-JOB и локального рабочего пространства.</p></div></div><div class="bjob-system-grid"><section class="bjob-system-card"><h2>Рабочее пространство</h2><p>Название текущего магазина хранится локально.</p><button class="btn primary" data-system-settings>Открыть настройки профиля</button></section><section class="bjob-system-card"><h2>Автономный режим</h2><p>Данные приложения работают через локальную IndexedDB. Service Worker используется как дополнительный слой кеша.</p></section></div></div>`,
-    sync: `<div class="bjob-system-page"><div class="page-head"><div><small>ИНТЕГРАЦИИ</small><h1>Синхронизация</h1><p>Управление локальной синхронизацией данных.</p></div></div><div class="bjob-system-grid"><section class="bjob-system-card"><h2>Локальная база</h2><p>Синхронизация с сервером не запускается автоматически без настроенного API.</p><button class="btn primary" data-page="api">Открыть WB API</button></section></div></div>`,
-    lan: `<div class="bjob-system-page"><div class="page-head"><div><small>ИНТЕГРАЦИИ</small><h1>LAN</h1><p>Локальная сеть и обмен между рабочими местами.</p></div></div><div class="bjob-system-grid"><section class="bjob-system-card"><h2>LAN runtime</h2><p>Веб-версия работает локально в браузере. Desktop bridge подключается автоматически в нативной сборке.</p></section></div></div>`,
-    backup: `<div class="bjob-system-page"><div class="page-head"><div><small>ИНТЕГРАЦИИ</small><h1>Резервные копии</h1><p>Экспорт и восстановление локальной базы B-JOB.</p></div></div><div class="bjob-system-grid"><section class="bjob-system-card"><h2>JSON backup</h2><p>Создайте полную резервную копию локальной базы.</p><button class="btn primary" data-admin="export">Экспорт JSON</button><button class="btn secondary" data-admin="import">Импорт JSON</button></section></div></div>`
-  }[id];
+async function renderOwnScreen(route) {
+  const content = document.querySelector('#content');
   if (!content) return false;
-  view.innerHTML = content;
-  view.querySelector('[data-system-settings]')?.addEventListener('click', () => findLegacyButton('settings')?.click());
-  view.querySelector('[data-page="api"]')?.addEventListener('click', () => findLegacyButton('api')?.click());
-  view.querySelector('[data-admin="export"]')?.addEventListener('click', () => adminClick('export'));
-  view.querySelector('[data-admin="import"]')?.addEventListener('click', () => adminClick('import'));
+  const current = session();
+  const titles = {
+    shops: ['Магазины', 'Магазины организации и активное рабочее пространство.'],
+    workspace: ['Рабочие пространства и личные кабинеты', 'Управление рабочими пространствами и персональными кабинетами.'],
+    prices: ['Цены и скидки', 'Ценообразование и правила скидок.'],
+    tables: ['Таблицы', 'Рабочие таблицы и подготовленные наборы данных.'],
+    'supplies-fbs': ['Поставки FBS', 'Отдельный рабочий раздел поставок FBS.'],
+    lan: ['Интеграция по LAN', 'Локальный обмен между рабочими местами.'],
+    sync: ['Синхронизация', 'Синхронизация данных и состояние локального хранилища.'],
+    access: ['Персональный доступ', 'Права и персональный доступ текущего пользователя.'],
+    history: ['История изменений', 'Журнал изменений рабочего пространства.'],
+    settings: ['Настройки', 'Настройки приложения и текущего рабочего пространства.'],
+    organization: ['Организация', 'Организация, роли и права доступа.'],
+    users: ['Сотрудники', 'Пользователи и доступ к рабочим пространствам.'],
+    backup: ['Резервные копии', 'Экспорт и восстановление локальной базы.'],
+    production: ['Производство', 'Производственные операции и планирование.'],
+    'sales-history': ['История продаж', 'История фактических продаж и операций.'],
+    api: ['Интеграция по API', 'Подключения маркетплейсов и API-настройки.']
+  };
+  const [title, description] = titles[route.id] || [route.label, 'Раздел B-JOB.'];
+  let extra = '';
+  if (route.id === 'shops') {
+    const shops = await listShops();
+    const active = await activeShop();
+    extra = `<div class="bjob-phase2-grid">${shops.map(shop => `<section class="bjob-phase2-card"><h2>${esc(shop.name)}</h2><p>${esc(shop.marketplace || '')}</p><p>${shop.id === active?.id ? '● Активный магазин' : 'Доступен для переключения'}</p><button type="button" data-phase2-shop="${esc(shop.id)}">Сделать активным</button></section>`).join('') || '<section class="bjob-phase2-card"><h2>Нет магазинов</h2><p>Добавьте магазин в организации.</p></section>'}</div>`;
+    setTimeout(() => content.querySelectorAll('[data-phase2-shop]').forEach(button => button.addEventListener('click', async () => { await setActiveShop(button.dataset.phase2Shop); location.reload(); })), 0);
+  } else if (route.id === 'users' || route.id === 'organization') {
+    extra = '<div class="bjob-phase2-note">Этот системный экран является самостоятельным маршрутом. Административные операции будут подключены к единому Core в следующем шаге.</div>';
+  } else if (route.id === 'backup') {
+    extra = '<div class="bjob-phase2-grid"><section class="bjob-phase2-card"><h2>JSON</h2><p>Резервное копирование локальной базы.</p><button type="button" id="phase2-backup">Создать резервную копию</button></section></div>';
+    setTimeout(() => document.getElementById('phase2-backup')?.addEventListener('click', () => document.querySelector('#backup')?.click()), 0);
+  }
+  content.innerHTML = `<div class="bjob-phase2-screen"><small>${esc(route.group)}</small><h1>${esc(title)}</h1><p>${esc(description)}</p>${extra}</div>`;
+  localStorage.setItem('bjob:page', route.id);
   return true;
 }
 
 async function navigate(id) {
-  if (['users', 'organization'].includes(id)) {
-    adminClick(id === 'users' ? 'users' : 'org');
+  const route = ROUTES.find(item => item.id === id);
+  if (!route || !allowed(route)) return;
+  const own = ['shops','workspace','prices','tables','supplies-fbs','lan','sync','access','history','settings','organization','users','backup','production','sales-history','api'];
+  if (own.includes(id) && !route.legacy) {
+    await renderOwnScreen(route);
     return;
   }
-  if (id === 'backup') {
-    if (!(await renderSystemPage('backup'))) adminClick('export');
-    return;
-  }
-  if (['settings', 'sync', 'lan'].includes(id)) {
-    await renderSystemPage(id);
-    return;
-  }
-  const button = findLegacyButton(id);
-  if (button) { button.click(); return; }
-  if (typeof window.BJobNavigate === 'function') { await window.BJobNavigate(legacyRoute(id)); return; }
-  window.dispatchEvent(new CustomEvent('bjob:navigate', { detail: { page: legacyRoute(id) } }));
-}
-
-async function shopChip() {
-  const currentSession = session();
-  if (!currentSession) return '';
-  const shops = (await listShops()).filter((shop) => currentSession.role === 'admin' || currentSession.shopIds?.includes(shop.id));
-  if (!shops.length) return '';
-  const current = await activeShop();
-  return `<div class="bjob-shop-chip">🏪 <select aria-label="Активный магазин">${shops.map((shop) => `<option value="${esc(shop.id)}" ${shop.id === current?.id ? 'selected' : ''}>${esc(shop.name)} · ${shop.marketplace === 'wb' ? 'WB' : 'Ozon'}</option>`).join('')}</select></div>`;
-}
-
-async function adminHub() {
-  const currentSession = session();
-  if (!currentSession || currentSession.role !== 'admin') return;
-  let hub = document.querySelector('.bjob-admin-hub');
-  if (!hub) {
-    hub = document.createElement('div');
-    hub.className = 'bjob-admin-hub';
-    hub.innerHTML = '<button data-admin="shops">🏪 Магазины</button><button data-admin="users">👥 Сотрудники</button><button data-admin="org">⚙️ Организация и права</button>';
-    document.body.appendChild(hub);
-  }
-  if (!hub.dataset.bound) {
-    hub.dataset.bound = '1';
-    hub.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-admin]');
-      if (!button) return;
-      adminClick(button.dataset.admin);
-      hub.classList.remove('open');
-    });
+  if (route.legacy) {
+    const button = legacyButton(route);
+    if (button) {
+      button.click();
+      localStorage.setItem('bjob:page', route.id);
+      return;
+    }
+    await renderOwnScreen(route);
   }
 }
 
 async function render() {
-  const currentSession = session();
-  if (!currentSession) return;
-  style();
+  if (!session()) return;
+  addStyles();
+  hideLegacyShell();
   closePopover();
-  document.querySelectorAll('.bjob-nav-v2').forEach((element) => element.remove());
-  const nav = document.createElement('div');
-  nav.className = 'bjob-nav-v2';
+  document.getElementById(NAV_ID)?.remove();
+  const nav = document.createElement('header');
+  nav.id = NAV_ID;
+  nav.className = 'bjob-phase2-shell';
   const inner = document.createElement('div');
-  inner.className = 'bjob-nav-v2-inner';
-  for (const [title, ids] of GROUPS) {
-    const visible = ids.filter(allowed);
-    if (!visible.length) continue;
-    const group = document.createElement('div');
-    group.className = 'bjob-nav-v2-group';
+  inner.className = 'bjob-phase2-inner';
+  inner.innerHTML = '<div class="bjob-phase2-brand">B-JOB</div>';
+  const groups = document.createElement('div');
+  groups.className = 'bjob-phase2-groups';
+  GROUPS.forEach(groupName => {
+    const routes = ROUTES.filter(route => route.group === groupName && allowed(route));
+    if (!routes.length) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bjob-phase2-group';
     const trigger = document.createElement('button');
     trigger.type = 'button';
-    trigger.textContent = `${title} ▾`;
-    trigger.addEventListener('click', (event) => { event.stopPropagation(); openPopover(group, visible); });
-    group.appendChild(trigger);
-    inner.appendChild(group);
-  }
+    trigger.className = 'bjob-phase2-trigger';
+    trigger.textContent = groupName;
+    trigger.addEventListener('click', event => { event.stopPropagation(); openGroup(wrapper, routes, trigger); });
+    wrapper.appendChild(trigger);
+    groups.appendChild(wrapper);
+  });
+  inner.appendChild(groups);
   const tools = document.createElement('div');
-  tools.className = 'bjob-nav-v2-tools';
-  const chip = document.createElement('div');
-  chip.innerHTML = await shopChip();
-  const select = chip.firstElementChild?.querySelector('select');
-  if (select) {
-    select.addEventListener('change', async (event) => {
-      const selected = await setActiveShop(event.target.value);
-      if (selected?.name) localStorage.setItem('bjob:shop', selected.name);
-      location.reload();
-    });
-    tools.appendChild(chip.firstElementChild);
-  }
-  if (currentSession.role === 'admin') {
-    const adminButton = document.createElement('button');
-    adminButton.type = 'button';
-    adminButton.textContent = '⚙ Админ';
-    adminButton.addEventListener('click', (event) => { event.stopPropagation(); document.querySelector('.bjob-admin-hub')?.classList.toggle('open'); });
-    tools.appendChild(adminButton);
+  tools.className = 'bjob-phase2-tools';
+  const shops = (await listShops()).filter(shop => session().role === 'admin' || session().shopIds?.includes(shop.id));
+  if (shops.length) {
+    const current = await activeShop();
+    const holder = document.createElement('label');
+    holder.className = 'bjob-phase2-shop';
+    holder.innerHTML = `<select aria-label="Активный магазин">${shops.map(shop => `<option value="${esc(shop.id)}" ${shop.id === current?.id ? 'selected' : ''}>${esc(shop.name)} · ${esc(shop.marketplace || '')}</option>`).join('')}</select>`;
+    holder.querySelector('select').addEventListener('change', async event => { await setActiveShop(event.target.value); location.reload(); });
+    tools.appendChild(holder);
   }
   const user = document.createElement('span');
-  user.className = 'bjob-user-status';
-  user.textContent = `${currentSession.name} · ${ROLE_LABEL[currentSession.role] || currentSession.role}`;
+  user.className = 'bjob-phase2-user';
+  user.textContent = `${esc(session().name || session().login || '')} · ${ROLE_LABEL[session().role] || session().role || ''}`;
   tools.appendChild(user);
   inner.appendChild(tools);
   nav.appendChild(inner);
-
-  const app = document.querySelector('#app .bjob');
-  if (app) {
-    const legacy = app.querySelector(':scope>nav#mainNav');
-    if (legacy) legacy.style.display = 'none';
-    const main = app.querySelector('main');
-    app.insertBefore(nav, main || app.firstChild);
-  } else {
-    document.body.prepend(nav);
-  }
-  await adminHub();
+  const shell = document.querySelector('.app-shell');
+  if (shell) shell.insertBefore(nav, shell.firstChild);
+  else document.body.prepend(nav);
+  mounted = true;
 }
 
-let scheduled = false;
-function ensure() {
-  if (scheduled) return;
-  scheduled = true;
-  queueMicrotask(async () => {
-    scheduled = false;
-    if (!session()) return;
-    const legacy = document.querySelector('#app .bjob>nav#mainNav');
-    const nav = document.querySelector('.bjob-nav-v2');
-    if (!nav || legacy?.style.display !== 'none') await render();
-  });
+function scheduleRender() {
+  if (mounted && document.getElementById(NAV_ID)) return;
+  setTimeout(() => render().catch(error => console.error('B-JOB navigation render failed', error)), 0);
 }
 
-function observe() {
-  ensure();
-  new MutationObserver(() => ensure()).observe(document.body, { subtree: true, childList: true });
-  window.addEventListener('resize', () => document.querySelectorAll(`.${POPOVER_CLASS}`).forEach((element) => element._place?.()));
-  window.addEventListener('scroll', () => document.querySelectorAll(`.${POPOVER_CLASS}`).forEach((element) => element._place?.()), true);
-  document.addEventListener('click', (event) => {
-    if (!event.target.closest('.bjob-nav-v2-group') && !event.target.closest(`.${POPOVER_CLASS}`) && !event.target.closest('.bjob-admin-hub')) closePopover();
-  });
-}
+window.BJobNavigate = navigate;
+window.addEventListener('bjob:ready', scheduleRender);
+window.addEventListener('bjob:auth-ready', scheduleRender);
+document.addEventListener('click', event => { if (!event.target.closest('.bjob-phase2-group')) closePopover(); });
 
-style();
-observe();
+observer = new MutationObserver(() => { if (!document.getElementById(NAV_ID) && session()) scheduleRender(); });
+observer.observe(document.body, { childList: true, subtree: true });
+scheduleRender();
