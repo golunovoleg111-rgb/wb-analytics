@@ -6,8 +6,7 @@ function loginScreen(first=false){
   const root=document.createElement('div');
   root.className='single-login';
   root.innerHTML=`<div class="single-login-card"><div class="single-logo">B-JOB</div><h1>${first?'Создайте пароль':'Вход'}</h1><p>${first?'Установите постоянный пароль администратора.':'Войдите в локальное рабочее пространство.'}</p><form>${first?'': '<label>Логин<input name="login" autocomplete="username" required></label>'}<label>${first?'Новый пароль':'Пароль'}<input name="password" type="password" autocomplete="${first?'new-password':'current-password'}" minlength="${first?8:1}" required></label>${first?'<label>Повторите пароль<input name="repeat" type="password" minlength="8" required></label>':''}<div class="single-login-error"></div><button type="submit">${first?'Сохранить пароль':'Войти'}</button></form></div>`;
-  document.body.appendChild(root);
-  return root;
+  document.body.appendChild(root); return root;
 }
 async function authenticate(){
   if(!session()){
@@ -25,6 +24,7 @@ async function boot(){
   await ensureCore();
   await authenticate();
   if(!session())throw new Error('Сессия не создана.');
+  window.bjobDesktop=window.BJobDesktop||null;
   await start();
   window.dispatchEvent(new CustomEvent('bjob:ready'));
 }
