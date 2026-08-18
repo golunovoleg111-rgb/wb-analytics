@@ -6,10 +6,15 @@
 <meta name="theme-color" content="#0b0e14">
 <title>B-JOB</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./src/bjob/single.css?v=47">
+<link rel="stylesheet" href="./src/bjob/single.css?v=48">
+<link rel="stylesheet" href="./src/bjob/assembly.css?v=48">
 </head>
 <body>
 <div id="app"></div>
 <script type="module" src="./src/bjob/singleBoot.js?v=47"></script>
+<script type="module">
+import { startAssemblyLayer } from './src/bjob/assembly.js?v=48';
+window.addEventListener('bjob:ready', () => startAssemblyLayer(), { once:true });
+</script>
 </body>
 </html>

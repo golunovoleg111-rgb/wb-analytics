@@ -1,7 +1,7 @@
 const DB_NAME='beltanee-production';
-const DB_VERSION=11;
-const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','shops','invitations','authEvents','workspaces'];
-const SHOP_SCOPED_STORES=new Set(['products','sales','stocks','ads','expenses','fbs','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','apiConnections']);
+const DB_VERSION=12;
+const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','shops','invitations','authEvents','workspaces','orders','assemblyTasks','assemblyEvents'];
+const SHOP_SCOPED_STORES=new Set(['products','sales','stocks','ads','expenses','fbs','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','apiConnections','orders','assemblyTasks','assemblyEvents']);
 const LOCAL_ONLY_STORES=new Set(['apiConnections','users','shops','invitations','authEvents','workspaces']);
 let dbPromise=null;
 function activeShopId(){try{return localStorage.getItem('bjob:v2:active-shop')||null}catch{return null}}
@@ -16,8 +16,8 @@ function open(){
       for(const name of STORES){
         if(db.objectStoreNames.contains(name))continue;
         const store=db.createObjectStore(name,{keyPath:'id',autoIncrement:true});
-        if(['products','sales','stocks','ads','fbs','fbsBoxes','stockMovements','fbsInventory'].includes(name))store.createIndex('article','article',{unique:false});
-        if(['sales','stocks','ads','fbs','imports','warehouseMoves','shipments','productionOrders','audit','stockMovements','fbsInventoryMovements','authEvents'].includes(name))store.createIndex('date','date',{unique:false});
+        if(['products','sales','stocks','ads','fbs','fbsBoxes','stockMovements','fbsInventory','orders','assemblyTasks'].includes(name))store.createIndex('article','article',{unique:false});
+        if(['sales','stocks','ads','fbs','imports','warehouseMoves','shipments','productionOrders','audit','stockMovements','fbsInventoryMovements','authEvents','orders','assemblyTasks','assemblyEvents'].includes(name))store.createIndex('date','date',{unique:false});
         if(name==='warehouses')store.createIndex('name','name',{unique:false});
         if(name==='apiConnections')store.createIndex('marketplace','marketplace',{unique:false});
         if(name==='fbsBoxes'){store.createIndex('spaceId','spaceId',{unique:false});store.createIndex('barcode','barcode',{unique:false})}
@@ -26,6 +26,9 @@ function open(){
         if(name==='shops')store.createIndex('marketplace','marketplace',{unique:false});
         if(name==='users'){store.createIndex('login','login',{unique:false});store.createIndex('organizationId','organizationId',{unique:false})}
         if(name==='workspaces'){store.createIndex('organizationId','organizationId',{unique:false});store.createIndex('name','name',{unique:false})}
+        if(name==='orders')store.createIndex('orderNumber','orderNumber',{unique:false});
+        if(name==='assemblyTasks')store.createIndex('status','status',{unique:false});
+        if(name==='assemblyEvents')store.createIndex('taskId','taskId',{unique:false});
       }
     };
     request.onsuccess=()=>resolve(request.result);
