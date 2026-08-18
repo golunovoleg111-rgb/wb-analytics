@@ -12,10 +12,8 @@
 <link rel="stylesheet" href="./src/bjob/fbsPicking.css">
 </head>
 <body>
-<div id="app"><div class="bjob"><main><section class="bjob-empty"><div class="empty-line"></div><h2>Загрузка B-JOB</h2><p>Проверяем доступ и подготавливаем рабочее пространство.</p></section></main></div></div>
-<script>window.__BJOB_API_BASE__=localStorage.getItem('bjob:api-base')||'';if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});</script>
-<script type="module" src="./src/v1Runtime.js"></script>
-<script type="module" src="./src/bjob/adminV2Fixed.js"></script>
-<script type="module" src="./src/bjob/navigationV2.js"></script>
+<div id="app"><div class="bjob"><main><section class="bjob-empty"><div class="empty-line"></div><h2>Загрузка B-JOB</h2><p>Подготавливаем рабочее пространство.</p></section></main></div></div>
+<script>window.__BJOB_API_BASE__=localStorage.getItem('bjob:api-base')||'';</script>
+<script type="module" src="./src/bjob/v2BootClean.js?v=35"></script>
 </body>
 </html>
