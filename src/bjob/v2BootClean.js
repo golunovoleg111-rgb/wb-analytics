@@ -1,169 +1,67 @@
 import { login, session, logout, completeFirstLogin } from './userAuth.js';
+import * as Core from './core/runtime.js';
 
 const OPTIONAL_MODULES = [
-  '../ui/projectHardening.js',
-  '../ui/keyboardShortcuts.js',
-  '../ui/formGuards.js',
-  '../ui/loadingState.js',
-  '../ui/actionFeedback.js',
-  '../ui/performanceHelpers.js',
-  '../ui/tableUtils.js',
-  '../ui/virtualList.js',
-  '../data/sharedDataBridge.js',
-  './appExperience.js',
-  './uiEnhancements.js',
-  './dashboardExperience.js',
-  './fbsWorkspaceUI.js',
-  './fbsPickingUI.js',
-  './fbsExperience.js',
-  './fbsFixes.js',
-  './fbsOperationsUI.js',
-  './fbsQrExperience.js',
-  './fbsQrFullscreenFix.js',
-  './fbsStorageUI.js'
+  '../ui/projectHardening.js','../ui/keyboardShortcuts.js','../ui/formGuards.js','../ui/loadingState.js','../ui/actionFeedback.js','../ui/performanceHelpers.js','../ui/tableUtils.js','../ui/virtualList.js','./appExperience.js','./uiEnhancements.js','./dashboardExperience.js','./fbsWorkspaceUI.js','./fbsPickingUI.js','./fbsExperience.js','./fbsFixes.js','./fbsOperationsUI.js','./fbsQrExperience.js','./fbsQrFullscreenFix.js','./fbsStorageUI.js'
 ];
 
-function addStyles() {
-  if (document.getElementById('bjob-clean-boot-css')) return;
-  const style = document.createElement('style');
-  style.id = 'bjob-clean-boot-css';
-  style.textContent = `
-    .bjob-clean-login{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:#0d0f13;color:#f5f6f8;font-family:Inter,system-ui,sans-serif}
-    .bjob-clean-card{width:min(440px,calc(100vw - 32px));padding:30px;border:1px solid #2b3038;border-radius:22px;background:#15181e;box-shadow:0 30px 80px #0008}
-    .bjob-clean-card h1{margin:0 0 8px}.bjob-clean-card p{color:#aeb5c0}
-    .bjob-clean-card label{display:block;margin:14px 0 6px;color:#cbd1da}
-    .bjob-clean-card input{width:100%;box-sizing:border-box;padding:13px;border:1px solid #343b46;border-radius:10px;background:#0f1217;color:#fff}
-    .bjob-clean-card button{width:100%;margin-top:18px;padding:13px;border:0;border-radius:10px;background:#fff;color:#111;font-weight:700;cursor:pointer}
-    .bjob-clean-error{min-height:20px;color:#ff7c7c;margin-top:10px}
-    .bjob-clean-status{position:fixed;left:18px;bottom:18px;z-index:8000;padding:8px 11px;border:1px solid #e2e4e8;border-radius:9px;background:#fff;color:#555;font:12px system-ui;box-shadow:0 5px 18px #1111}
-  `;
+function addStyles(){
+  if(document.getElementById('bjob-clean-boot-css'))return;
+  const style=document.createElement('style');
+  style.id='bjob-clean-boot-css';
+  style.textContent=`.bjob-clean-login{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:#0d0f13;color:#f5f6f8;font-family:Inter,system-ui,sans-serif}.bjob-clean-card{width:min(440px,calc(100vw - 32px));padding:30px;border:1px solid #2b3038;border-radius:22px;background:#15181e;box-shadow:0 30px 80px #0008}.bjob-clean-card h1{margin:0 0 8px}.bjob-clean-card p{color:#aeb5c0}.bjob-clean-card label{display:block;margin:14px 0 6px;color:#cbd1da}.bjob-clean-card input{width:100%;box-sizing:border-box;padding:13px;border:1px solid #343b46;border-radius:10px;background:#0f1217;color:#fff}.bjob-clean-card button{width:100%;margin-top:18px;padding:13px;border:0;border-radius:10px;background:#fff;color:#111;font-weight:700;cursor:pointer}.bjob-clean-error{min-height:20px;color:#ff7c7c;margin-top:10px}.bjob-clean-status{position:fixed;left:18px;bottom:18px;z-index:8000;padding:8px 11px;border:1px solid #e2e4e8;border-radius:9px;background:#fff;color:#555;font:12px system-ui;box-shadow:0 5px 18px #1111}`;
   document.head.appendChild(style);
 }
 
-function showOverlay(title, description, first = false) {
-  const root = document.createElement('div');
-  root.className = 'bjob-clean-login';
-  root.innerHTML = `
-    <div class="bjob-clean-card">
-      <small>B-JOB · ${first ? 'ПЕРВЫЙ ВХОД' : 'ОРГАНИЗАЦИЯ'}</small>
-      <h1>${title}</h1>
-      <p>${description}</p>
-      <form>
-        <label>${first ? 'Новый пароль' : 'Логин'}
-          <input name="value" type="${first ? 'password' : 'text'}" autocomplete="${first ? 'new-password' : 'username'}" minlength="${first ? 8 : 1}" required>
-        </label>
-        ${first
-          ? '<label>Повторите пароль<input name="repeat" type="password" autocomplete="new-password" minlength="8" required></label>'
-          : '<label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>'}
-        <div class="bjob-clean-error"></div>
-        <button type="submit">${first ? 'Сохранить пароль' : 'Войти'}</button>
-      </form>
-    </div>`;
+function showOverlay(title,description,first=false){
+  const root=document.createElement('div');
+  root.className='bjob-clean-login';
+  root.innerHTML=`<div class="bjob-clean-card"><small>B-JOB · ${first?'ПЕРВЫЙ ВХОД':'ОРГАНИЗАЦИЯ'}</small><h1>${title}</h1><p>${description}</p><form><label>${first?'Новый пароль':'Логин'}<input name="value" type="${first?'password':'text'}" autocomplete="${first?'new-password':'username'}" minlength="${first?8:1}" required></label>${first?'<label>Повторите пароль<input name="repeat" type="password" autocomplete="new-password" minlength="8" required></label>':'<label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>'}<div class="bjob-clean-error"></div><button type="submit">${first?'Сохранить пароль':'Войти'}</button></form></div>`;
   document.body.appendChild(root);
   return root;
 }
 
-async function authenticate() {
-  if (!session()) {
-    const root = showOverlay('Вход в систему', 'Введите персональные данные сотрудника.');
-    await new Promise((resolve) => {
-      root.querySelector('form').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        try {
-          const user = await login(form.value.value, form.password.value);
-          if (!user) throw new Error('Неверный логин, пароль или пользователь заблокирован.');
-          root.remove();
-          window.dispatchEvent(new CustomEvent('bjob:auth-ready'));
-          resolve();
-        } catch (error) {
-          root.querySelector('.bjob-clean-error').textContent = error?.message || 'Не удалось выполнить вход.';
-          console.error('B-JOB login failed', error);
-        }
-      });
-    });
+async function authenticate(){
+  if(!session()){
+    const root=showOverlay('Вход в систему','Введите персональные данные сотрудника.');
+    await new Promise(resolve=>{root.querySelector('form').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;try{const user=await login(form.value.value,form.password.value);if(!user)throw new Error('Неверный логин, пароль или пользователь заблокирован.');root.remove();window.dispatchEvent(new CustomEvent('bjob:auth-ready'));resolve()}catch(error){root.querySelector('.bjob-clean-error').textContent=error?.message||'Не удалось выполнить вход.';console.error('B-JOB login failed',error)}})});
   }
-
-  const current = session();
-  if (current?.mustChangePassword) {
-    const root = showOverlay('Создайте постоянный пароль', 'Одноразовый пароль больше не будет использоваться после подтверждения.', true);
-    await new Promise((resolve) => {
-      root.querySelector('form').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        if (form.value.value !== form.repeat.value) {
-          root.querySelector('.bjob-clean-error').textContent = 'Пароли не совпадают.';
-          return;
-        }
-        try {
-          await completeFirstLogin(form.value.value);
-          root.remove();
-          window.dispatchEvent(new CustomEvent('bjob:auth-ready'));
-          resolve();
-        } catch (error) {
-          root.querySelector('.bjob-clean-error').textContent = error?.message || 'Не удалось сохранить пароль.';
-        }
-      });
-    });
+  const current=session();
+  if(current?.mustChangePassword){
+    const root=showOverlay('Создайте постоянный пароль','Одноразовый пароль больше не будет использоваться после подтверждения.',true);
+    await new Promise(resolve=>{root.querySelector('form').addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget;if(form.value.value!==form.repeat.value){root.querySelector('.bjob-clean-error').textContent='Пароли не совпадают.';return}try{await completeFirstLogin(form.value.value);root.remove();window.dispatchEvent(new CustomEvent('bjob:auth-ready'));resolve()}catch(error){root.querySelector('.bjob-clean-error').textContent=error?.message||'Не удалось сохранить пароль.'}})});
   }
 }
 
-async function loadOptional() {
-  const results = await Promise.allSettled(OPTIONAL_MODULES.map((path) => import(path)));
-  const failed = results
-    .map((result, index) => result.status === 'rejected' ? OPTIONAL_MODULES[index] : null)
-    .filter(Boolean);
-  if (failed.length) console.warn('B-JOB optional modules skipped:', failed);
+async function loadOptional(){
+  const results=await Promise.allSettled(OPTIONAL_MODULES.map(path=>import(path)));
+  const failed=results.map((result,index)=>result.status==='rejected'?OPTIONAL_MODULES[index]:null).filter(Boolean);
+  if(failed.length)console.warn('B-JOB optional modules skipped:',failed);
   return failed;
 }
-
-async function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return null;
-  try {
-    const registration = await navigator.serviceWorker.register('./sw.js?v=6', { scope: './' });
-    await registration.update().catch(() => {});
-    return registration;
-  } catch (error) {
-    console.warn('B-JOB service worker unavailable; continuing without SW.', error);
-    return null;
-  }
+async function registerServiceWorker(){
+  if(!('serviceWorker' in navigator)||location.protocol!=='https:')return null;
+  try{const registration=await navigator.serviceWorker.register('./sw.js?v=7',{scope:'./'});await registration.update().catch(()=>{});return registration}catch(error){console.warn('B-JOB service worker unavailable; continuing without SW.',error);return null}
 }
+function showRuntimeStatus(){document.querySelector('.bjob-clean-status')?.remove();if(!session())return;const status=document.createElement('div');status.className='bjob-clean-status';status.textContent='Ядро B-JOB · локальная база · автономный режим';document.body.appendChild(status)}
+async function importCoreModules(){await import('./app.js');await import('./navigationV2.js');await import('./adminV2Fixed.js')}
 
-function showRuntimeStatus() {
-  document.querySelector('.bjob-clean-status')?.remove();
-  if (!session()) return;
-  const status = document.createElement('div');
-  status.className = 'bjob-clean-status';
-  status.textContent = 'Локальная база · автономный режим';
-  document.body.appendChild(status);
-}
-
-async function importCoreModules() {
-  await import('./app.js');
-  await import('./navigationV2.js');
-  await import('./adminV2Fixed.js');
-}
-
-async function boot() {
+async function boot(){
   addStyles();
+  // Core is the only mandatory startup dependency. UI, SW and integrations are downstream.
+  await Core.boot();
   await registerServiceWorker();
   await authenticate();
-  if (!session()) return;
+  if(!session())return;
   await importCoreModules();
   await loadOptional();
   showRuntimeStatus();
   window.dispatchEvent(new CustomEvent('bjob:ready'));
 }
 
-boot().catch((error) => {
-  console.error('B-JOB core boot failed', error);
-  const main = document.querySelector('#app main');
-  if (main) {
-    main.innerHTML = '<section class="bjob-empty"><h2>Не удалось запустить B-JOB</h2><p>Ошибка загрузки ядра. Локальная база не изменена.</p><button class="btn primary" onclick="location.reload()">Повторить</button></section>';
-  }
+boot().catch(error=>{
+  console.error('B-JOB core boot failed',error);
+  const main=document.querySelector('#app main');
+  if(main)main.innerHTML='<section class="bjob-empty"><h2>Не удалось запустить B-JOB</h2><p>Ошибка загрузки ядра. Локальная база не изменена.</p><button class="btn primary" onclick="location.reload()">Повторить</button></section>';
 });
-
-window.BJobLogout = () => {
-  logout();
-  location.reload();
-};
+window.BJobLogout=()=>{logout();location.reload()};
