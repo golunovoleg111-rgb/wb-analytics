@@ -49,14 +49,12 @@ function openPopover(group,ids){
   document.body.appendChild(pop);
   const trigger=group.querySelector(':scope>button');
   const place=()=>{const r=trigger.getBoundingClientRect();const width=pop.offsetWidth;const left=Math.min(Math.max(8,r.left),Math.max(8,window.innerWidth-width-8));const top=Math.min(r.bottom+5,Math.max(8,window.innerHeight-pop.offsetHeight-8));pop.style.left=`${left}px`;pop.style.top=`${top}px`};
-  place();
-  pop._place=place;
+  place();pop._place=place;
 }
 
 async function navigate(id){
   const adminHub=document.querySelector('.bjob-admin-hub');
-  if(id==='users'){if(adminHub){adminHub.classList.add('open');adminHub.querySelector('[data-admin="users"]')?.click();}return}
-  if(id==='organization'){if(adminHub){adminHub.classList.add('open');adminHub.querySelector('[data-admin="org"]')?.click();}return}
+  if(id==='users'||id==='organization'){const target=id==='users'?'users':'org';if(adminHub){adminHub.classList.add('open');adminHub.querySelector(`[data-admin="${target}"]`)?.click();}else document.querySelector(`.bjob-admin-fixed [data-${target}]`)?.click();return}
   const b=findLegacyButton(id);
   if(b){b.click();return}
   if(typeof window.BJobNavigate==='function'){await window.BJobNavigate(route(id));return}
@@ -69,7 +67,7 @@ async function adminHub(){
   const s=session();if(!s||s.role!=='admin')return;
   let hub=document.querySelector('.bjob-admin-hub');
   if(!hub){hub=document.createElement('div');hub.className='bjob-admin-hub';hub.innerHTML='<button data-admin="shops">🏪 Магазины</button><button data-admin="users">👥 Сотрудники</button><button data-admin="org">⚙️ Организация и права</button>';document.body.appendChild(hub);}
-  if(!hub.dataset.bound){hub.dataset.bound='1';hub.addEventListener('click',e=>{const b=e.target.closest('[data-admin]');if(!b)return;const target=b.dataset.admin;const old=[...document.querySelectorAll('.bjob-admin-fixed button,.bjob-admin-final button')].find(x=>(target==='shops'&&/Магазины/.test(x.textContent))||(target==='users'&&/Пользователи|Сотрудники/.test(x.textContent)));if(old)old.click();else if(target==='org')document.querySelector('.bjob-admin-fixed [data-import]')?.click();});}
+  if(!hub.dataset.bound){hub.dataset.bound='1';hub.addEventListener('click',e=>{const b=e.target.closest('[data-admin]');if(!b)return;const target=b.dataset.admin;const selector=target==='org'?'.bjob-admin-fixed [data-org]':`.bjob-admin-fixed [data-${target}]`;document.querySelector(selector)?.click();});}
 }
 
 async function render(){
