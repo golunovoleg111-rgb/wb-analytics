@@ -1,6 +1,6 @@
 import * as Core from './core/runtime.js';
 import { ensureCore, session, login, completeFirstLogin } from './userAuth.js';
-import { start } from './singleApp.js';
+import { start } from './singleAppStep1.js';
 
 function loginScreen(first=false){
   const root=document.createElement('div');
