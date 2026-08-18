@@ -3,6 +3,7 @@ import { ensureCore, session, login, logout, completeFirstLogin } from './userAu
 import { start } from './singleAppStep1.js';
 import * as WarehouseCore from './warehouseCore.js';
 import * as BackupCore from './backupCore.js';
+import { initPr49Ui } from './pr49UiBridge.js';
 
 const LOCAL_SESSION='bjob:desktop:session';
 function restoreSession(){try{if(!session()){const raw=localStorage.getItem(LOCAL_SESSION);if(raw)sessionStorage.setItem('bjob:v2:user',raw)}}catch(e){console.warn('B-JOB session restore',e)}}
@@ -25,6 +26,7 @@ async function authenticate(){
   }
 }
 async function boot(){
+  initPr49Ui();
   await Core.boot();await ensureCore();await authenticate();if(!session())throw new Error('Сессия не создана.');
   window.BJobWarehouse=WarehouseCore;
   window.BJobBackup=BackupCore;
