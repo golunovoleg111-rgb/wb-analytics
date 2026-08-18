@@ -1,27 +1,93 @@
-import {sharedRepository} from './data/sharedDataBridge.js';
 const DB_NAME='beltanee-production';
-// v9 repairs installations that may have reached v8 without the auth stores.
-const DB_VERSION=9;
+const DB_VERSION=10;
 const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','shops','invitations','authEvents'];
 const SHOP_SCOPED_STORES=new Set(['products','sales','stocks','ads','expenses','fbs','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','apiConnections']);
-let dbPromise;
 const LOCAL_ONLY_STORES=new Set(['apiConnections','users','shops','invitations','authEvents']);
+let dbPromise;
+
 function activeShopId(){try{return localStorage.getItem('bjob:v2:active-shop')||null}catch{return null}}
 function scopeRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const shop=activeShopId();if(!shop)return rows;return rows.filter(row=>!row.shopId||row.shopId===shop)}
 function stampRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const shop=activeShopId();if(!shop)return rows;return rows.map(row=>row.shopId?row:{...row,shopId:shop})}
-function open(){if(dbPromise)return dbPromise;dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;for(const s of STORES){if(!db.objectStoreNames.contains(s)){const st=db.createObjectStore(s,{keyPath:'id',autoIncrement:true});if(['products','sales','stocks','ads','fbs','fbsBoxes','stockMovements','fbsInventory'].includes(s))st.createIndex('article','article',{unique:false});if(['sales','stocks','ads','fbs','imports','warehouseMoves','shipments','productionOrders','audit','stockMovements','fbsInventoryMovements','authEvents'].includes(s))st.createIndex('date','date',{unique:false});if(s==='warehouses')st.createIndex('name','name',{unique:false});if(s==='apiConnections')st.createIndex('marketplace','marketplace',{unique:false});if(s==='fbsBoxes'){st.createIndex('spaceId','spaceId',{unique:false});st.createIndex('barcode','barcode',{unique:false});}if(s==='stockMovements'){st.createIndex('variantId','variantId',{unique:false});st.createIndex('sourceId','sourceId',{unique:false});}if(s==='fbsInventory'){st.createIndex('variantId','variantId',{unique:false});st.createIndex('boxId','boxId',{unique:false});st.createIndex('barcode','barcode',{unique:false});}if(s==='shops')st.createIndex('marketplace','marketplace',{unique:false});if(s==='users'){st.createIndex('login','login',{unique:false});st.createIndex('organizationId','organizationId',{unique:false});}}}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});return dbPromise}
-function tx(db,name,mode,work){return new Promise((resolve,reject)=>{let requestResult;let settled=false;let t;try{t=db.transaction(name,mode);requestResult=work(t.objectStore(name));}catch(error){reject(error);return;}const finish=()=>{if(!settled){settled=true;resolve(requestResult?.result!==undefined?requestResult.result:requestResult);}};if(requestResult&&typeof requestResult.onsuccess!=='undefined'){requestResult.onsuccess=finish;requestResult.onerror=()=>{if(!settled){settled=true;reject(requestResult.error||new Error('IndexedDB request failed'));}};t.oncomplete=finish;t.onerror=()=>{if(!settled){settled=true;reject(t.error||new Error('IndexedDB transaction failed'));}};t.onabort=()=>{if(!settled){settled=true;reject(t.error||new Error('IndexedDB transaction aborted'));}};}else{t.oncomplete=finish;t.onerror=()=>{if(!settled){settled=true;reject(t.error||new Error('IndexedDB transaction failed'));}};t.onabort=()=>{if(!settled){settled=true;reject(t.error||new Error('IndexedDB transaction aborted'));}};}})}
-async function localAll(name){const db=await open();return scopeRows(name,await tx(db,name,'readonly',s=>s.getAll()))}
-async function replaceLocal(name,rows){const db=await open();return new Promise((resolve,reject)=>{const t=db.transaction(name,'readwrite'),s=t.objectStore(name);s.clear();for(const row of rows)s.put(row);t.oncomplete=()=>resolve(rows.length);t.onerror=()=>reject(t.error)})}
-async function syncRead(name){const local=await localAll(name);if(LOCAL_ONLY_STORES.has(name))return local;try{const remote=await sharedRepository.list(name);if(Array.isArray(remote)&&remote.length){await replaceLocal(name,remote);return scopeRows(name,remote)}if(local.length){for(const row of stampRows(name,local))await sharedRepository.mutate(name,'upsert',row)}return local}catch{return local}}
-export async function clearStore(name){const db=await open();const result=await tx(db,name,'readwrite',s=>s.clear());if(!LOCAL_ONLY_STORES.has(name)){try{await sharedRepository.mutate(name,'clear',{})}catch{}}return result}
-export async function remove(name,id){const db=await open();const result=await tx(db,name,'readwrite',s=>s.delete(id));if(!LOCAL_ONLY_STORES.has(name)){try{await sharedRepository.mutate(name,'delete',{id})}catch{}}return result}
-export async function get(name,id){return tx(await open(),name,'readonly',s=>s.get(id))}
+
+function open(){
+  if(dbPromise)return dbPromise;
+  dbPromise=new Promise((resolve,reject)=>{
+    const request=indexedDB.open(DB_NAME,DB_VERSION);
+    request.onupgradeneeded=()=>{
+      const db=request.result;
+      for(const name of STORES){
+        if(db.objectStoreNames.contains(name))continue;
+        const store=db.createObjectStore(name,{keyPath:'id',autoIncrement:true});
+        if(['products','sales','stocks','ads','fbs','fbsBoxes','stockMovements','fbsInventory'].includes(name))store.createIndex('article','article',{unique:false});
+        if(['sales','stocks','ads','fbs','imports','warehouseMoves','shipments','productionOrders','audit','stockMovements','fbsInventoryMovements','authEvents'].includes(name))store.createIndex('date','date',{unique:false});
+        if(name==='warehouses')store.createIndex('name','name',{unique:false});
+        if(name==='apiConnections')store.createIndex('marketplace','marketplace',{unique:false});
+        if(name==='fbsBoxes'){store.createIndex('spaceId','spaceId',{unique:false});store.createIndex('barcode','barcode',{unique:false})}
+        if(name==='stockMovements'){store.createIndex('variantId','variantId',{unique:false});store.createIndex('sourceId','sourceId',{unique:false})}
+        if(name==='fbsInventory'){store.createIndex('variantId','variantId',{unique:false});store.createIndex('boxId','boxId',{unique:false});store.createIndex('barcode','barcode',{unique:false})}
+        if(name==='shops')store.createIndex('marketplace','marketplace',{unique:false});
+        if(name==='users'){store.createIndex('login','login',{unique:false});store.createIndex('organizationId','organizationId',{unique:false})}
+      }
+    };
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error('IndexedDB open failed'));
+  });
+  return dbPromise;
+}
+
+function tx(name,mode,work){
+  return open().then(db=>new Promise((resolve,reject)=>{
+    let request;
+    let settled=false;
+    let transaction;
+    try{transaction=db.transaction(name,mode);request=work(transaction.objectStore(name))}
+    catch(error){reject(error);return}
+    const finish=()=>{if(!settled){settled=true;resolve(request?.result!==undefined?request.result:request)}};
+    transaction.oncomplete=finish;
+    transaction.onerror=()=>{if(!settled){settled=true;reject(transaction.error||new Error('IndexedDB transaction failed'))}};
+    transaction.onabort=()=>{if(!settled){settled=true;reject(transaction.error||new Error('IndexedDB transaction aborted'))}};
+    if(request&&typeof request.onsuccess!=='undefined'){
+      request.onsuccess=finish;
+      request.onerror=()=>{if(!settled){settled=true;reject(request.error||new Error('IndexedDB request failed'))}};
+    }
+  }));
+}
+
+async function localAll(name){return scopeRows(name,await tx(name,'readonly',store=>store.getAll()))}
+async function replaceLocal(name,rows){
+  return open().then(db=>new Promise((resolve,reject)=>{
+    const transaction=db.transaction(name,'readwrite');
+    const store=transaction.objectStore(name);
+    store.clear();
+    for(const row of stampRows(name,rows))store.put(row);
+    transaction.oncomplete=()=>resolve(rows.length);
+    transaction.onerror=()=>reject(transaction.error||new Error('IndexedDB replace failed'));
+    transaction.onabort=()=>reject(transaction.error||new Error('IndexedDB replace aborted'));
+  }));
+}
+
+// Phase 1: the core database is strictly local-first. Network synchronization is an explicit
+// integration concern and must never be able to prevent the application from booting.
+export async function clearStore(name){return tx(name,'readwrite',store=>store.clear())}
+export async function remove(name,id){return tx(name,'readwrite',store=>store.delete(id))}
+export async function get(name,id){return tx(name,'readonly',store=>store.get(id))}
 export async function count(name){return (await all(name)).length}
-export async function all(name){return syncRead(name)}
-export async function putMany(name,rows){if(!rows?.length)return 0;const stamped=stampRows(name,rows);const db=await open();const result=await new Promise((resolve,reject)=>{const t=db.transaction(name,'readwrite'),s=t.objectStore(name);for(const row of stamped)s.put(row);t.oncomplete=()=>resolve(stamped.length);t.onerror=()=>reject(t.error)});if(!LOCAL_ONLY_STORES.has(name))for(const row of stamped){try{await sharedRepository.mutate(name,'upsert',row)}catch{}}return result}
+export async function all(name){return localAll(name)}
+export async function putMany(name,rows){
+  if(!Array.isArray(rows)||!rows.length)return 0;
+  const stamped=stampRows(name,rows);
+  return open().then(db=>new Promise((resolve,reject)=>{
+    const transaction=db.transaction(name,'readwrite');
+    const store=transaction.objectStore(name);
+    for(const row of stamped)store.put(row);
+    transaction.oncomplete=()=>resolve(stamped.length);
+    transaction.onerror=()=>reject(transaction.error||new Error('IndexedDB write failed'));
+    transaction.onabort=()=>reject(transaction.error||new Error('IndexedDB write aborted'));
+  }));
+}
 export async function put(name,row){return putMany(name,[row])}
-export async function replaceMany(name,rows){const stamped=stampRows(name,rows);const result=await replaceLocal(name,stamped);if(!LOCAL_ONLY_STORES.has(name))try{await sharedRepository.mutate(name,'clear',{});for(const row of stamped)await sharedRepository.mutate(name,'upsert',row)}catch{}return result}
-export async function snapshot(){const out={};for(const s of STORES){const dbRows=await tx(await open(),s,'readonly',st=>st.getAll());out[s]=dbRows;}return out}
-export async function reset(){for(const s of STORES)await clearStore(s)}
-export {DB_NAME,DB_VERSION,STORES};
+export async function replaceMany(name,rows){return replaceLocal(name,Array.isArray(rows)?rows:[])}
+export async function snapshot(){const result={};for(const name of STORES)result[name]=await tx(name,'readonly',store=>store.getAll());return result}
+export async function reset(){for(const name of STORES)await clearStore(name);try{localStorage.removeItem('bjob:v2:active-shop');localStorage.removeItem('bjob:organization')}catch{}try{sessionStorage.removeItem('bjob:v2:user')}catch{}return true}
+export function isLocalFirst(){return true}
+export {DB_NAME,DB_VERSION,STORES,SHOP_SCOPED_STORES,LOCAL_ONLY_STORES};
