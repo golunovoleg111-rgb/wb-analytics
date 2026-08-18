@@ -3,6 +3,7 @@ const DB_VERSION=11;
 const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','shops','invitations','authEvents','workspaces'];
 const SHOP_SCOPED_STORES=new Set(['products','sales','stocks','ads','expenses','fbs','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','apiConnections']);
 const LOCAL_ONLY_STORES=new Set(['apiConnections','users','shops','invitations','authEvents','workspaces']);
+let dbPromise=null;
 function activeShopId(){try{return localStorage.getItem('bjob:v2:active-shop')||null}catch{return null}}
 function scopeRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const shop=activeShopId();if(!shop)return rows;return rows.filter(row=>!row.shopId||row.shopId===shop)}
 function stampRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const shop=activeShopId();if(!shop)return rows;return rows.map(row=>row.shopId?row:{...row,shopId:shop})}
@@ -28,7 +29,7 @@ function open(){
       }
     };
     request.onsuccess=()=>resolve(request.result);
-    request.onerror=()=>reject(request.error||new Error('IndexedDB open failed'));
+    request.onerror=()=>{dbPromise=null;reject(request.error||new Error('IndexedDB open failed'))};
   });
   return dbPromise;
 }
