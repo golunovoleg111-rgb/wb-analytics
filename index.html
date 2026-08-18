@@ -13,12 +13,9 @@
 </head>
 <body>
 <div id="app"><div class="bjob"><main><section class="bjob-empty"><div class="empty-line"></div><h2>Загрузка B-JOB</h2><p>Проверяем доступ и подготавливаем рабочее пространство.</p></section></main></div></div>
-<script>
-window.__BJOB_API_BASE__=localStorage.getItem('bjob:api-base')||'';
-if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
-</script>
+<script>window.__BJOB_API_BASE__=localStorage.getItem('bjob:api-base')||'';if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});</script>
 <script type="module" src="./src/v1Runtime.js"></script>
-<script type="module" src="./src/bjob/adminV2Final.js"></script>
+<script type="module" src="./src/bjob/adminV2Fixed.js"></script>
 <script type="module" src="./src/bjob/navigationV2.js"></script>
 </body>
 </html>
