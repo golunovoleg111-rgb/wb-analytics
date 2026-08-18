@@ -1,6 +1,9 @@
 import * as Core from './core/runtime.js';
 import { ensureCore, session, login, logout, completeFirstLogin } from './userAuth.js';
 import { start } from './singleAppStep1.js';
+import * as WarehouseCore from './warehouseCore.js';
+import * as BackupCore from './backupCore.js';
+import { initPr49Ui } from './pr49UiBridge.js';
 
 const LOCAL_SESSION='bjob:desktop:session';
 function restoreSession(){try{if(!session()){const raw=localStorage.getItem(LOCAL_SESSION);if(raw)sessionStorage.setItem('bjob:v2:user',raw)}}catch(e){console.warn('B-JOB session restore',e)}}
@@ -23,6 +26,11 @@ async function authenticate(){
   }
 }
 async function boot(){
-  await Core.boot();await ensureCore();await authenticate();if(!session())throw new Error('Сессия не создана.');window.bjobDesktop=window.BJobDesktop||null;await start();window.dispatchEvent(new CustomEvent('bjob:ready'));
+  initPr49Ui();
+  await Core.boot();await ensureCore();await authenticate();if(!session())throw new Error('Сессия не создана.');
+  window.BJobWarehouse=WarehouseCore;
+  window.BJobBackup=BackupCore;
+  window.bjobDesktop=window.BJobDesktop||null;
+  await start();window.dispatchEvent(new CustomEvent('bjob:ready'));
 }
 boot().catch(error=>{console.error('B-JOB startup failed',error);const app=document.querySelector('#app');if(app)app.innerHTML=`<div class="single-fatal"><h1>B-JOB не запущен</h1><p>${String(error?.message||error)}</p><button onclick="location.reload()">Повторить</button></div>`});
