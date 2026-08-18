@@ -1,4 +1,4 @@
-import {createDataRepository} from './dataRepository.js';
+import {createDataRepository} from './dataRepositoryV2.js';
 import {isOnline} from './syncContract.js';
 
 const apiBase=globalThis.__BJOB_API_BASE__??'';
