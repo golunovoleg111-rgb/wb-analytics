@@ -1,11 +1,11 @@
 const DB_NAME='beltanee-production';
-const DB_VERSION=12;
+const DB_VERSION=13;
 const STORES=['products','sales','stocks','ads','expenses','fbs','settings','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','apiConnections','users','audit','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','shops','invitations','authEvents','workspaces','orders','assemblyTasks','assemblyEvents'];
 const SHOP_SCOPED_STORES=new Set(['products','sales','stocks','ads','expenses','fbs','imports','warehouses','warehouseMoves','pallets','boxes','shipments','productionOrders','fbsSpaces','fbsBoxes','stockMovements','fbsInventory','fbsInventoryMovements','apiConnections','orders','assemblyTasks','assemblyEvents']);
 const LOCAL_ONLY_STORES=new Set(['apiConnections','users','shops','invitations','authEvents','workspaces']);
 let dbPromise=null;
 function activeShopId(){try{return localStorage.getItem('bjob:v2:active-shop')||null}catch{return null}}
-function scopeRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const shop=activeShopId();if(!shop)return rows;return rows.filter(row=>!row.shopId||row.shopId===shop)}
+function scopeRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const shop=activeShopId();if(!shop)return rows;return rows.filter(row=>row.shopId===shop)}
 function stampRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const shop=activeShopId();if(!shop)return rows;return rows.map(row=>row.shopId?row:{...row,shopId:shop})}
 function open(){
   if(dbPromise)return dbPromise;
@@ -48,6 +48,7 @@ export async function putMany(name,rows){if(!Array.isArray(rows)||!rows.length)r
 export async function put(name,row){return putMany(name,[row])}
 export async function replaceMany(name,rows){return replaceLocal(name,Array.isArray(rows)?rows:[])}
 export async function snapshot(){const result={};for(const name of STORES)result[name]=await tx(name,'readonly',store=>store.getAll());return result}
-export async function reset(){for(const name of STORES)await clearStore(name);try{localStorage.removeItem('bjob:v2:active-shop');localStorage.removeItem('bjob:organization')}catch{}try{sessionStorage.removeItem('bjob:v2:user')}catch{}return true}
+export async function assignUnscopedToShop(shopId){if(!shopId)return 0;let changed=0;const db=await open();for(const name of SHOP_SCOPED_STORES){const rows=await new Promise((resolve,reject)=>{const r=db.transaction(name,'readonly').objectStore(name).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)});const legacy=rows.filter(row=>!row.shopId);if(!legacy.length)continue;await new Promise((resolve,reject)=>{const t=db.transaction(name,'readwrite'),s=t.objectStore(name);for(const row of legacy)s.put({...row,shopId});t.oncomplete=resolve;t.onerror=()=>reject(t.error||new Error(`Failed to migrate ${name}`));t.onabort=()=>reject(t.error||new Error(`Aborted migrating ${name}`))});changed+=legacy.length}return changed}
+export async function restoreSnapshot(snapshot,{clear=true}={}){if(!snapshot||typeof snapshot!=='object')throw new Error('Некорректный backup JSON.');let total=0;for(const name of STORES){if(!Array.isArray(snapshot[name]))continue;if(clear)await clearStore(name);total+=await replaceMany(name,snapshot[name])}return total}
 export function isLocalFirst(){return true}
 export {DB_NAME,DB_VERSION,STORES,SHOP_SCOPED_STORES,LOCAL_ONLY_STORES};
