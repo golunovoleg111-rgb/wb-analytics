@@ -8,13 +8,13 @@
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./src/bjob/single.css?v=48">
 <link rel="stylesheet" href="./src/bjob/assembly.css?v=48">
-<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=69">
+<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=71">
 </head>
 <body>
-<div id="app"></div>
-<script type="module" src="./src/bjob/singleBoot.js?v=68"></script>
+<div id="app"><div style="min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#edf2f7;font:600 14px system-ui">B-JOB загружается…</div></div>
+<script type="module" src="./src/bjob/singleBoot.js?v=71"></script>
 <script type="module">
-import { startAssemblyLayer } from './src/bjob/assembly.js?v=68';
+import { startAssemblyLayer } from './src/bjob/assembly.js?v=71';
 window.addEventListener('bjob:ready', () => startAssemblyLayer(), { once:true });
 </script>
 </body>
