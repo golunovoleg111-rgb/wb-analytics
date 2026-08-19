@@ -1,10 +1,9 @@
 import * as Core from './core/runtime.js';
-import { ensureCore, session, login, logout, completeFirstLogin } from './userAuth.js';
+import { ensureCore, session, login, completeFirstLogin } from './userAuth.js';
 import { start } from './singleAppStep1.js';
 import * as WarehouseCore from './warehouseCore.js';
 import * as BackupCore from './backupCore.js';
 import { initPr49Ui } from './pr49UiBridge.js';
-import { initFbsCore } from './fbsControl.js';
 import { installFbsRouteBridge } from './fbsRouteBridge.js';
 
 const LOCAL_SESSION='bjob:desktop:session';
@@ -29,8 +28,10 @@ async function authenticate(){
 }
 async function boot(){
   initPr49Ui();
-  initFbsCore();
-  await Core.boot();await ensureCore();await authenticate();if(!session())throw new Error('Сессия не создана.');
+  await Core.boot();
+  await ensureCore();
+  await authenticate();
+  if(!session())throw new Error('Сессия не создана.');
   window.BJobWarehouse=WarehouseCore;
   window.BJobBackup=BackupCore;
   window.bjobDesktop=window.BJobDesktop||null;
