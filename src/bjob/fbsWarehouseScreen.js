@@ -1,4 +1,3 @@
-import './fbsWarehouse.css';
 import {createWarehouse,addWall,addZone,addEntrance,addBox,setBoxContents,moveBox,removeBox,lockBox,warehouseInventory,scanBox} from './fbsWarehouseV2.js';
 const KEY='bjob:fbs:v2';
 const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||null}catch{return null}};
