@@ -16,3 +16,5 @@ jobs:
           node-version: 20
       - name: Validate JavaScript syntax, imports and assets
         run: node scripts/validate-runtime.mjs
+      - name: Check MutationObserver safety
+        run: node scripts/check-mutation-observers.mjs

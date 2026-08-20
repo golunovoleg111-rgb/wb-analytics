@@ -4,6 +4,7 @@ import { printQrLabel } from './fbsQrPrint.js';
 const FBS_KEY = 'bjob:fbs:v2';
 let installed = false;
 let observer = null;
+let decorating = false;
 let catalogCache = null;
 
 const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
@@ -194,21 +195,31 @@ function addUnassignedTray() {
   if (!state || !canvas) return;
   const boxes = (state.boxes || []).filter(b => !b.zoneId);
   let tray = canvas.querySelector('[data-v83-unassigned]');
-  if (!boxes.length) { tray?.remove(); return; }
+  if (!boxes.length) { if (tray) tray.remove(); return; }
+  const signature = boxes.map(b => `${b.id}:${(b.contents || []).reduce((n, x) => n + Number(x.qty || 0), 0)}`).join('|');
+  if (tray?.dataset.signature === signature) return;
   if (!tray) {
     tray = document.createElement('section');
     tray.dataset.v83Unassigned = '1';
     tray.className = 'fbs-unassigned-tray';
     canvas.appendChild(tray);
   }
+  tray.dataset.signature = signature;
   tray.innerHTML = `<b>Короба без зоны · ${boxes.length}</b><small>Администратор удалил зону. Короба сохранены и требуют нового размещения.</small>${boxes.map(b => `<div><strong>${esc(b.code)}</strong><span>${(b.contents || []).reduce((n, x) => n + Number(x.qty || 0), 0)} изделий</span></div>`).join('')}`;
 }
 
 function decorate() {
-  if (localStorage.getItem('bjob:route') !== 'fbs') return;
-  injectZoneButton();
-  addPrintButton();
-  addUnassignedTray();
+  if (decorating || localStorage.getItem('bjob:route') !== 'fbs') return;
+  decorating = true;
+  try {
+    if (observer) observer.disconnect();
+    injectZoneButton();
+    addPrintButton();
+    addUnassignedTray();
+  } finally {
+    if (observer) observer.observe(document.body, { childList: true, subtree: true });
+    decorating = false;
+  }
 }
 
 function onClickCapture(event) {
