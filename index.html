@@ -22,6 +22,7 @@ import { installAssemblyInventoryGuard } from './src/bjob/assemblyInventoryGuard
 import { installFbsLocalMirror } from './src/bjob/fbsLocalMirror.js?v=83';
 import { installTransferViewEnhancement } from './src/bjob/transferViewEnhancement.js?v=83';
 import { installFbsFixesV83 } from './src/bjob/fbsFixesV83.js?v=83';
+import { installManagementFixV83 } from './src/bjob/managementFixV83.js?v=83';
 window.addEventListener('bjob:ready', () => {
   startAssemblyLayer();
   installLifecycleEnhancements();
@@ -29,6 +30,7 @@ window.addEventListener('bjob:ready', () => {
   installFbsLocalMirror();
   installTransferViewEnhancement();
   installFbsFixesV83();
+  installManagementFixV83();
 }, { once:true });
 </script>
 </body>
