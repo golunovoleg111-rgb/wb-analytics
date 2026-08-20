@@ -6,23 +6,24 @@
 <meta name="theme-color" content="#0b0e14">
 <title>B-JOB</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./src/bjob/single.css?v=85">
-<link rel="stylesheet" href="./src/bjob/assembly.css?v=85">
-<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=85">
-<link rel="stylesheet" href="./src/bjob/modalFix.css?v=85">
-<link rel="stylesheet" href="./src/bjob/fbsFixesV83.css?v=85">
+<link rel="stylesheet" href="./src/bjob/single.css?v=83">
+<link rel="stylesheet" href="./src/bjob/assembly.css?v=83">
+<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=83">
+<link rel="stylesheet" href="./src/bjob/modalFix.css?v=83">
+<link rel="stylesheet" href="./src/bjob/fbsFixesV83.css?v=83">
 </head>
 <body>
 <div id="app"><div style="min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#edf2f7;font:600 14px system-ui">B-JOB загружается…</div></div>
-<script type="module" src="./src/bjob/singleBoot.js?v=85"></script>
+<script src="./src/bjob/bootRecovery.js"></script>
+<script type="module" src="./src/bjob/singleBoot.js?v=83"></script>
 <script type="module">
-import { startAssemblyLayer } from './src/bjob/assembly.js?v=85';
-import { installLifecycleEnhancements } from './src/bjob/lifecycleEnhancements.js?v=85';
-import { installAssemblyInventoryGuard } from './src/bjob/assemblyInventoryGuard.js?v=85';
-import { installFbsLocalMirror } from './src/bjob/fbsLocalMirror.js?v=85';
-import { installTransferViewEnhancement } from './src/bjob/transferViewEnhancement.js?v=85';
-import { installFbsFixesV83 } from './src/bjob/fbsFixesV83.js?v=85';
-import { installManagementFixV83 } from './src/bjob/managementFixV83.js?v=85';
+import { startAssemblyLayer } from './src/bjob/assembly.js?v=83';
+import { installLifecycleEnhancements } from './src/bjob/lifecycleEnhancements.js?v=83';
+import { installAssemblyInventoryGuard } from './src/bjob/assemblyInventoryGuard.js?v=83';
+import { installFbsLocalMirror } from './src/bjob/fbsLocalMirror.js?v=83';
+import { installTransferViewEnhancement } from './src/bjob/transferViewEnhancement.js?v=83';
+import { installFbsFixesV83 } from './src/bjob/fbsFixesV83.js?v=83';
+import { installManagementFixV83 } from './src/bjob/managementFixV83.js?v=83';
 window.addEventListener('bjob:ready', () => {
   startAssemblyLayer();
   installLifecycleEnhancements();
