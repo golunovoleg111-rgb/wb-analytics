@@ -6,15 +6,16 @@
 <meta name="theme-color" content="#0b0e14">
 <title>B-JOB</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./src/bjob/single.css?v=75">
-<link rel="stylesheet" href="./src/bjob/assembly.css?v=75">
-<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=75">
+<link rel="stylesheet" href="./src/bjob/single.css?v=76">
+<link rel="stylesheet" href="./src/bjob/assembly.css?v=76">
+<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=76">
+<link rel="stylesheet" href="./src/bjob/modalFix.css?v=76">
 </head>
 <body>
 <div id="app"><div style="min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#edf2f7;font:600 14px system-ui">B-JOB загружается…</div></div>
-<script type="module" src="./src/bjob/singleBoot.js?v=75"></script>
+<script type="module" src="./src/bjob/singleBoot.js?v=76"></script>
 <script type="module">
-import { startAssemblyLayer } from './src/bjob/assembly.js?v=75';
+import { startAssemblyLayer } from './src/bjob/assembly.js?v=76';
 window.addEventListener('bjob:ready', () => startAssemblyLayer(), { once:true });
 </script>
 </body>
