@@ -18,9 +18,10 @@ const fileSet=new Set(files);
 const errors=[];
 const localTarget=(from,spec)=>{
   const clean=spec.split('?')[0].split('#')[0];
-  if(!clean.startsWith('.'))return null;
+  if(!clean.startsWith('.')||clean==='.'||clean==='./')return null;
   return path.posix.normalize(path.posix.join(path.posix.dirname(from),clean));
 };
+const existsAsset=target=>fileSet.has(target)||fileSet.has(`${target}.js`)||fileSet.has(`${target}.mjs`)||fileSet.has(`${target}.css`)||fileSet.has(`${target}.json`)||fileSet.has(`${target}/index.js`);
 for(const file of files.filter(f=>f.endsWith('.js'))){
   const result=spawnSync(process.execPath,['--check',path.join(ROOT,file)],{encoding:'utf8'});
   if(result.status!==0)errors.push(`${file}: JavaScript syntax error\n${result.stderr.trim()}`);
@@ -28,12 +29,12 @@ for(const file of files.filter(f=>f.endsWith('.js'))){
   const re=/\b(?:import|export)\s+(?:[^'"`]*?\s+from\s+)?['"]([^'"]+)['"]/g;
   for(const m of source.matchAll(re)){
     const target=localTarget(file,m[1]);
-    if(target&&!fileSet.has(target))errors.push(`${file}: missing local module ${m[1]} -> ${target}`);
+    if(target&&!existsAsset(target))errors.push(`${file}: missing local module ${m[1]} -> ${target}`);
   }
   const dyn=/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
   for(const m of source.matchAll(dyn)){
     const target=localTarget(file,m[1]);
-    if(target&&!fileSet.has(target))errors.push(`${file}: missing dynamic module ${m[1]} -> ${target}`);
+    if(target&&!existsAsset(target))errors.push(`${file}: missing dynamic module ${m[1]} -> ${target}`);
   }
 }
 for(const file of files.filter(f=>f.endsWith('.html'))){
@@ -41,7 +42,7 @@ for(const file of files.filter(f=>f.endsWith('.html'))){
   const re=/(?:src|href)=["']([^"']+)["']/g;
   for(const m of source.matchAll(re)){
     const target=localTarget(file,m[1]);
-    if(target&&!fileSet.has(target))errors.push(`${file}: missing local asset ${m[1]} -> ${target}`);
+    if(target&&!existsAsset(target))errors.push(`${file}: missing local asset ${m[1]} -> ${target}`);
   }
 }
 if(fileSet.has('sw.js')){
@@ -49,8 +50,10 @@ if(fileSet.has('sw.js')){
   const match=sw.match(/const SHELL=\[(.*?)\];/s);
   if(match){
     for(const raw of match[1].matchAll(/["']([^"']+)["']/g)){
-      const target=raw[1].split('?')[0];
-      if(target.startsWith('./')&&!fileSet.has(target.slice(2)))errors.push(`sw.js: missing shell asset ${raw[1]} -> ${target}`);
+      const clean=raw[1].split('?')[0].split('#')[0];
+      if(clean==='.'||clean==='./')continue;
+      const target=clean.startsWith('./')?clean.slice(2):clean;
+      if(target&&!existsAsset(target))errors.push(`sw.js: missing shell asset ${raw[1]} -> ${target}`);
     }
   }
 }
