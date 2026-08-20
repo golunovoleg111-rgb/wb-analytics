@@ -18,10 +18,12 @@
 import { startAssemblyLayer } from './src/bjob/assembly.js?v=82';
 import { installLifecycleEnhancements } from './src/bjob/lifecycleEnhancements.js?v=82';
 import { installAssemblyInventoryGuard } from './src/bjob/assemblyInventoryGuard.js?v=82';
+import { installTransferViewEnhancement } from './src/bjob/transferViewEnhancement.js?v=82';
 window.addEventListener('bjob:ready', () => {
   startAssemblyLayer();
   installLifecycleEnhancements();
   installAssemblyInventoryGuard();
+  installTransferViewEnhancement();
 }, { once:true });
 </script>
 </body>
