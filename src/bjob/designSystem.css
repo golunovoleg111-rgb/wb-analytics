@@ -1,0 +1,300 @@
+/* B-JOB UI v1 — one visual language for all operational sections. */
+:root{
+  --ui-bg:#f4f6fa;
+  --ui-surface:#ffffff;
+  --ui-surface-soft:#f7f9fc;
+  --ui-text:#151a22;
+  --ui-muted:#6f7c8e;
+  --ui-line:#dfe5ed;
+  --ui-line-strong:#cfd7e3;
+  --ui-primary:#111722;
+  --ui-primary-hover:#1b2636;
+  --ui-accent:#7c9cff;
+  --ui-success:#1d7a55;
+  --ui-warning:#a66a00;
+  --ui-danger:#b42335;
+  --ui-radius:14px;
+  --ui-shadow:0 10px 30px rgba(17,27,44,.07);
+  --ui-shadow-lg:0 30px 90px rgba(7,10,16,.28);
+}
+
+/* ---------- Common controls ---------- */
+.bjob-app button,
+.bjob-app input,
+.bjob-app select,
+.bjob-app textarea,
+.modal-bg button,
+.modal-bg input,
+.modal-bg select,
+.modal-bg textarea,
+.modal-back button,
+.modal-back input,
+.modal-back select,
+.modal-back textarea{
+  font:inherit;
+}
+
+.bjob-app button:not(.nav-link):not(.nav-dropdown button),
+.modal-bg button,
+.modal-back button{
+  -webkit-tap-highlight-color:transparent;
+}
+
+.ui-btn,
+.bjob-app .btn,
+.modal-bg .btn,
+.modal-back .btn{
+  min-height:40px;
+  border:1px solid var(--ui-line-strong);
+  border-radius:10px;
+  padding:9px 14px;
+  background:var(--ui-surface);
+  color:var(--ui-text);
+  font-weight:650;
+  cursor:pointer;
+  transition:transform .15s,background .15s,border-color .15s,box-shadow .15s;
+}
+.ui-btn:hover,
+.bjob-app .btn:hover,
+.modal-bg .btn:hover,
+.modal-back .btn:hover{
+  transform:translateY(-1px);
+  border-color:#bcc7d5;
+  box-shadow:0 5px 16px rgba(17,27,44,.08);
+}
+.ui-btn:active,
+.bjob-app .btn:active,
+.modal-bg .btn:active,
+.modal-back .btn:active{transform:translateY(0)}
+.ui-btn.primary,
+.bjob-app .btn.primary,
+.modal-bg .btn.primary,
+.modal-back .btn.primary{background:var(--ui-primary);color:#fff;border-color:var(--ui-primary)}
+.ui-btn.primary:hover,
+.bjob-app .btn.primary:hover,
+.modal-bg .btn.primary:hover,
+.modal-back .btn.primary:hover{background:var(--ui-primary-hover);border-color:var(--ui-primary-hover)}
+.ui-btn.danger,
+.bjob-app .btn.danger{color:var(--ui-danger);border-color:#e5bcc3;background:#fff}
+
+.action-row,
+.single-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:9px;
+  margin:0 0 18px;
+}
+
+/* ---------- Cards / lists / tables ---------- */
+.metric-grid,
+.single-cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:12px;
+}
+.metric-card,
+.single-cards>div,
+.list>article,
+.warehouse-card,
+.data-table,
+.bjob-table,
+.empty-panel,
+.storage-summary{
+  background:var(--ui-surface);
+  border:1px solid var(--ui-line);
+  border-radius:var(--ui-radius);
+  box-shadow:var(--ui-shadow);
+}
+.metric-card,
+.single-cards>div{padding:17px}
+.metric-card span,
+.metric-card small,
+.single-cards span,
+.list article small{color:var(--ui-muted)}
+.list{display:grid;gap:10px}
+.list>article{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-height:66px;
+  padding:14px 16px;
+}
+.list>article>div{min-width:0;display:grid;gap:4px}
+.list>article .ui-btn{margin-left:auto;flex:0 0 auto}
+.data-table,.bjob-table{overflow:auto}
+.data-table table,.bjob-table table{width:100%;border-collapse:collapse}
+.data-table th,.data-table td,.bjob-table th,.bjob-table td{
+  padding:11px 13px;
+  text-align:left;
+  border-bottom:1px solid #edf0f4;
+  font-size:12px;
+}
+.data-table th,.bjob-table th{background:#f7f9fb;color:#69778a;font-weight:750}
+.data-table tbody tr:hover,.bjob-table tbody tr:hover{background:#fafbfd}
+.empty-panel{padding:24px;color:var(--ui-muted)}
+.empty-panel b{display:block;color:var(--ui-text);margin-bottom:6px}
+
+/* ---------- Canonical modal ---------- */
+.modal-layer,
+.modal-bg,
+.modal-back{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  z-index:100000!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:24px!important;
+  margin:0!important;
+  background:rgba(7,10,16,.62)!important;
+  backdrop-filter:blur(8px)!important;
+  -webkit-backdrop-filter:blur(8px)!important;
+  overflow:auto!important;
+}
+.modal-layer[hidden]{display:none!important}
+.modal-bg:empty,.modal-back:empty{display:none!important}
+
+.modal-layer>.modal-card,
+.modal-bg>.modal,
+.modal-back>.modal{
+  position:relative!important;
+  width:min(720px,calc(100vw - 48px))!important;
+  max-width:720px!important;
+  max-height:calc(100vh - 48px)!important;
+  overflow:auto!important;
+  margin:auto!important;
+  padding:28px!important;
+  display:grid!important;
+  gap:0!important;
+  background:#fff!important;
+  color:var(--ui-text)!important;
+  border:1px solid var(--ui-line)!important;
+  border-radius:20px!important;
+  box-shadow:var(--ui-shadow-lg)!important;
+  text-align:left!important;
+  animation:bjobModalIn .18s ease-out both;
+}
+.modal-layer>.modal-card h2,
+.modal-bg>.modal h2,
+.modal-back>.modal h2{
+  margin:0 38px 22px 0!important;
+  color:var(--ui-text)!important;
+  font-size:24px!important;
+  line-height:1.2!important;
+}
+.modal-layer>.modal-card label,
+.modal-bg>.modal label,
+.modal-back>.modal label{
+  display:grid!important;
+  grid-template-columns:minmax(120px,.35fr) minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:14px!important;
+  margin:0 0 12px!important;
+  color:#4f5d70!important;
+  font-size:12px!important;
+  font-weight:650!important;
+}
+.modal-layer>.modal-card input,
+.modal-layer>.modal-card select,
+.modal-layer>.modal-card textarea,
+.modal-bg>.modal input,
+.modal-bg>.modal select,
+.modal-bg>.modal textarea,
+.modal-back>.modal input,
+.modal-back>.modal select,
+.modal-back>.modal textarea{
+  width:100%!important;
+  min-height:40px!important;
+  padding:9px 11px!important;
+  border:1px solid #d4dbe5!important;
+  border-radius:10px!important;
+  background:#f9fafc!important;
+  color:var(--ui-text)!important;
+  outline:none!important;
+}
+.modal-layer>.modal-card input:focus,
+.modal-layer>.modal-card select:focus,
+.modal-bg>.modal input:focus,
+.modal-bg>.modal select:focus,
+.modal-back>.modal input:focus,
+.modal-back>.modal select:focus{
+  border-color:var(--ui-accent)!important;
+  box-shadow:0 0 0 3px rgba(124,156,255,.15)!important;
+}
+.modal-layer>.modal-card .modal-actions,
+.modal-bg>.modal>div:last-child,
+.modal-back>.modal>div:last-child{
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  gap:8px!important;
+  margin-top:14px!important;
+}
+.modal-layer>.modal-card .modal-x,
+.modal-bg>.modal .close,
+.modal-back>.modal .close{
+  position:absolute!important;
+  right:12px!important;
+  top:10px!important;
+  width:38px!important;
+  height:38px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:10px!important;
+  background:transparent!important;
+  color:#788598!important;
+  font-size:25px!important;
+  line-height:1!important;
+  cursor:pointer!important;
+}
+.modal-layer>.modal-card .modal-x:hover,
+.modal-bg>.modal .close:hover,
+.modal-back>.modal .close:hover{background:#f1f4f8;color:var(--ui-text)}
+
+/* Permission matrix used by employee creation/edit dialogs. */
+.modal-bg>.modal .admin-permissions,
+.modal-layer>.modal-card .admin-permissions{margin-top:8px}
+.modal-bg>.modal .admin-permission-row,
+.modal-layer>.modal-card .admin-permission-row{
+  display:grid;
+  grid-template-columns:150px minmax(0,1fr);
+  gap:12px;
+  padding:10px 0;
+  border-top:1px solid #edf0f4;
+}
+.modal-bg>.modal .admin-permission-row>div,
+.modal-layer>.modal-card .admin-permission-row>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}
+.modal-bg>.modal .admin-permission-row label,
+.modal-layer>.modal-card .admin-permission-row label{
+  display:flex!important;
+  grid-template-columns:none!important;
+  gap:6px!important;
+  margin:0!important;
+  font-weight:500!important;
+}
+.modal-bg>.modal input[type=checkbox],
+.modal-layer>.modal-card input[type=checkbox]{width:auto!important;min-height:auto!important}
+
+@keyframes bjobModalIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+
+@media(max-width:700px){
+  .modal-layer,.modal-bg,.modal-back{padding:12px!important}
+  .modal-layer>.modal-card,.modal-bg>.modal,.modal-back>.modal{
+    width:calc(100vw - 24px)!important;
+    max-height:calc(100vh - 24px)!important;
+    padding:20px!important;
+    border-radius:16px!important;
+  }
+  .modal-layer>.modal-card label,.modal-bg>.modal label,.modal-back>.modal label{
+    grid-template-columns:1fr!important;
+    gap:5px!important;
+  }
+  .modal-bg>.modal .admin-permission-row,.modal-layer>.modal-card .admin-permission-row{grid-template-columns:1fr}
+}
+
+/* Never allow an accidental legacy modal host to consume document space. */
+#modal:empty{display:none!important}
+#modal:not(:empty){position:static!important}
