@@ -1,0 +1,22 @@
+/* PR79 — actual modal contract used by pr49UiBridge.js. */
+#pr49-modal{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:100000!important;pointer-events:none!important}
+#pr49-modal .modal-bg{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;display:grid!important;place-items:center!important;padding:18px!important;margin:0!important;background:rgba(7,10,16,.62)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;overflow:auto!important;pointer-events:auto!important}
+#pr49-modal .pr49-modal{position:relative!important;width:min(720px,calc(100vw - 36px))!important;max-width:720px!important;max-height:calc(100vh - 36px)!important;overflow:auto!important;margin:auto!important;padding:25px!important;background:#fff!important;color:#151a22!important;border:1px solid #e0e5ed!important;border-radius:20px!important;box-shadow:0 35px 100px rgba(0,0,0,.35)!important;text-align:left!important;animation:pr49ModalIn .18s ease-out both}
+#pr49-modal .pr49-modal h2{margin:7px 42px 20px 0!important;color:#151a22!important;font-size:24px!important;line-height:1.2!important}
+#pr49-modal .pr49-modal label{display:grid!important;grid-template-columns:minmax(110px,.35fr) minmax(0,1fr)!important;align-items:center!important;gap:12px!important;margin:12px 0!important;color:#4f5d70!important;font-size:12px!important;font-weight:650!important}
+#pr49-modal .pr49-modal input,#pr49-modal .pr49-modal select{width:100%!important;min-height:40px!important;padding:10px 12px!important;border-radius:10px!important;border:1px solid #d4dbe5!important;background:#f9fafc!important;color:#151a22!important;outline:none!important}
+#pr49-modal .pr49-modal input:focus,#pr49-modal .pr49-modal select:focus{border-color:#809cff!important;box-shadow:0 0 0 3px rgba(124,156,255,.15)!important}
+#pr49-modal .pr49-modal>div:last-child{display:flex!important;justify-content:flex-end!important;align-items:center!important;gap:8px!important;margin-top:20px!important}
+#pr49-modal .pr49-modal button{min-height:40px!important;padding:10px 14px!important;border:1px solid #d4dbe5!important;border-radius:10px!important;background:#fff!important;color:#18202c!important;font-weight:700!important;cursor:pointer!important}
+#pr49-modal .pr49-modal button:hover{background:#f3f5f8!important}
+#pr49-modal .pr49-modal button[type=submit]{background:#111722!important;color:#fff!important;border-color:#111722!important}
+#pr49-modal .pr49-modal .close{position:absolute!important;right:12px!important;top:10px!important;width:38px!important;height:38px!important;min-height:38px!important;padding:0!important;border:0!important;background:transparent!important;color:#788598!important;font-size:25px!important;line-height:1!important}
+#pr49-modal .pr49-modal .close:hover{background:#f1f4f8!important;color:#151a22!important}
+#pr49-modal .pr49-access-grid{display:grid!important;gap:8px!important;max-height:42vh!important;overflow:auto!important;padding:4px 0!important}
+#pr49-modal .pr49-access-row{display:grid!important;grid-template-columns:150px minmax(0,1fr)!important;gap:10px!important;padding:10px 0!important;border-top:1px solid #edf0f4!important}
+#pr49-modal .pr49-access-row>label{display:flex!important;grid-template-columns:none!important;align-items:center!important;gap:6px!important;margin:0!important;font-weight:500!important}
+#pr49-modal .pr49-access-row input[type=checkbox]{width:auto!important;min-height:auto!important}
+#pr49-modal .pr49-error{color:#b42335!important;margin:10px 0!important}
+#pr49-modal .pr49-password{padding:12px 14px!important;border-radius:10px!important;background:#f4f6fa!important;font-size:18px!important;letter-spacing:.06em}
+@keyframes pr49ModalIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@media(max-width:650px){#pr49-modal .modal-bg{padding:10px!important}#pr49-modal .pr49-modal{width:calc(100vw - 20px)!important;max-height:calc(100vh - 20px)!important;padding:20px!important;border-radius:16px!important}#pr49-modal .pr49-modal label{grid-template-columns:1fr!important;gap:5px!important}#pr49-modal .pr49-access-row{grid-template-columns:1fr!important}}
