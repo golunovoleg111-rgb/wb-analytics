@@ -6,17 +6,27 @@
 <meta name="theme-color" content="#0b0e14">
 <title>B-JOB</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./src/bjob/single.css?v=77">
-<link rel="stylesheet" href="./src/bjob/assembly.css?v=77">
-<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=77">
-<link rel="stylesheet" href="./src/bjob/modalFix.css?v=77">
+<link rel="stylesheet" href="./src/bjob/single.css?v=82">
+<link rel="stylesheet" href="./src/bjob/assembly.css?v=82">
+<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=82">
+<link rel="stylesheet" href="./src/bjob/modalFix.css?v=82">
 </head>
 <body>
 <div id="app"><div style="min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#edf2f7;font:600 14px system-ui">B-JOB загружается…</div></div>
-<script type="module" src="./src/bjob/singleBoot.js?v=77"></script>
+<script type="module" src="./src/bjob/singleBoot.js?v=82"></script>
 <script type="module">
-import { startAssemblyLayer } from './src/bjob/assembly.js?v=77';
-window.addEventListener('bjob:ready', () => startAssemblyLayer(), { once:true });
+import { startAssemblyLayer } from './src/bjob/assembly.js?v=82';
+import { installLifecycleEnhancements } from './src/bjob/lifecycleEnhancements.js?v=82';
+import { installAssemblyInventoryGuard } from './src/bjob/assemblyInventoryGuard.js?v=82';
+import { installFbsLocalMirror } from './src/bjob/fbsLocalMirror.js?v=82';
+import { installTransferViewEnhancement } from './src/bjob/transferViewEnhancement.js?v=82';
+window.addEventListener('bjob:ready', () => {
+  startAssemblyLayer();
+  installLifecycleEnhancements();
+  installAssemblyInventoryGuard();
+  installFbsLocalMirror();
+  installTransferViewEnhancement();
+}, { once:true });
 </script>
 </body>
 </html>
