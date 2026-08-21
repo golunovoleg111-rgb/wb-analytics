@@ -1,0 +1,31 @@
+const VERSION=2;
+const uid=()=>crypto.randomUUID();
+const qrCode=()=>`BJOB-${crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase()}`;
+const touch=w=>{w.updatedAt=new Date().toISOString()};
+const box=(w,id)=>{const b=w.boxes.find(x=>x.id===id);if(!b)throw Error('Короб не найден');return b};
+export const DESIGN_TOOLS=Object.freeze(['select','wall','rect','partition','window','route','entrance','erase']);
+export const DESIGN_LABELS=Object.freeze({select:'Выбор',wall:'Стена',rect:'Прямоугольник',partition:'Перегородка',window:'Окно',route:'Маршрут',entrance:'Вход / выход',erase:'Ластик'});
+export const createFbsWarehouseState=name=>({...createWarehouse(name),designLocked:false});
+export function createWarehouse(name='Новый склад'){return {version:VERSION,id:uid(),name:String(name||'').trim(),canvas:{width:1600,height:1000},walls:[],zones:[],entrances:[],features:[],boxes:[],assemblyTasks:[],updatedAt:new Date().toISOString(),designLocked:false}}
+export const canEditLayout=w=>!w.designLocked;
+export const finishLayout=w=>{w.designLocked=true;touch(w);return w};
+export const reopenLayout=w=>{w.designLocked=false;touch(w);return w};
+export function normalizeWarehouse(w){if(!w||typeof w!=='object')throw Error('Некорректные данные склада');w.walls=Array.isArray(w.walls)?w.walls:[];w.zones=Array.isArray(w.zones)?w.zones:[];w.entrances=Array.isArray(w.entrances)?w.entrances:[];w.features=Array.isArray(w.features)?w.features:[];w.boxes=Array.isArray(w.boxes)?w.boxes:[];w.assemblyTasks=Array.isArray(w.assemblyTasks)?w.assemblyTasks:[];w.canvas=w.canvas&&typeof w.canvas==='object'?w.canvas:{width:1600,height:1000};if(typeof w.designLocked!=='boolean')w.designLocked=false;for(const z of w.zones)z.boxIds=Array.isArray(z.boxIds)?z.boxIds:[];for(const b of w.boxes)if(!('zoneId'in b))b.zoneId=null;return w}
+export function addWall(w,x1,y1,x2,y2,type='wall'){w.walls.push({id:uid(),x1,y1,x2,y2,type});touch(w);return w.walls.at(-1)}
+export function addZone(w,{name,capacity=0,x=0,y=0,width=200,height=120}={}){if(!name)throw Error('Название зоны обязательно');const z={id:uid(),name,capacity:Number(capacity)||0,x,y,width,height,boxIds:[]};w.zones.push(z);touch(w);return z}
+export function addEntrance(w,{name='Вход',x=0,y=0,type='entry'}={}){const e={id:uid(),name,x,y,type};w.entrances.push(e);touch(w);return e}
+export function addFeature(w,{type='partition',x=0,y=0,width=120,height=10,label=''}={}){const f={id:uid(),type,x,y,width,height,label};w.features.push(f);touch(w);return f}
+export function removeWall(w,id){w.walls=w.walls.filter(x=>x.id!==id);touch(w)}
+export function removeFeature(w,id){w.features=w.features.filter(x=>x.id!==id);touch(w)}
+export function addBox(w,{zoneId,code=qrCode(),color='',type='mono'}={}){const z=w.zones.find(x=>x.id===zoneId);if(!z)throw Error('Сначала выберите зону');if(w.boxes.some(x=>x.code===code))throw Error('Такой код короба уже существует');if(z.capacity&&z.boxIds.length>=z.capacity)throw Error('В зоне нет свободного места');const b={id:uid(),code,qr:code,qrPayload:`BJOB-FBS|${uid()}|${code}`,color,type,zoneId,locked:false,contents:[]};b.qrPayload=`BJOB-FBS|${b.id}|${code}`;w.boxes.push(b);z.boxIds.push(b.id);touch(w);return b}
+export function setBoxContents(w,boxId,item){const b=box(w,boxId);if(b.locked)throw Error('Короб заблокирован');if(!item.article||item.qty<=0)throw Error('Некорректное изделие');const r=b.contents.find(x=>x.article===item.article&&x.color===item.color&&x.size===item.size);r?r.qty+=Number(item.qty):b.contents.push({...item,qty:Number(item.qty)});touch(w);return b}
+export function moveBox(w,boxId,zoneId){const b=box(w,boxId),to=w.zones.find(x=>x.id===zoneId);if(!to)throw Error('Зона не найдена');if(to.capacity&&to.boxIds.length>=to.capacity)throw Error('В зоне нет свободного места');const from=w.zones.find(x=>x.id===b.zoneId);if(from)from.boxIds=from.boxIds.filter(id=>id!==b.id);to.boxIds.push(b.id);b.zoneId=zoneId;touch(w);return b}
+export function removeBox(w,boxId){const b=box(w,boxId);if(b.locked)throw Error('Короб заблокирован');const z=w.zones.find(x=>x.id===b.zoneId);if(z)z.boxIds=z.boxIds.filter(x=>x!==boxId);w.boxes=w.boxes.filter(x=>x.id!==boxId);touch(w)}
+export function removeZone(w,id){normalizeWarehouse(w);const z=w.zones.find(x=>x.id===id);if(!z)throw Error('Зона не найдена');const ids=new Set(z.boxIds);for(const b of w.boxes)if(b.zoneId===id||ids.has(b.id))b.zoneId=null;w.zones=w.zones.filter(x=>x.id!==id);touch(w);return w}
+export function lockBox(w,boxId,locked=true){const b=box(w,boxId);b.locked=!!locked;touch(w);return b}
+export function warehouseInventory(w){const map=new Map();for(const b of w.boxes)for(const i of b.contents){const k=[i.article,i.color||'',i.size||''].join('|');const r=map.get(k)||{article:i.article,name:i.name||'',color:i.color||'',size:i.size||'',qty:0,boxes:0};r.qty+=Number(i.qty);r.boxes++;map.set(k,r)}return [...map.values()]}
+export const sortInventory=rows=>[...(Array.isArray(rows)?rows:[])].sort((a,b)=>String(a.article||a.name||'').localeCompare(String(b.article||b.name||''),'ru',{numeric:true,sensitivity:'base'}));
+export function scanBox(w,code){const raw=String(code||'').trim();const m=raw.match(/^BJOB-FBS\|([^|]+)\|(.+)$/);const id=m?.[1]||null,bc=m?.[2]||raw;const b=w.boxes.find(x=>(id&&x.id===id)||x.code===bc||x.qr===raw||x.qrPayload===raw);if(!b)throw Error('Короб не найден');return b}
+export function consumeForOrder(w,boxId,item,orderArticles=[]){const b=box(w,boxId);if(b.locked)throw Error('Короб заблокирован');if(!orderArticles.includes(item.article))throw Error('Изделие отсутствует в текущем заказе');const r=b.contents.find(x=>x.article===item.article&&x.color===item.color&&x.size===item.size);if(!r||r.qty<1)throw Error('Изделия нет в коробе');r.qty--;touch(w);return r}
+export function createAssemblyTask(w,lines){const task={id:uid(),status:'Новая',lines:lines.map(x=>({...x})),roadmap:lines.map((x,i)=>({order:i+1,article:x.article,qty:x.qty,status:'Ожидает'})),createdAt:new Date().toISOString()};w.assemblyTasks.push(task);touch(w);return task}
+export function setTaskStatus(w,id,status){const t=w.assemblyTasks.find(x=>x.id===id);if(!t)throw Error('Задание не найдено');t.status=status;touch(w);return t}
