@@ -2,27 +2,24 @@ import * as DB from '../../db.js';
 import * as Auth from '../userAuth.js';
 
 const API_BASE=(()=>{try{return localStorage.getItem('bjob_api_base')||''}catch{return ''}})();
-export const CORE_VERSION='3.0.0-core-reset';
+export const CORE_VERSION='3.0.1-stable-boot';
 let bootPromise=null;
 let bootState={status:'idle',health:null,error:null};
 
 export function apiUrl(path){if(!path.startsWith('/'))path=`/${path}`;return `${API_BASE}${path}`}
-export async function apiFetch(path,options={}){
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),options.timeout??3500);
-  try{return await fetch(apiUrl(path),{...options,signal:options.signal||controller.signal,headers:{Accept:'application/json',...(options.headers||{})}})}
-  finally{clearTimeout(timeout)}
-}
-export async function apiAvailable(){try{const response=await apiFetch('/api/health',{timeout:1500});return response.ok}catch{return false}}
+export async function apiFetch(path,options={}){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),options.timeout??3500);try{return await fetch(apiUrl(path),{...options,signal:options.signal||controller.signal,headers:{Accept:'application/json',...(options.headers||{})}})}finally{clearTimeout(timeout)}}
+export async function apiAvailable(){try{return (await apiFetch('/api/health',{timeout:1500})).ok}catch{return false}}
+
+const withTimeout=(promise,label,ms=10000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label}: тайм-аут ${ms} мс`)),ms))]);
 
 export async function boot(){
   if(bootPromise)return bootPromise;
   bootState={status:'starting',health:null,error:null};
   bootPromise=(async()=>{
     try{
-      await DB.all('settings');
-      const health=await Auth.ensureCore();
-      bootState={status:'ready',health:{...health,coreVersion:CORE_VERSION,localFirst:DB.isLocalFirst()}};
+      await withTimeout(DB.all('settings'),'IndexedDB/settings');
+      const health=await withTimeout(Auth.ensureCore(),'Auth/ensureCore');
+      bootState={status:'ready',health:{...health,coreVersion:CORE_VERSION,localFirst:DB.isLocalFirst()},error:null};
       return bootState.health;
     }catch(error){
       bootState={status:'failed',health:null,error};
