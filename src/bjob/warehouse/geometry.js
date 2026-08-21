@@ -39,22 +39,24 @@ export function snapSegmentToEndpoints(segment, points, epsilon = 12) {
   };
 }
 
-export function rectangleWalls({ x, y, width, height, thickness = 8 } = {}) {
+export function rectangleWalls({ x, y, width, height, thickness = 8, idPrefix = 'rect-wall' } = {}) {
   const left = Number(x) || 0;
   const top = Number(y) || 0;
   const w = Math.max(1, Number(width) || 1);
   const h = Math.max(1, Number(height) || 1);
-  return [
-    { start: point(left, top), end: point(left + w, top), thickness },
-    { start: point(left + w, top), end: point(left + w, top + h), thickness },
-    { start: point(left + w, top + h), end: point(left, top + h), thickness },
-    { start: point(left, top + h), end: point(left, top), thickness }
+  const segments = [
+    { start: point(left, top), end: point(left + w, top) },
+    { start: point(left + w, top), end: point(left + w, top + h) },
+    { start: point(left + w, top + h), end: point(left, top + h) },
+    { start: point(left, top + h), end: point(left, top) }
   ];
+  return segments.map((segment, index) => ({ ...segment, id: `${idPrefix}-${index}`, thickness }));
 }
 
 export function connectWalls(walls, epsilon = EPSILON) {
-  const normalized = walls.map(wall => ({
+  const normalized = walls.map((wall, index) => ({
     ...wall,
+    id: wall.id || `wall-${index}`,
     start: point(wall.start.x, wall.start.y),
     end: point(wall.end.x, wall.end.y),
     connections: []
@@ -63,31 +65,60 @@ export function connectWalls(walls, epsilon = EPSILON) {
     for (let j = i + 1; j < normalized.length; j += 1) {
       const a = normalized[i];
       const b = normalized[j];
-      if (samePoint(a.start, b.start, epsilon)) { a.connections.push({ wallId: b.id, endpoint: 'start', otherEndpoint: 'start' }); b.connections.push({ wallId: a.id, endpoint: 'start', otherEndpoint: 'start' }); }
-      if (samePoint(a.start, b.end, epsilon)) { a.connections.push({ wallId: b.id, endpoint: 'start', otherEndpoint: 'end' }); b.connections.push({ wallId: a.id, endpoint: 'end', otherEndpoint: 'start' }); }
-      if (samePoint(a.end, b.start, epsilon)) { a.connections.push({ wallId: b.id, endpoint: 'end', otherEndpoint: 'start' }); b.connections.push({ wallId: a.id, endpoint: 'start', otherEndpoint: 'end' }); }
-      if (samePoint(a.end, b.end, epsilon)) { a.connections.push({ wallId: b.id, endpoint: 'end', otherEndpoint: 'end' }); b.connections.push({ wallId: a.id, endpoint: 'end', otherEndpoint: 'end' }); }
+      const pairs = [
+        ['start', a.start, 'start', b.start],
+        ['start', a.start, 'end', b.end],
+        ['end', a.end, 'start', b.start],
+        ['end', a.end, 'end', b.end]
+      ];
+      for (const [aEndpoint, aPoint, bEndpoint, bPoint] of pairs) {
+        if (!samePoint(aPoint, bPoint, epsilon)) continue;
+        a.connections.push({ wallId: b.id, endpoint: aEndpoint, otherEndpoint: bEndpoint });
+        b.connections.push({ wallId: a.id, endpoint: bEndpoint, otherEndpoint: aEndpoint });
+      }
     }
   }
   return normalized;
 }
 
-export function segmentsIntersect(a, b) {
-  const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-  const c1 = cross(a.start, a.end, b.start);
-  const c2 = cross(a.start, a.end, b.end);
-  const c3 = cross(b.start, b.end, a.start);
-  const c4 = cross(b.start, b.end, a.end);
-  return ((c1 > EPSILON && c2 < -EPSILON) || (c1 < -EPSILON && c2 > EPSILON)) &&
-    ((c3 > EPSILON && c4 < -EPSILON) || (c3 < -EPSILON && c4 > EPSILON));
+function orientation(a, b, c) {
+  const value = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  if (Math.abs(value) <= EPSILON) return 0;
+  return value > 0 ? 1 : -1;
+}
+
+function onSegment(a, b, p) {
+  return p.x >= Math.min(a.x, b.x) - EPSILON && p.x <= Math.max(a.x, b.x) + EPSILON &&
+    p.y >= Math.min(a.y, b.y) - EPSILON && p.y <= Math.max(a.y, b.y) + EPSILON;
+}
+
+export function segmentsIntersect(a, b, { allowSharedEndpoints = false } = {}) {
+  const sharedEndpoint = samePoint(a.start, b.start) || samePoint(a.start, b.end) || samePoint(a.end, b.start) || samePoint(a.end, b.end);
+  if (allowSharedEndpoints && sharedEndpoint) return false;
+
+  const o1 = orientation(a.start, a.end, b.start);
+  const o2 = orientation(a.start, a.end, b.end);
+  const o3 = orientation(b.start, b.end, a.start);
+  const o4 = orientation(b.start, b.end, a.end);
+
+  if (o1 !== o2 && o3 !== o4 && o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0) return true;
+  if (o1 === 0 && onSegment(a.start, a.end, b.start)) return true;
+  if (o2 === 0 && onSegment(a.start, a.end, b.end)) return true;
+  if (o3 === 0 && onSegment(b.start, b.end, a.start)) return true;
+  if (o4 === 0 && onSegment(b.start, b.end, a.end)) return true;
+  return false;
 }
 
 export function validateWalls(walls = []) {
   const errors = [];
   for (let i = 0; i < walls.length; i += 1) {
-    if (distance(walls[i].start, walls[i].end) <= EPSILON) errors.push(`Стена ${walls[i].id || i}: нулевая длина.`);
+    if (distance(walls[i].start, walls[i].end) <= EPSILON) {
+      errors.push(`Стена ${walls[i].id || i}: нулевая длина.`);
+    }
     for (let j = i + 1; j < walls.length; j += 1) {
-      if (segmentsIntersect(walls[i], walls[j])) errors.push(`Стены ${walls[i].id || i} и ${walls[j].id || j} пересекаются.`);
+      if (segmentsIntersect(walls[i], walls[j], { allowSharedEndpoints: true })) {
+        errors.push(`Стены ${walls[i].id || i} и ${walls[j].id || j} пересекаются.`);
+      }
     }
   }
   return { valid: errors.length === 0, errors };
@@ -95,41 +126,64 @@ export function validateWalls(walls = []) {
 
 export function findClosedLoops(walls = []) {
   const connected = connectWalls(walls);
+  const byId = new Map(connected.map(wall => [wall.id, wall]));
   const adjacency = new Map();
+
+  const pointKey = p => `${p.x}:${p.y}`;
   for (const wall of connected) {
-    const key = p => `${p.x}:${p.y}`;
     for (const [from, to] of [[wall.start, wall.end], [wall.end, wall.start]]) {
-      const k = key(from);
-      if (!adjacency.has(k)) adjacency.set(k, []);
-      adjacency.get(k).push({ wall, point: to });
+      const key = pointKey(from);
+      if (!adjacency.has(key)) adjacency.set(key, []);
+      adjacency.get(key).push({ wallId: wall.id, point: to });
     }
   }
+
   const loops = [];
-  const visited = new Set();
+  const visitedEdges = new Set();
   for (const wall of connected) {
-    const startKey = `${wall.start.x}:${wall.start.y}`;
-    const edgeKey = `${wall.id}:start`;
-    if (visited.has(edgeKey)) continue;
-    const path = [wall.start];
-    let current = wall.start;
-    let currentWall = wall;
-    for (let guard = 0; guard < connected.length + 1; guard += 1) {
-      const next = currentWall.start && samePoint(currentWall.start, current) ? currentWall.end : currentWall.start;
-      path.push(next);
-      const nextKey = `${next.x}:${next.y}`;
-      if (nextKey === startKey) {
-        loops.push(path);
-        break;
+    for (const direction of ['forward', 'reverse']) {
+      const start = direction === 'forward' ? wall.start : wall.end;
+      const next = direction === 'forward' ? wall.end : wall.start;
+      const firstEdge = `${wall.id}:${pointKey(start)}:${pointKey(next)}`;
+      if (visitedEdges.has(firstEdge)) continue;
+
+      const path = [start, next];
+      let currentPoint = next;
+      let currentWallId = wall.id;
+      let previousPoint = start;
+      let closed = false;
+
+      for (let guard = 0; guard < connected.length + 1; guard += 1) {
+        const candidates = (adjacency.get(pointKey(currentPoint)) || [])
+          .filter(edge => edge.wallId !== currentWallId && !samePoint(edge.point, previousPoint));
+        if (!candidates.length) break;
+
+        const candidate = candidates[0];
+        const edge = `${candidate.wallId}:${pointKey(currentPoint)}:${pointKey(candidate.point)}`;
+        visitedEdges.add(`${currentWallId}:${pointKey(previousPoint)}:${pointKey(currentPoint)}`);
+        if (samePoint(candidate.point, start)) {
+          closed = true;
+          break;
+        }
+        if (path.some(p => samePoint(p, candidate.point))) break;
+        path.push(candidate.point);
+        previousPoint = currentPoint;
+        currentPoint = candidate.point;
+        currentWallId = candidate.wallId;
+        visitedEdges.add(edge);
       }
-      const candidates = adjacency.get(nextKey) || [];
-      const nextEdge = candidates.find(item => item.wall.id !== currentWall.id && !visited.has(`${item.wall.id}:${item.point.x}:${item.point.y}`));
-      if (!nextEdge) break;
-      visited.add(`${currentWall.id}:${current.x}:${current.y}`);
-      current = next;
-      currentWall = nextEdge.wall;
+
+      if (closed && path.length >= 3) loops.push(path);
     }
   }
-  return loops;
+
+  // Remove duplicate loops caused by traversing the same cycle in both directions.
+  const unique = new Map();
+  for (const loop of loops) {
+    const key = loop.map(pointKey).sort().join('|');
+    if (!unique.has(key)) unique.set(key, loop);
+  }
+  return [...unique.values()];
 }
 
 export function rectangleFromDrag(start, end) {
