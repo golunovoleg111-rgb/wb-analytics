@@ -12,7 +12,8 @@ function open(){
   dbPromise=new Promise((resolve,reject)=>{
     let settled=false;
     const fail=error=>{if(settled)return;settled=true;dbPromise=null;reject(error)};
-    const request=indexedDB.open(DB_NAME,DB_VERSION);
+    let request;
+    try{request=indexedDB.open(DB_NAME,DB_VERSION)}catch(error){fail(error);return}
     const timer=setTimeout(()=>fail(new Error('IndexedDB не отвечает. Возможно, база занята другой вкладкой. Закройте другие вкладки B-JOB и обновите страницу.')),8000);
     request.onupgradeneeded=()=>{
       const db=request.result;
@@ -54,5 +55,16 @@ export async function replaceMany(name,rows){return replaceLocal(name,Array.isAr
 export async function snapshot(){const result={};for(const name of STORES)result[name]=await tx(name,'readonly',store=>store.getAll());return result}
 export async function assignUnscopedToShop(shopId){if(!shopId)return 0;let changed=0;const db=await open();for(const name of SHOP_SCOPED_STORES){const rows=await new Promise((resolve,reject)=>{const r=db.transaction(name,'readonly').objectStore(name).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)});const legacy=rows.filter(row=>!row.shopId);if(!legacy.length)continue;await new Promise((resolve,reject)=>{const t=db.transaction(name,'readwrite'),s=t.objectStore(name);for(const row of legacy)s.put({...row,shopId});t.oncomplete=resolve;t.onerror=()=>reject(t.error||new Error(`Failed to migrate ${name}`));t.onabort=()=>reject(t.error||new Error(`Aborted migrating ${name}`))});changed+=legacy.length}return changed}
 export async function restoreSnapshot(snapshot,{clear=true}={}){if(!snapshot||typeof snapshot!=='object')throw new Error('Некорректный backup JSON.');let total=0;for(const name of STORES){if(!Array.isArray(snapshot[name]))continue;if(clear)await clearStore(name);total+=await replaceMany(name,snapshot[name])}return total}
+export async function reset(){
+  const db=await open();
+  db.close();
+  dbPromise=null;
+  await new Promise((resolve,reject)=>{
+    const request=indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess=()=>resolve();
+    request.onerror=()=>reject(request.error||new Error('IndexedDB reset failed'));
+    request.onblocked=()=>reject(new Error('IndexedDB reset заблокирован другой вкладкой B-JOB.'));
+  });
+}
 export function isLocalFirst(){return true}
 export {DB_NAME,DB_VERSION,STORES,SHOP_SCOPED_STORES,LOCAL_ONLY_STORES};
