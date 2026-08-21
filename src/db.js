@@ -10,7 +10,10 @@ function stampRows(name,rows){if(!SHOP_SCOPED_STORES.has(name))return rows;const
 function open(){
   if(dbPromise)return dbPromise;
   dbPromise=new Promise((resolve,reject)=>{
+    let settled=false;
+    const fail=error=>{if(settled)return;settled=true;dbPromise=null;reject(error)};
     const request=indexedDB.open(DB_NAME,DB_VERSION);
+    const timer=setTimeout(()=>fail(new Error('IndexedDB не отвечает. Возможно, база занята другой вкладкой. Закройте другие вкладки B-JOB и обновите страницу.')),8000);
     request.onupgradeneeded=()=>{
       const db=request.result;
       for(const name of STORES){
@@ -31,8 +34,9 @@ function open(){
         if(name==='assemblyEvents')store.createIndex('taskId','taskId',{unique:false});
       }
     };
-    request.onsuccess=()=>resolve(request.result);
-    request.onerror=()=>{dbPromise=null;reject(request.error||new Error('IndexedDB open failed'))};
+    request.onsuccess=()=>{if(settled)return;settled=true;clearTimeout(timer);resolve(request.result)};
+    request.onerror=()=>{clearTimeout(timer);fail(request.error||new Error('IndexedDB open failed'))};
+    request.onblocked=()=>fail(new Error('IndexedDB заблокирован другой вкладкой B-JOB. Закройте остальные вкладки приложения и обновите страницу.'));
   });
   return dbPromise;
 }
