@@ -17,21 +17,28 @@
 <script src="./src/bjob/bootRecovery.js"></script>
 <script type="module" src="./src/bjob/singleBoot.js?v=83"></script>
 <script type="module">
-import { startAssemblyLayer } from './src/bjob/assembly.js?v=83';
-import { installLifecycleEnhancements } from './src/bjob/lifecycleEnhancements.js?v=83';
-import { installAssemblyInventoryGuard } from './src/bjob/assemblyInventoryGuard.js?v=83';
-import { installFbsLocalMirror } from './src/bjob/fbsLocalMirror.js?v=83';
-import { installTransferViewEnhancement } from './src/bjob/transferViewEnhancement.js?v=83';
-import { installFbsFixesV83 } from './src/bjob/fbsFixesV83.js?v=83';
-import { installManagementFixV83 } from './src/bjob/managementFixV83.js?v=83';
-window.addEventListener('bjob:ready', () => {
-  startAssemblyLayer();
-  installLifecycleEnhancements();
-  installAssemblyInventoryGuard();
-  installFbsLocalMirror();
-  installTransferViewEnhancement();
-  installFbsFixesV83();
-  installManagementFixV83();
+const safeMode = sessionStorage.getItem('bjob:safe-mode') === '1';
+const optionalModules = [
+  ['./src/bjob/assembly.js?v=83', 'startAssemblyLayer'],
+  ['./src/bjob/lifecycleEnhancements.js?v=83', 'installLifecycleEnhancements'],
+  ['./src/bjob/assemblyInventoryGuard.js?v=83', 'installAssemblyInventoryGuard'],
+  ['./src/bjob/fbsLocalMirror.js?v=83', 'installFbsLocalMirror'],
+  ['./src/bjob/transferViewEnhancement.js?v=83', 'installTransferViewEnhancement'],
+  ['./src/bjob/fbsFixesV83.js?v=83', 'installFbsFixesV83'],
+  ['./src/bjob/managementFixV83.js?v=83', 'installManagementFixV83']
+];
+window.addEventListener('bjob:ready', async () => {
+  if (safeMode) return;
+  for (const [url, exportName] of optionalModules) {
+    try {
+      const module = await import(url);
+      const install = module[exportName];
+      if (typeof install !== 'function') throw new Error(`${exportName} не экспортирован`);
+      await install();
+    } catch (error) {
+      console.error(`B-JOB optional module failed: ${url}`, error);
+    }
+  }
 }, { once:true });
 </script>
 </body>
