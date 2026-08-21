@@ -1,12 +1,24 @@
-name: Runtime integrity
+name: Runtime Integrity
 
 on:
-  pull_request:
+  workflow_dispatch:
   push:
+    branches: [B-Job]
+  pull_request:
+    branches: [B-Job]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-integrity-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   integrity:
+    name: Runtime Integrity
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,3 +30,12 @@ jobs:
         run: node scripts/validate-runtime.mjs
       - name: Check MutationObserver safety
         run: node scripts/check-mutation-observers.mjs
+      - name: Verify critical boot files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f index.html
+          test -f src/bjob/singleBoot.js
+          test -f src/bjob/core/runtime.js
+          test -f src/db.js
+          echo "Critical boot files present."
