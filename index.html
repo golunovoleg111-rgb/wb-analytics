@@ -6,22 +6,43 @@
 <meta name="theme-color" content="#0b0e14">
 <title>B-JOB</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./src/bjob/single.css?v=85">
-<link rel="stylesheet" href="./src/bjob/assembly.css?v=85">
-<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=85">
-<link rel="stylesheet" href="./src/bjob/modalFix.css?v=85">
-<link rel="stylesheet" href="./src/bjob/fbsFixesV85.css?v=85">
+<link rel="stylesheet" href="./src/bjob/single.css?v=86">
+<link rel="stylesheet" href="./src/bjob/assembly.css?v=86">
+<link rel="stylesheet" href="./src/bjob/fbsWarehouse.css?v=86">
+<link rel="stylesheet" href="./src/bjob/modalFix.css?v=86">
+<link rel="stylesheet" href="./src/bjob/fbsFixesV85.css?v=86">
 </head>
 <body>
 <div id="app"><div id="boot-status" style="min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#edf2f7;font:600 14px system-ui">B-JOB загружается…</div></div>
 <script>
-(()=>{const started=Date.now();const show=(title,message)=>{const app=document.querySelector('#app');if(app)app.innerHTML=`<div class="single-fatal"><h1>${title}</h1><p>${message}</p><small>Boot diagnostics: ${Date.now()-started} ms</small><br><button class="ui-btn primary" onclick="location.reload()">Повторить</button></div>`};window.addEventListener('error',e=>show('B-JOB — ошибка запуска',String(e.error?.message||e.message||'Неизвестная ошибка')),{capture:true});window.addEventListener('unhandledrejection',e=>show('B-JOB — ошибка запуска',String(e.reason?.message||e.reason||'Необработанное исключение')),{capture:true});setTimeout(()=>{const el=document.querySelector('#boot-status');if(el&&el.textContent.includes('B-JOB загружается'))show('B-JOB — запуск завис','Основной JavaScript не завершил загрузку за 12 секунд. Это диагностическая остановка, а не бесконечная загрузка.')},12000)})();
+(()=>{
+ const started=Date.now();
+ const show=(title,message)=>{const app=document.querySelector('#app');if(app)app.innerHTML=`<div class="single-fatal"><h1>${title}</h1><p>${message}</p><small>Boot diagnostics: ${Date.now()-started} ms</small><br><button class="ui-btn primary" onclick="location.reload()">Повторить</button></div>`};
+ window.addEventListener('error',e=>show('B-JOB — ошибка запуска',String(e.error?.message||e.message||'Неизвестная ошибка')),{capture:true});
+ window.addEventListener('unhandledrejection',e=>show('B-JOB — ошибка запуска',String(e.reason?.message||e.reason||'Необработанное исключение')),{capture:true});
+ setTimeout(()=>{const el=document.querySelector('#boot-status');if(el&&el.textContent.includes('B-JOB загружается'))show('B-JOB — запуск завис','Основной JavaScript не завершил загрузку за 12 секунд. Это диагностическая остановка, а не бесконечная загрузка.')},12000);
+})();
 </script>
-<script src="./src/bjob/bootRecovery.js?v=85"></script>
-<script type="module">
-const safeMode=sessionStorage.getItem('bjob:safe-mode')==='1';
-if(safeMode){const app=document.querySelector('#app');app.innerHTML='<div class="single-fatal"><h1>B-JOB — безопасный режим</h1><p>Основной запуск остановлен после ошибки. Дополнительные модули отключены.</p><button id="bjob-safe-retry" class="ui-btn primary">Попробовать снова</button><button id="bjob-safe-clear" class="ui-btn ghost">Сбросить Safe Mode</button></div>';document.querySelector('#bjob-safe-retry').onclick=()=>{sessionStorage.removeItem('bjob:safe-mode');sessionStorage.removeItem('bjob:boot-recovery-attempted');location.reload()};document.querySelector('#bjob-safe-clear').onclick=()=>{sessionStorage.clear();location.reload()}}else{import('./src/bjob/singleBoot.js?v=85').catch(error=>{console.error('B-JOB core module failed',error);sessionStorage.setItem('bjob:safe-mode','1');const app=document.querySelector('#app');app.innerHTML=`<div class="single-fatal"><h1>B-JOB не запущен</h1><p>Не удалось загрузить основной модуль приложения.</p><small>${String(error?.message||error)}</small></div>`})}
-window.addEventListener('bjob:ready',async()=>{if(sessionStorage.getItem('bjob:safe-mode')==='1')return;const optionalModules=[['./src/bjob/assembly.js?v=85','startAssemblyLayer'],['./src/bjob/lifecycleEnhancements.js?v=85','installLifecycleEnhancements'],['./src/bjob/assemblyInventoryGuard.js?v=85','installAssemblyInventoryGuard'],['./src/bjob/fbsLocalMirror.js?v=85','installFbsLocalMirror'],['./src/bjob/transferViewEnhancement.js?v=85','installTransferViewEnhancement'],['./src/bjob/fbsFixesV83.js?v=85','installFbsFixesV83'],['./src/bjob/managementFixV83.js?v=85','installManagementFixV83']];for(const [url,exportName] of optionalModules){try{const module=await import(url);const install=module[exportName];if(typeof install!=='function')throw new Error(`${exportName} не экспортирован`);await install()}catch(error){console.error(`B-JOB optional module failed: ${url}`,error)}}},{once:true});
+<script src="./src/bjob/bootRecovery.js?v=86"></script>
+<script>
+(async()=>{
+ const app=document.querySelector('#app');
+ const safeMode=sessionStorage.getItem('bjob:safe-mode')==='1';
+ if(safeMode){app.innerHTML='<div class="single-fatal"><h1>B-JOB — безопасный режим</h1><p>Основной запуск остановлен после ошибки. Дополнительные модули отключены.</p><button id="bjob-safe-retry" class="ui-btn primary">Попробовать снова</button><button id="bjob-safe-clear" class="ui-btn ghost">Сбросить Safe Mode</button></div>';document.querySelector('#bjob-safe-retry').onclick=()=>{sessionStorage.removeItem('bjob:safe-mode');sessionStorage.removeItem('bjob:boot-recovery-attempted');location.reload()};document.querySelector('#bjob-safe-clear').onclick=()=>{sessionStorage.clear();location.reload()};return}
+ try{
+   const core=await import('./src/bjob/singleBoot.js?v=86');
+   if(!core||typeof core!=='object')throw new Error('singleBoot.js загрузился некорректно');
+ }catch(error){
+   console.error('B-JOB core module failed',error);
+   sessionStorage.setItem('bjob:safe-mode','1');
+   app.innerHTML=`<div class="single-fatal"><h1>B-JOB не запущен</h1><p>Не удалось загрузить основной модуль приложения.</p><small>${String(error?.message||error)}</small></div>`;
+ }
+})();
+window.addEventListener('bjob:ready',async()=>{
+ if(sessionStorage.getItem('bjob:safe-mode')==='1')return;
+ const optionalModules=[['./src/bjob/assembly.js?v=86','startAssemblyLayer'],['./src/bjob/lifecycleEnhancements.js?v=86','installLifecycleEnhancements'],['./src/bjob/assemblyInventoryGuard.js?v=86','installAssemblyInventoryGuard'],['./src/bjob/fbsLocalMirror.js?v=86','installFbsLocalMirror'],['./src/bjob/transferViewEnhancement.js?v=86','installTransferViewEnhancement'],['./src/bjob/fbsFixesV83.js?v=86','installFbsFixesV83'],['./src/bjob/managementFixV83.js?v=86','installManagementFixV83']];
+ for(const [url,exportName] of optionalModules){try{const module=await import(url);const install=module[exportName];if(typeof install!=='function')throw new Error(`${exportName} не экспортирован`);await install()}catch(error){console.error(`B-JOB optional module failed: ${url}`,error)}}
+},{once:true});
 </script>
 </body>
 </html>
