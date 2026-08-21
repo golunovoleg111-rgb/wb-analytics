@@ -15,20 +15,32 @@
 <body>
 <div id="app"><div style="min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#edf2f7;font:600 14px system-ui">B-JOB загружается…</div></div>
 <script src="./src/bjob/bootRecovery.js"></script>
-<script type="module" src="./src/bjob/singleBoot.js?v=83"></script>
 <script type="module">
 const safeMode = sessionStorage.getItem('bjob:safe-mode') === '1';
-const optionalModules = [
-  ['./src/bjob/assembly.js?v=83', 'startAssemblyLayer'],
-  ['./src/bjob/lifecycleEnhancements.js?v=83', 'installLifecycleEnhancements'],
-  ['./src/bjob/assemblyInventoryGuard.js?v=83', 'installAssemblyInventoryGuard'],
-  ['./src/bjob/fbsLocalMirror.js?v=83', 'installFbsLocalMirror'],
-  ['./src/bjob/transferViewEnhancement.js?v=83', 'installTransferViewEnhancement'],
-  ['./src/bjob/fbsFixesV83.js?v=83', 'installFbsFixesV83'],
-  ['./src/bjob/managementFixV83.js?v=83', 'installManagementFixV83']
-];
+if (safeMode) {
+  const app = document.querySelector('#app');
+  app.innerHTML = '<div class="single-fatal"><h1>B-JOB — безопасный режим</h1><p>Основной запуск был остановлен после ошибки. Дополнительные модули отключены.</p><button id="bjob-safe-retry" class="ui-btn primary">Попробовать снова</button><button id="bjob-safe-clear" class="ui-btn ghost">Очистить безопасный режим</button></div>';
+  document.querySelector('#bjob-safe-retry').onclick = () => { sessionStorage.removeItem('bjob:safe-mode'); sessionStorage.removeItem('bjob:boot-recovery-attempted'); location.reload(); };
+  document.querySelector('#bjob-safe-clear').onclick = () => { sessionStorage.clear(); location.reload(); };
+} else {
+  import('./src/bjob/singleBoot.js?v=83').catch(error => {
+    console.error('B-JOB core module failed', error);
+    sessionStorage.setItem('bjob:safe-mode', '1');
+    const app = document.querySelector('#app');
+    app.innerHTML = `<div class="single-fatal"><h1>B-JOB не запущен</h1><p>Не удалось загрузить основной модуль приложения.</p><small>${String(error?.message || error)}</small><br><button onclick="location.reload()" class="ui-btn primary">Открыть безопасный режим</button></div>`;
+  });
+}
 window.addEventListener('bjob:ready', async () => {
-  if (safeMode) return;
+  if (sessionStorage.getItem('bjob:safe-mode') === '1') return;
+  const optionalModules = [
+    ['./src/bjob/assembly.js?v=83', 'startAssemblyLayer'],
+    ['./src/bjob/lifecycleEnhancements.js?v=83', 'installLifecycleEnhancements'],
+    ['./src/bjob/assemblyInventoryGuard.js?v=83', 'installAssemblyInventoryGuard'],
+    ['./src/bjob/fbsLocalMirror.js?v=83', 'installFbsLocalMirror'],
+    ['./src/bjob/transferViewEnhancement.js?v=83', 'installTransferViewEnhancement'],
+    ['./src/bjob/fbsFixesV83.js?v=83', 'installFbsFixesV83'],
+    ['./src/bjob/managementFixV83.js?v=83', 'installManagementFixV83']
+  ];
   for (const [url, exportName] of optionalModules) {
     try {
       const module = await import(url);
